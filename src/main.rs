@@ -18,7 +18,7 @@ use rand::prelude::*;
 use colorous;
 
 use egui::{
-    Color32, Label, Pos2, Rect, Stroke, Ui, Vec2,
+    Color32, Event, Label, MouseWheelUnit, Pos2, Rect, Stroke, Ui, Vec2,
     emath::Float,
     epaint::{self, PathShape},
     pos2,
@@ -1612,6 +1612,21 @@ fn main() -> eframe::Result {
                 ui.ctx().request_repaint();
             }
             let r = ui.interact(cor_rect, egui::Id::new(19), egui::Sense::all());
+            let scroll = ui.input(|input| {
+                input
+                    .raw
+                    .events
+                    .iter()
+                    .filter_map(|ev| match ev {
+                        Event::MouseWheel {
+                            unit: MouseWheelUnit::Line | MouseWheelUnit::Page,
+                            delta,
+                            modifiers: _,
+                        } => Some((delta.x + delta.y).signum() as i32),
+                        _ => None,
+                    })
+                    .sum::<i32>()
+            });
             if r.clicked() {
                 puzzle.process_click(
                     &rect,
@@ -1635,6 +1650,15 @@ fn main() -> eframe::Result {
                     puzzle.get_hovered(&rect, r.hover_pos().unwrap(), scale_factor, offset);
                 if hovered_circle.radius > 0.0 {
                     hovered_circle.draw(ui, &rect, scale_factor, offset);
+                }
+                if scroll != 0 {
+                    puzzle.process_click(
+                        &rect,
+                        r.hover_pos().unwrap(),
+                        scroll > 0,
+                        scale_factor,
+                        offset,
+                    );
                 }
             }
             if ui.input(|i| i.key_pressed(egui::Key::D)) {
