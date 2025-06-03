@@ -5,7 +5,9 @@ use std::{
     collections::{HashMap, HashSet},
     f32::consts::PI,
     fmt,
+    fs::{self, File, OpenOptions},
     future::pending,
+    io::Write,
     iter::once,
     vec,
 };
@@ -106,6 +108,7 @@ struct Puzzle {
     stack: Vec<Turn>,
     animation_offset: Turn,
     intern: FloatIntern,
+    depth: u16,
 }
 #[derive(Clone, Copy)]
 struct Circle {
@@ -232,7 +235,6 @@ impl Vec2F64 {
         return Some((1.0 / mag) * *self);
     }
     //returns the angle measured ccw from positive x
-    // FIX -- PATCHWORK SOLUTION
     fn angle(&self) -> f64 {
         return self.y.atan2(self.x);
     }
@@ -270,6 +272,19 @@ impl DataHandler {
             }
         }
         return None;
+    }
+}
+
+impl PuzzleDef {
+    fn to_string(&self) -> String {
+        return String::from(format!(
+            "{},{},{},{},{}",
+            self.n_left.to_string(),
+            self.n_right.to_string(),
+            self.r_left.to_string(),
+            self.r_right.to_string(),
+            self.depth.to_string()
+        ));
     }
 }
 
@@ -487,12 +502,12 @@ impl Arc {
         ui.painter()
             .add(PathShape::line(coords, Stroke::new(width, OUTLINE_COLOR)));
     }
-    //returns the number of intersection points between the line segment and the arc. includes intersections at the start but not the end (for reasons)
+    //returns the number of points lying on the arc that are directly left of point (i.e., equal y value and lower x value). includes intersections at self.start but not at self.end() to avoid double counting
     fn arc_points_directly_left(&self, point: Pos2F64) -> Vec<Pos2F64> {
         let mut return_points = Vec::new();
         let points = circle_points_at_y(self.circle, point.y);
         for circ_point in &points {
-            if (self.contains_properly(*circ_point) || aeq_pos(*circ_point, self.start))
+            if (self.contains_properly(*circ_point) || aeq_pos(*circ_point, self.start)) //check if the 
                 && alneq(circ_point.x, point.x)
             {
                 return_points.push(*circ_point);
@@ -531,6 +546,55 @@ impl Puzzle {
             }
         }
     }
+    fn write_to_file(&self, path: &str) {
+        let mut buffer = OpenOptions::new()
+            .write(true)
+            .create(true)
+            .open(path)
+            .unwrap();
+        buffer.write(self.get_string().as_str().as_bytes());
+    }
+    fn get_string(&self) -> String {
+        let mut string = String::new();
+        string += &self.get_def().to_string();
+        string += &"\n";
+        string += &self.get_stack_string();
+        return string;
+    }
+    //very temporary and not generalized
+    fn get_def(&self) -> PuzzleDef {
+        return PuzzleDef {
+            r_left: self.turns[0].circle.radius,
+            r_right: self.turns[1].circle.radius,
+            n_left: ((2.0 * PI as f64) / self.turns[0].angle) as u16,
+            n_right: ((2.0 * PI as f64) / self.turns[1].angle) as u16,
+            depth: self.depth,
+        };
+    }
+    //comma separated, with no comma at the end
+    fn get_stack_string(&self) -> String {
+        let mut string = String::new();
+        for turn in &self.stack {
+            string += &self.id_from_turn(*turn).to_string();
+            string += ",";
+        }
+        string.pop();
+        return string;
+    }
+    //temporary
+    fn id_from_turn(&self, turn: Turn) -> usize {
+        for i in 0..self.turns.len() {
+            if aeq_circ(self.turns[i].circle, turn.circle) {
+                if aeq(self.turns[i].angle, turn.angle) {
+                    return 2 * i;
+                }
+                if aeq(self.turns[i].inverse().angle, turn.angle) {
+                    return (2 * i) + 1;
+                }
+            }
+        }
+        return 0;
+    }
     fn turn(&mut self, turn: Turn) {
         let mut new_pieces = Vec::new();
         for piece in &self.pieces {
@@ -546,8 +610,20 @@ impl Puzzle {
         self.stack.push(turn);
     }
     fn turn_id(&mut self, id: usize) {
-        let turn = self.turns[id];
-        self.turn(turn);
+        let turn = self.turns[id / 2];
+        if id % 2 == 0 {
+            self.turn(turn);
+        } else {
+            self.turn(turn.inverse());
+        }
+    }
+    fn turn_cut_id(&mut self, id: usize) {
+        let turn = self.turns[id / 2];
+        if id % 2 == 0 {
+            self.turn_cut(turn);
+        } else {
+            self.turn_cut(turn.inverse());
+        }
     }
     fn undo(&mut self) {
         if self.stack.len() == 0 {
@@ -766,8 +842,9 @@ impl Piece {
         }
         return true;
     }
-    //return if the shape contains the point properly
-    //awful but works
+    //return if the shape contains the point properly -- not on the border
+    //should return false if the point is properly outside the piece and true if it is properly inside the piece -- behavior on border points is undefined, may panic or return either option.
+    //essentially, check how many 'valid' points that are on the border of self and directly left (within leniency) of point, and then take that mod 2 to get the answer
     fn contains_point(&self, point: Pos2F64) -> bool {
         let y = point.y;
         let mut intersects = 0;
@@ -777,65 +854,67 @@ impl Piece {
                 0 => self.shape.len() - 1,
                 _ => i - 1,
             }];
-            let points = arc.arc_points_directly_left(point);
+            let points = arc.arc_points_directly_left(point); //get the points on the current arc directly left of the point
             for int_point in points {
                 if aeq_pos(arc.start, int_point) {
-                    if ((arc.initially_above_y(y)) != (prev_arc.invert().initially_above_y(y)))
+                    if ((arc.initially_above_y(y)) != (prev_arc.invert().initially_above_y(y))) //tangent case -- basically we only add in this case if the arcs actually cross the y line
                         || aeq(arc.angle, 2.0 * PI as f64)
                     {
                         intersects += 1;
                     }
                 } else {
                     if !aeq((arc.circle.center.y - y).abs(), arc.circle.radius) {
+                        //throw out the case where the arc is tangent at this point to the y line
                         intersects += 1;
                     }
                 }
             }
         }
         //dbg!(intersects);
-        return (intersects % 2) != 0;
+        return (intersects % 2) != 0; //the point is inside the piece if the number of valid intersects is odd, and outside otherwise
     }
-    // ASSUMPTIONS FOR NOW:
-    //the circle is not tangent to any arc in the piece
-    //the circle does not intersect any arc at its endpoint
+    // cut a piece by a circle and return the resulting pieces as a Vec
+    //the color is maintained
     fn cut_by_circle(&self, circle: Circle) -> Vec<Piece> {
         let mut shapes: Vec<Vec<Arc>> = Vec::new(); // the shapes of the final pieces
         let mut piece_arcs = Vec::new(); // the arcs obtained by cutting up the piece by the circle
         for arc in &self.shape {
-            let bits = arc.cut_by_circle(circle);
+            let bits = arc.cut_by_circle(circle); //bits created from cutting up the arc -- None iff the arc lies on circle
             if bits.is_none() {
-                return vec![self.clone()];
+                return vec![self.clone()]; //don't cut the shape in this case
             }
-            let arc_bits = bits.unwrap();
+            let arc_bits = bits.unwrap(); //add the bits to the piece_arcs
             piece_arcs.extend(arc_bits);
         } //populate piece_arcs
         // println!("startpos: {}", piece_arcs[1].start);
         //println!("{}", piece_arcs.len());
-        let mut circle_cut_points = Vec::new();
-        let mut circle_pieces = Vec::new();
+        let mut circle_cut_points = Vec::new(); //the points at which to cut circle--effectively the intersection points between circle and arc in piece_arcs
+        let mut circle_pieces = Vec::new(); //the created pieces of the circle
         for arc in &piece_arcs {
             if circle.contains_border(arc.start) {
+                //every intersection point is already tracked, because the piece_arcs were cut
                 circle_cut_points.push(arc.start);
             }
         }
         if circle_cut_points.is_empty() {
-            return vec![self.clone()];
+            return vec![self.clone()]; //if the circle lies fully outside the piece
         }
         // for point in &circle_cut_points {
         //     println!("{}", point);
         // }
         let start_point = circle_cut_points.remove(0);
-        let circle_as_arc = get_arc(start_point, start_point, circle, true);
-        circle_pieces.extend(circle_as_arc.cut_at(&circle_cut_points));
-        circle_pieces.extend(circle_as_arc.invert().cut_at(&circle_cut_points));
-        let mut inside_circle_pieces = Vec::new();
+        let circle_as_arc = get_arc(start_point, start_point, circle, true); //make the circle into a 2PI arc
+        circle_pieces.extend(circle_as_arc.cut_at(&circle_cut_points)); //cut the circle up
+        circle_pieces.extend(circle_as_arc.invert().cut_at(&circle_cut_points)); //also add the inverse arcs
+        let mut inside_circle_pieces = Vec::new(); //the pieces of the circle that lie inside the original piece -- the ones we care about
         for arc in circle_pieces {
             if self.contains_point(arc.midpoint()) {
+                //we check if the circle piece is in the piece by checking the midpoint -- the case where midpoint is on the border is already handled, since in this case arc.circle == circle for some arc in piece_arcs
                 inside_circle_pieces.push(arc);
             }
         }
         let mut all_arcs = piece_arcs.clone();
-        all_arcs.extend(inside_circle_pieces);
+        all_arcs.extend(inside_circle_pieces); //all arcs to construct pieces from
         while !all_arcs.is_empty() {
             //println!("{}, {}", piece_arcs.len(), circle_arcs.len());
             //iterate through the list of all the arcs
@@ -1326,6 +1405,7 @@ fn puzzle_from_two_circles(def: PuzzleDef) -> Puzzle {
             floats: Vec::new(),
             leniency: LENIENCY,
         },
+        depth: def.depth,
     };
     let point2 = pos2_f64(c2.center.x + c2.radius, c2.center.y);
     let arc = get_arc(point2, point2, c2, true);
@@ -1348,16 +1428,49 @@ fn puzzle_from_two_circles(def: PuzzleDef) -> Puzzle {
         puzzle.turn_cut(puzzle.turns[1]);
     }
     for i in 0..def.depth {
-        puzzle.turn(puzzle.turns[1].inverse());
-        puzzle.turn(puzzle.turns[0].inverse());
+        puzzle.undo();
+        puzzle.undo();
     }
     puzzle.animation_offset = NONE_TURN;
     return puzzle;
 }
+
+fn puzzle_from_string(string: String) -> Puzzle {
+    let mut components = string.split('\n');
+    let mut def_str = components.next().unwrap().split(',');
+    let mut turns_str = components.next().unwrap().split(',');
+    let def = PuzzleDef {
+        n_left: def_str.next().unwrap().parse().unwrap(),
+        n_right: def_str.next().unwrap().parse().unwrap(),
+        r_left: def_str.next().unwrap().parse().unwrap(),
+        r_right: def_str.next().unwrap().parse().unwrap(),
+        depth: def_str.next().unwrap().parse().unwrap(),
+    };
+    let mut puzzle = puzzle_from_two_circles(def);
+    loop {
+        let next = turns_str.next();
+        if next.is_none() {
+            break;
+        }
+        if next.unwrap().is_empty() {
+            break;
+        }
+        puzzle.turn_cut_id(next.unwrap().parse().unwrap());
+    }
+    puzzle.animation_offset = NONE_TURN;
+    return puzzle;
+}
+
+fn load_puzzle_from_file(path: &str) -> Puzzle {
+    let contents = std::fs::read_to_string(path).expect("No such file found");
+    return puzzle_from_string(contents);
+}
+
 fn main() -> eframe::Result {
     let mut data = DataHandler {
         defs: HashMap::new(),
     };
+    let mut path: String = String::from("data.txt");
     data.add_from_tuple("Diamond", (1.0, 1.0, 4, 4, 250));
     data.add_from_tuple("Nightmare", (0.70, 0.57, 10, 10, 500));
     data.add_from_tuple("Pyramid", (0.70, 0.57, 15, 5, 500));
@@ -1427,8 +1540,8 @@ fn main() -> eframe::Result {
                     puzzle.turn_cut(puzzle.turns[1]);
                 }
                 for i in 0..scramble_depth {
-                    puzzle.turn(puzzle.turns[1].inverse());
-                    puzzle.turn(puzzle.turns[0].inverse());
+                    puzzle.undo();
+                    puzzle.undo();
                 }
                 puzzle.animation_offset = NONE_TURN;
             }
@@ -1445,6 +1558,13 @@ fn main() -> eframe::Result {
             ui.add(egui::Slider::new(&mut offset.x, (-2.0)..=(2.0)).text("Move X"));
             ui.add(egui::Slider::new(&mut offset.y, (-2.0)..=(2.0)).text("Move Y"));
             ui.add(egui::Slider::new(&mut scramble_depth, 0..=5000).text("Scramble Depth"));
+            ui.add(egui::TextEdit::singleline(&mut path));
+            if ui.add(egui::Button::new("SAVE")).clicked() {
+                puzzle.write_to_file(&path);
+            }
+            if ui.add(egui::Button::new("LOAD")).clicked() {
+                puzzle = load_puzzle_from_file(&path.as_str());
+            }
             if ui.add(egui::Button::new("GENERATE")).clicked()
                 && alneq(1.0, left_radius + right_radius)
             {
