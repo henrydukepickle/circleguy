@@ -1,0 +1,11 @@
+[package]
+name = "circleguy"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+cmp = "0.1.1"
+colorous = "1.0.16"
+eframe = "0.31.1"
+egui = "0.31.1"
+rand = "0.9.1"
