@@ -1470,6 +1470,10 @@ fn load_puzzle_from_file(path: &str) -> Puzzle {
     return puzzle_from_string(contents);
 }
 
+fn load(to_load: PuzzleDef, to_set: &mut PuzzleDef) -> Puzzle {
+    *to_set = to_load;
+    return puzzle_from_two_circles(to_load);
+}
 fn main() -> eframe::Result {
     let mut data = DataHandler {
         defs: HashMap::new(),
@@ -1481,31 +1485,27 @@ fn main() -> eframe::Result {
     data.add_from_tuple("Decagons", (0.8, 0.8, 5, 5, 500));
     data.add_from_tuple("Classic", (0.70, 0.70, 5, 3, 250));
     data.add_from_tuple("Square", (0.8, 0.8, 4, 4, 250));
-    data.add_from_tuple("Octogons", (0.80, 0.65, 8, 8, 500));
+    data.add_from_tuple("Octogons", (0.81, 0.61, 8, 8, 500));
     data.add_from_tuple("Heptagons", (0.80, 0.65, 7, 7, 500));
     data.add_from_tuple("Stars", (0.80, 0.70, 5, 5, 500));
     data.add_from_tuple("Slivers", (0.92, 0.61, 5, 5, 500));
-    let mut scramble_depth = 500;
     let mut animation_speed = ANIMATION_SPEED;
     let mut rng = rand::rng();
     let mut last_frame_time = std::time::Instant::now();
     let mut outline_width: f32 = 5.0;
     let mut detail = 50.0;
-    let mut left_radius = 1.0;
-    let mut right_radius = 1.0;
     let left_x = -0.2;
     let right_x = 0.8;
-    let mut left_n = 4;
-    let mut right_n = 4;
     let mut scale_factor = SCALE_FACTOR;
     let mut offset = vec2_f64(0.0, 0.0);
-    let mut puzzle = puzzle_from_two_circles(PuzzleDef {
-        r_right: right_radius,
-        r_left: left_radius,
-        n_right: right_n,
-        n_left: left_n,
-        depth: scramble_depth,
-    });
+    let mut def = PuzzleDef {
+        r_left: 1.0,
+        r_right: 1.0,
+        n_left: 4,
+        n_right: 4,
+        depth: 250,
+    };
+    let mut puzzle = load(def.clone(), &mut def);
     println!("{}", puzzle.pieces.len());
     eframe::run_simple_native("circleguy", Default::default(), move |ctx, _frame| {
         egui::CentralPanel::default().show(ctx, |ui| {
@@ -1532,18 +1532,18 @@ fn main() -> eframe::Result {
                 puzzle.undo();
             }
             if ui.add(egui::Button::new("SCRAMBLE")).clicked() {
-                for i in 0..scramble_depth {
+                for i in 0..def.depth {
                     puzzle.turn_cut(*puzzle.turns.choose(&mut rng).unwrap());
                     println!("{}", puzzle.intern.floats.len());
                 }
                 puzzle.animation_offset = NONE_TURN;
             }
             if ui.add(egui::Button::new("CUT")).clicked() {
-                for i in 0..scramble_depth {
+                for i in 0..def.depth {
                     puzzle.turn_cut(puzzle.turns[0]);
                     puzzle.turn_cut(puzzle.turns[1]);
                 }
-                for i in 0..scramble_depth {
+                for i in 0..def.depth {
                     puzzle.undo();
                     puzzle.undo();
                 }
@@ -1555,13 +1555,13 @@ fn main() -> eframe::Result {
                 egui::Slider::new(&mut animation_speed, (1.0)..=(100.0)).text("Animation Speed"),
             );
             ui.add(egui::Slider::new(&mut scale_factor, (10.0)..=(5000.0)).text("Rendering Size"));
-            ui.add(egui::Slider::new(&mut left_radius, (0.01)..=(2.0)).text("Left Radius"));
-            ui.add(egui::Slider::new(&mut left_n, 2..=50).text("Left Number"));
-            ui.add(egui::Slider::new(&mut right_radius, (0.01)..=(2.0)).text("Right Radius"));
-            ui.add(egui::Slider::new(&mut right_n, 2..=50).text("Right Number"));
+            ui.add(egui::Slider::new(&mut def.r_left, (0.01)..=(2.0)).text("Left Radius"));
+            ui.add(egui::Slider::new(&mut def.n_left, 2..=50).text("Left Number"));
+            ui.add(egui::Slider::new(&mut def.r_right, (0.01)..=(2.0)).text("Right Radius"));
+            ui.add(egui::Slider::new(&mut def.n_right, 2..=50).text("Right Number"));
             ui.add(egui::Slider::new(&mut offset.x, (-2.0)..=(2.0)).text("Move X"));
             ui.add(egui::Slider::new(&mut offset.y, (-2.0)..=(2.0)).text("Move Y"));
-            ui.add(egui::Slider::new(&mut scramble_depth, 0..=5000).text("Scramble Depth"));
+            ui.add(egui::Slider::new(&mut def.depth, 0..=5000).text("Scramble Depth"));
             ui.add(egui::TextEdit::singleline(&mut path));
             if ui.add(egui::Button::new("SAVE")).clicked() {
                 puzzle.write_to_file(&path);
@@ -1570,19 +1570,13 @@ fn main() -> eframe::Result {
                 puzzle = load_puzzle_from_file(&path.as_str());
             }
             if ui.add(egui::Button::new("GENERATE")).clicked()
-                && alneq(1.0, left_radius + right_radius)
+                && alneq(1.0, def.r_left + def.r_right)
             {
-                puzzle = puzzle_from_two_circles(PuzzleDef {
-                    r_right: right_radius,
-                    r_left: left_radius,
-                    n_right: right_n,
-                    n_left: left_n,
-                    depth: scramble_depth,
-                });
+                puzzle = load(def.clone(), &mut def);
             }
             let new_p = data.show_puzzles(ui, &rect);
             if new_p.is_some() {
-                puzzle = puzzle_from_two_circles(new_p.unwrap());
+                puzzle = load(new_p.unwrap(), &mut def);
             }
             ui.label(puzzle.pieces.len().to_string());
             let max_rad = f64::max(puzzle.turns[0].circle.radius, puzzle.turns[1].circle.radius);
