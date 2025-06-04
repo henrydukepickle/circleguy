@@ -605,7 +605,11 @@ impl Puzzle {
             new_pieces.push(new_piece);
         }
         self.pieces = new_pieces;
-        self.animation_offset = turn.inverse();
+        if aeq_circ(self.animation_offset.circle, turn.circle) {
+            self.animation_offset.angle += turn.inverse().angle;
+        } else {
+            self.animation_offset = turn.inverse();
+        }
         self.intern_all();
         self.stack.push(turn);
     }
