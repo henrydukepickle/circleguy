@@ -1,6 +1,7 @@
 #![allow(unused)]
 use std::{
     any,
+    borrow::Borrow,
     cmp::Ordering,
     collections::{HashMap, HashSet},
     f32::consts::PI,
@@ -94,6 +95,13 @@ impl fmt::Display for Pos2F64 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "({}, {})", self.x, self.y)
     }
+}
+
+#[derive(PartialEq, Clone, Copy, Debug)]
+enum Contains {
+    Inside,
+    Outside,
+    Border,
 }
 
 #[derive(Clone)]
@@ -305,18 +313,34 @@ impl Circle {
         };
     }
     //check if the circle contains a point (including on the boundary). LENIENCY included to account for floating point stuff
-    fn contains_inside(&self, point: Pos2F64) -> bool {
-        return (self.center.distance(point) <= self.radius + LENIENCY);
-    }
-    //check if the circle contains a point on its border/circumference
-    fn contains_border(&self, point: Pos2F64) -> bool {
-        return aeq(self.center.distance(point), self.radius);
+    fn contains(&self, point: Pos2F64) -> Contains {
+        let dist = self.center.distance(point);
+        if alneq(dist, self.radius) {
+            return Contains::Inside;
+        }
+        if alneq(self.radius, dist) {
+            return Contains::Outside;
+        }
+        return Contains::Border;
     }
     //check if a circle contains an arc -- BAD/REWORK
-    fn contains_arc(&self, arc: &Arc) -> Option<bool> {
-        return Some(
-            (arc.intersect_circle(self)?.is_empty()) && self.contains_inside(arc.midpoint()),
-        );
+    //None - the arc crosses the border
+    fn contains_arc(&self, arc: &Arc) -> Option<Contains> {
+        let intersects = arc.intersect_circle(self);
+        if intersects.is_none() {
+            return Some(Contains::Border);
+        } else {
+            return match (intersects.unwrap().len()) {
+                0 => Some(self.contains(arc.midpoint())),
+                _ => {
+                    if is_tangent(arc.circle, *self) {
+                        Some(self.contains(arc.start))
+                    } else {
+                        None
+                    }
+                }
+            };
+        }
     }
     fn touching(&self, circle: Circle) -> bool {
         return aleq(
@@ -361,14 +385,13 @@ impl Arc {
     }
     //check if an arc contains a point properly -- returns false on self.start and self.end()
     fn contains_properly(&self, point: Pos2F64) -> bool {
-        if !self.circle.contains_border(point) {
+        if self.circle.contains(point) != Contains::Border {
             return false;
         }
         if aeq(self.angle.abs(), 2.0 * PI as f64) {
             return true;
         }
         let angle = angle_on_circle(self.start, point, self.circle);
-        self.angle;
         if aeq(angle, 2.0 * PI as f64) {
             return false;
         }
@@ -378,12 +401,44 @@ impl Arc {
             return (alneq(self.angle, (-2.0 * PI as f64 + angle)));
         }
     }
+    //same as contains_properly, but returns true on self.start
+    fn contains_properly_start(&self, point: Pos2F64) -> bool {
+        if self.circle.contains(point) != Contains::Border {
+            return false;
+        }
+        if aeq(self.angle.abs(), 2.0 * PI as f64) {
+            return true;
+        }
+        let angle = angle_on_circle(self.start, point, self.circle);
+        if aeq(angle, 2.0 * PI as f64) {
+            return true;
+        }
+        if aeq(angle, 0.0) {
+            return true;
+        }
+        if self.angle >= 0.0 {
+            return (alneq(angle, self.angle));
+        } else {
+            return (alneq(self.angle, (-2.0 * PI as f64 + angle)));
+        }
+    }
     //get the points where the arc intersects a circle
     fn intersect_circle(&self, circle: &Circle) -> Option<Vec<Pos2F64>> {
-        let intersect = circle_intersection(circle.clone(), self.circle)?;
+        let intersect = circle_intersection(*circle, self.circle)?;
         let mut points = Vec::new();
         for point in intersect {
             if self.contains_properly(point) {
+                points.push(point);
+            }
+        }
+        return Some(points);
+    }
+    //get the points where the circle intersects the arc, including the start point but not the end
+    fn intersect_circle_start(&self, circle: &Circle) -> Option<Vec<Pos2F64>> {
+        let intersect = circle_intersection(*circle, self.circle)?;
+        let mut points = Vec::new();
+        for point in intersect {
+            if self.contains_properly_start(point) {
                 points.push(point);
             }
         }
@@ -395,6 +450,17 @@ impl Arc {
         let mut points = Vec::new();
         for point in intersect {
             if self.contains_properly(point) {
+                points.push(point);
+            }
+        }
+        return Some(points);
+    }
+    //same as above, but intersections at either start point are valid
+    fn intersect_arc_start(&self, arc: Arc) -> Option<Vec<Pos2F64>> {
+        let intersect = arc.intersect_circle_start(&self.circle)?;
+        let mut points = Vec::new();
+        for point in intersect {
+            if self.contains_properly_start(point) {
                 points.push(point);
             }
         }
@@ -426,11 +492,17 @@ impl Arc {
         new_points.sort_by(|a, b| cmp_f64(self.get_angle(*a).abs(), self.get_angle(*b).abs()));
         return new_points;
     }
-    //cut at points in any order. all points must be on arc
+    //cut at points in any order. passing points with !self.contains_properly(point) does not cut at those points
     //returns a Vec<Arc> that should have the resulting arcs in order from self.start to self.end()
     fn cut_at(&self, points: &Vec<Pos2F64>) -> Vec<Arc> {
         let mut total_points = vec![self.start];
-        let sorted_points = self.order_on_arc(points);
+        let mut valid_points = Vec::new();
+        for point in points {
+            if self.contains_properly(*point) {
+                valid_points.push(*point);
+            }
+        }
+        let sorted_points = self.order_on_arc(&valid_points);
         total_points.extend(sorted_points);
         total_points.push(self.end());
         let mut arcs = Vec::new();
@@ -595,11 +667,22 @@ impl Puzzle {
         }
         return 0;
     }
-    fn turn(&mut self, turn: Turn) {
+    //returns if the turn could be completed
+    fn turn(&mut self, turn: Turn, cut: bool) -> Option<()> {
+        if cut {
+            for adj_turn in &self.turns.clone() {
+                if turn.circle.touching(adj_turn.circle) {
+                    self.global_cut_by_circle(turn.circle);
+                }
+            }
+        }
         let mut new_pieces = Vec::new();
         for piece in &self.pieces {
             let mut new_piece = piece.clone();
-            if new_piece.in_circle(&turn.circle) {
+            // dbg!(new_piece.in_circle(&turn.circle));
+            // dbg!(new_piece.shape.len());
+            // dbg!(new_piece.shape[0].start.to_pos2());
+            if new_piece.in_circle(&turn.circle)? == Contains::Inside {
                 new_piece.rotate_about(turn.circle.center, turn.angle);
             }
             new_pieces.push(new_piece);
@@ -612,21 +695,14 @@ impl Puzzle {
         }
         self.intern_all();
         self.stack.push(turn);
+        return Some(());
     }
-    fn turn_id(&mut self, id: usize) {
+    fn turn_id(&mut self, id: usize, cut: bool) {
         let turn = self.turns[id / 2];
         if id % 2 == 0 {
-            self.turn(turn);
+            self.turn(turn, cut);
         } else {
-            self.turn(turn.inverse());
-        }
-    }
-    fn turn_cut_id(&mut self, id: usize) {
-        let turn = self.turns[id / 2];
-        if id % 2 == 0 {
-            self.turn_cut(turn);
-        } else {
-            self.turn_cut(turn.inverse());
+            self.turn(turn.inverse(), cut);
         }
     }
     fn undo(&mut self) {
@@ -634,7 +710,7 @@ impl Puzzle {
             return;
         }
         let last_turn = self.stack.pop().unwrap();
-        self.turn(last_turn.inverse());
+        self.turn(last_turn.inverse(), false);
         self.stack.pop();
     }
     fn render(
@@ -665,6 +741,7 @@ impl Puzzle {
         left: bool,
         scale_factor: f32,
         offset: Vec2F64,
+        cut: bool,
     ) {
         let good_pos = from_egui_coords(&pos, rect, scale_factor, offset);
         let mut min_dist: f64 = 10000.0;
@@ -676,9 +753,9 @@ impl Puzzle {
             }
         }
         if left {
-            self.turn_cut(correct_turn);
+            self.turn(correct_turn, cut);
         } else {
-            self.turn_cut(correct_turn.inverse());
+            self.turn(correct_turn.inverse(), cut);
         }
     }
     fn get_hovered(&self, rect: &Rect, pos: Pos2, scale_factor: f32, offset: Vec2F64) -> Circle {
@@ -697,7 +774,10 @@ impl Puzzle {
     fn cut_by_circle(&mut self, circle: Circle, turn: Turn) {
         let mut new_pieces = Vec::new();
         for piece in &self.pieces {
-            if piece.in_circle(&turn.circle) {
+            if piece
+                .in_circle(&turn.circle)
+                .is_none_or(|x| x == Contains::Inside)
+            {
                 new_pieces.extend(piece.cut_by_circle(circle));
             } else {
                 new_pieces.push(piece.clone());
@@ -724,14 +804,6 @@ impl Puzzle {
             index += 1;
         }
     }
-    fn turn_cut(&mut self, turn: Turn) {
-        for adj_turn in &self.turns.clone() {
-            if turn.circle.touching(adj_turn.circle) {
-                self.global_cut_by_circle(turn.circle);
-            }
-        }
-        self.turn(turn);
-    }
     fn draw_outline(
         &self,
         ui: &mut Ui,
@@ -742,7 +814,10 @@ impl Puzzle {
         offset: Vec2F64,
     ) {
         for piece in &self.pieces {
-            if piece.in_circle(&self.animation_offset.circle) {
+            if piece
+                .in_circle(&self.animation_offset.circle)
+                .is_some_and(|x| x == Contains::Inside)
+            {
                 piece.draw_outline(
                     ui,
                     rect,
@@ -785,7 +860,10 @@ impl Piece {
         scale_factor: f32,
         offset_pos: Vec2F64,
     ) {
-        let true_offset = if self.in_circle(&offset.circle) {
+        let true_offset = if self
+            .in_circle(&offset.circle)
+            .is_some_and(|x| x == Contains::Inside)
+        {
             offset
         } else {
             NONE_TURN
@@ -838,13 +916,28 @@ impl Piece {
         }
         return avg_points(&points);
     }
-    fn in_circle(&self, circle: &Circle) -> bool {
+    //None: the piece is inside and outside -- blocking
+    fn in_circle(&self, circle: &Circle) -> Option<Contains> {
+        let mut inside = None;
         for arc in &self.shape {
-            if circle.contains_arc(arc) == Some(false) {
-                return false;
+            let contained = circle.contains_arc(arc);
+            if contained.is_some() {
+                if let Some(real_inside) = inside {
+                    if (contained.unwrap() != Contains::Border && real_inside != contained.unwrap())
+                    {
+                        return None;
+                    }
+                } else if contained.unwrap() != Contains::Border {
+                    inside = contained;
+                }
+            } else {
+                return None;
             }
         }
-        return true;
+        if inside.is_none_or(|x| x == Contains::Border) {
+            return Some(Contains::Inside);
+        }
+        return inside;
     }
     //return if the shape contains the point properly -- not on the border
     //should return false if the point is properly outside the piece and true if it is properly inside the piece -- behavior on border points is undefined, may panic or return either option.
@@ -877,6 +970,17 @@ impl Piece {
         //dbg!(intersects);
         return (intersects % 2) != 0; //the point is inside the piece if the number of valid intersects is odd, and outside otherwise
     }
+    fn contains_point_border(&self, point: Pos2F64) -> bool {
+        for arc in &self.shape {
+            if arc.contains_properly(point) || aeq_pos(point, arc.start) {
+                return true;
+            }
+        }
+        return false;
+    }
+    //doesnt count arcs
+    //fn intersect_arc_start(&self, arc: Arc) -> Option<Vec<Pos2F64>> {}
+    //fn intersect_piece(&self, other: Piece) -> Vec<Pos2F64> {}
     // cut a piece by a circle and return the resulting pieces as a Vec
     //the color is maintained
     fn cut_by_circle(&self, circle: Circle) -> Vec<Piece> {
@@ -895,7 +999,7 @@ impl Piece {
         let mut circle_cut_points = Vec::new(); //the points at which to cut circle--effectively the intersection points between circle and arc in piece_arcs
         let mut circle_pieces = Vec::new(); //the created pieces of the circle
         for arc in &piece_arcs {
-            if circle.contains_border(arc.start) {
+            if circle.contains(arc.start) == Contains::Border {
                 //every intersection point is already tracked, because the piece_arcs were cut
                 circle_cut_points.push(arc.start);
             }
@@ -964,6 +1068,58 @@ impl Piece {
             });
         }
         return pieces;
+    }
+    //determine which piece occurs earlier on the piece
+    //self.shape[0].start is the minimum
+    //if the two points are equivalent, returns Less
+    fn order_along_piece(&self, point1: Pos2F64, point2: Pos2F64) -> Ordering {
+        for arc in &self.shape {
+            if aeq_pos(point1, arc.start) {
+                return Ordering::Less;
+            } else if aeq_pos(point2, arc.start) {
+                return Ordering::Greater;
+            } else if arc.contains_properly(point1) {
+                if arc.contains_properly(point2) {
+                    if arc.get_angle(point1).abs() <= arc.get_angle(point2).abs() {
+                        return Ordering::Less;
+                    }
+                    return Ordering::Greater;
+                }
+                return Ordering::Less;
+            } else if arc.contains_properly(point2) {
+                return Ordering::Greater;
+            }
+        }
+        return Ordering::Equal;
+    }
+    //sort points based on how they appear along the piece, ccw
+    fn sort_along_piece(&self, points: &Vec<Pos2F64>) -> Vec<Pos2F64> {
+        let mut sorted = points.clone();
+        sorted.sort_by(|a, b| self.order_along_piece(*a, *b));
+        return sorted;
+    }
+    //cut the piece into segments (cut at a bunch of points)
+    fn cut_at(&self, points: &Vec<Pos2F64>) -> Vec<Vec<Arc>> {
+        let mut remaining_shape = Vec::new();
+        for arc in &self.shape {
+            remaining_shape.extend(arc.cut_at(points))
+        }
+        let sorted_points = self.sort_along_piece(points);
+        let index = 0;
+        let mut segments = Vec::new();
+        let mut curr_segment = Vec::new();
+        while !remaining_shape.is_empty() {
+            let arc = remaining_shape[0];
+            let point = sorted_points[index];
+            if aeq_pos(point, arc.start) {
+                segments.push(curr_segment.clone());
+                curr_segment = Vec::new();
+            }
+        }
+        return segments;
+    }
+    fn cut_by_piece(&self, other: Piece) -> Vec<Piece> {
+        return Vec::new();
     }
     fn draw_outline(
         &self,
@@ -1074,6 +1230,22 @@ fn get_best_arc_and_pop(all_arcs: &mut Vec<Arc>, curr_arc: Arc) -> Arc {
     }
     let index = find_min_arc_index(&good_arcs, curr_arc.invert());
     return all_arcs.remove(indices[index]);
+}
+fn get_best_segment_and_pop(segments: &mut Vec<Vec<Arc>>, curr_segment: &Vec<Arc>) -> Vec<Arc> {
+    let mut good_arcs = Vec::new();
+    let mut indices = Vec::new();
+    for i in 0..segments.len() {
+        if aeq_pos(curr_segment.last().unwrap().end(), segments[i][0].start)
+            && !(aeq_circ(curr_segment.last().unwrap().circle, segments[i][0].circle)
+                && curr_segment.last().unwrap().angle.is_sign_positive()
+                    != segments[i][0].angle.is_sign_positive())
+        {
+            good_arcs.push(segments[i][0].clone());
+            indices.push(i);
+        }
+    }
+    let index = find_min_arc_index(&good_arcs, *curr_segment.last().unwrap());
+    return segments.remove(indices[index]);
 }
 
 //take in a triangle and return if its 'almost degenerate' within some leniency (i.e. its points are 'almost colinear')
@@ -1427,14 +1599,15 @@ fn puzzle_from_two_circles(def: PuzzleDef) -> Puzzle {
     puzzle.pieces.push(piece2.cut_by_circle(c1)[0].clone());
     puzzle.pieces[1].color = Color32::BLUE;
     puzzle.pieces[2].color = Color32::GREEN;
-    for i in 0..def.depth {
-        puzzle.turn_cut(puzzle.turns[0]);
-        puzzle.turn_cut(puzzle.turns[1]);
-    }
-    for i in 0..def.depth {
-        puzzle.undo();
-        puzzle.undo();
-    }
+    //cut the puzzle--bad, needs replacing with copy cuts or some bs
+    // for i in 0..def.depth {
+    //     puzzle.turn_cut(puzzle.turns[0]);
+    //     puzzle.turn_cut(puzzle.turns[1]);
+    // }
+    // for i in 0..def.depth {
+    //     puzzle.undo();
+    //     puzzle.undo();
+    // }
     puzzle.animation_offset = NONE_TURN;
     return puzzle;
 }
@@ -1459,7 +1632,7 @@ fn puzzle_from_string(string: String) -> Puzzle {
         if next.unwrap().is_empty() {
             break;
         }
-        puzzle.turn_cut_id(next.unwrap().parse().unwrap());
+        puzzle.turn_id(next.unwrap().parse().unwrap(), true);
     }
     puzzle.animation_offset = NONE_TURN;
     return puzzle;
@@ -1505,8 +1678,8 @@ fn main() -> eframe::Result {
         n_right: 4,
         depth: 250,
     };
+    let mut cut_on_turn = true;
     let mut puzzle = load(def.clone(), &mut def);
-    println!("{}", puzzle.pieces.len());
     eframe::run_simple_native("circleguy", Default::default(), move |ctx, _frame| {
         egui::CentralPanel::default().show(ctx, |ui| {
             let rect = ui.available_rect_before_wrap();
@@ -1533,15 +1706,14 @@ fn main() -> eframe::Result {
             }
             if ui.add(egui::Button::new("SCRAMBLE")).clicked() {
                 for i in 0..def.depth {
-                    puzzle.turn_cut(*puzzle.turns.choose(&mut rng).unwrap());
-                    println!("{}", puzzle.intern.floats.len());
+                    puzzle.turn(*puzzle.turns.choose(&mut rng).unwrap(), cut_on_turn);
                 }
                 puzzle.animation_offset = NONE_TURN;
             }
             if ui.add(egui::Button::new("CUT")).clicked() {
                 for i in 0..def.depth {
-                    puzzle.turn_cut(puzzle.turns[0]);
-                    puzzle.turn_cut(puzzle.turns[1]);
+                    puzzle.turn(puzzle.turns[0], true);
+                    puzzle.turn(puzzle.turns[1], true);
                 }
                 for i in 0..def.depth {
                     puzzle.undo();
@@ -1578,6 +1750,7 @@ fn main() -> eframe::Result {
             if new_p.is_some() {
                 puzzle = load(new_p.unwrap(), &mut def);
             }
+            ui.checkbox(&mut cut_on_turn, "Cut on turn?");
             ui.label(puzzle.pieces.len().to_string());
             let max_rad = f64::max(puzzle.turns[0].circle.radius, puzzle.turns[1].circle.radius);
             let cor_rect = (Rect {
@@ -1632,6 +1805,7 @@ fn main() -> eframe::Result {
                     true,
                     scale_factor,
                     offset,
+                    cut_on_turn,
                 );
             }
             if r.clicked_by(egui::PointerButton::Secondary) {
@@ -1641,6 +1815,7 @@ fn main() -> eframe::Result {
                     false,
                     scale_factor,
                     offset,
+                    cut_on_turn,
                 );
             }
             if r.hover_pos().is_some() {
@@ -1656,20 +1831,21 @@ fn main() -> eframe::Result {
                         scroll > 0,
                         scale_factor,
                         offset,
+                        cut_on_turn,
                     );
                 }
             }
             if ui.input(|i| i.key_pressed(egui::Key::D)) {
-                puzzle.turn_cut(puzzle.turns[0]);
+                puzzle.turn(puzzle.turns[0], cut_on_turn);
             }
             if ui.input(|i| i.key_pressed(egui::Key::F)) {
-                puzzle.turn_cut(puzzle.turns[0].inverse());
+                puzzle.turn(puzzle.turns[0].inverse(), cut_on_turn);
             }
             if ui.input(|i| i.key_pressed(egui::Key::J)) {
-                puzzle.turn_cut(puzzle.turns[1]);
+                puzzle.turn(puzzle.turns[1], cut_on_turn);
             }
             if ui.input(|i| i.key_pressed(egui::Key::K)) {
-                puzzle.turn_cut(puzzle.turns[1].inverse());
+                puzzle.turn(puzzle.turns[1].inverse(), cut_on_turn);
             }
         });
     })
