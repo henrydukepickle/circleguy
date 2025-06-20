@@ -1,0 +1,64 @@
+name geranium
+author "Henry Pickle"
+circles {
+	A x=1.0 y=0.0 r=1.4
+	B x=0.3090169 y=0.9510565 r=1.4
+	C x=-0.8090169 y=0.5877852 r=1.4
+	D x=-0.8090169 y=-0.5877852 r=1.4
+	E x=0.3090169 y=-0.9510565 r=1.4
+}
+base A B C D E
+twists {
+	A A 10
+	B B 10
+	C C 10
+	D D 10
+	E E 10
+}
+cut A3' C3' E
+cut B3' D3' A
+cut C3' E3' B
+cut D3' A3' C
+cut E3' B3' D
+cut A4 C
+cut B4 D
+cut C4 E
+cut D4 A
+cut E4 B
+cut A3' C3 A3 C3' D
+cut B3' D3 B3 D3' E
+cut C3' E3 C3 E3' A
+cut D3' A3 D3 A3' B
+cut E3' B3 E3 B3' C
+cut A3 D3' A3' D3 C
+cut B3 E3' B3' E3 D
+cut C3 A3' C3' A3 E
+cut D3 B3' D3' B3 A
+cut E3 C3' E3' C3 B
+cut A4' D3' A C
+cut B4' E3' B D
+cut C4' A3' C E
+cut D4' B3' D A
+cut E4' C3' E B
+cut A4 C3 A' D
+cut B4 D3 B' E
+cut C4 E3 C' A
+cut D4 A3 D' B
+cut E4 B3 E' C
+cut A' D3' A C
+cut B' E3' B D
+cut C' A3' C E
+cut D' B3' D A
+cut E' C3' E B
+colors {
+	RED 255 0 0
+	GREEN 0 255 0
+	BLUE 0 0 255
+	PURPLE 120 0 120
+	YELLOW 255 255 0
+}
+color RED A !E
+color BLUE B !A
+color GREEN C !B
+color PURPLE D !C
+color YELLOW E !D

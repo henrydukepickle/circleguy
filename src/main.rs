@@ -14,12 +14,14 @@ use std::{
 };
 
 use eframe::glow::{NO_RESET_NOTIFICATION, NONE};
+use kdl::KdlDocument;
 use rand::prelude::*;
 
-use colorous;
+use colorous::{self, Color};
 
 use egui::{
     Color32, Event, Label, MouseWheelUnit, Pos2, Rect, Stroke, Ui, Vec2,
+    ahash::RandomState,
     emath::Float,
     epaint::{self, PathShape},
     pos2,
@@ -31,11 +33,13 @@ const OUTLINE_COLOR: Color32 = Color32::BLACK;
 
 const SPECTRUM: colorous::Gradient = colorous::TURBO;
 
-const SCALE_FACTOR: f32 = 500.0;
+const SCALE_FACTOR: f32 = 200.0;
 
 const ANIMATION_SPEED: f64 = 5.0;
 
 const LENIENCY: f64 = 0.00002;
+
+const NONE_COLOR: Color32 = Color32::GRAY;
 
 const NONE_CIRCLE: Circle = Circle {
     center: pos2_f64(0.0, 0.0),
@@ -90,6 +94,32 @@ const fn add_vec_to_pos2_f64(pos: Pos2F64, vec: Vec2F64) -> Pos2F64 {
 auto_ops::impl_op!(-|a: Pos2F64, b: Pos2F64| -> Vec2F64 { subtract_pos2_f64(a, b) });
 auto_ops::impl_op!(+|a: Pos2F64, b: Vec2F64| -> Pos2F64 { add_vec_to_pos2_f64(a, b) });
 auto_ops::impl_op!(*|a: f64, b: Vec2F64| -> Vec2F64 { scale_vec2_f64(a, b) });
+auto_ops::impl_op!(*|a: isize, b: Turn| -> Turn {
+    Turn {
+        circle: b.circle,
+        angle: b.angle * a as f64,
+    }
+});
+
+fn multiply_turns(a: isize, compound: &Vec<Turn>) -> Vec<Turn> {
+    if a < 0 {
+        return invert_compound_turn(&multiply_turns(-1 * a, compound));
+    } else if a > 0 {
+        let mut multiply_turns = multiply_turns(a - 1, compound);
+        multiply_turns.extend(compound);
+        return multiply_turns;
+    } else {
+        return Vec::new();
+    }
+}
+
+fn invert_compound_turn(compound: &Vec<Turn>) -> Vec<Turn> {
+    let mut turns = Vec::new();
+    for turn in compound.into_iter().rev() {
+        turns.push(turn.inverse());
+    }
+    return turns;
+}
 
 impl fmt::Display for Pos2F64 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -111,12 +141,16 @@ struct Piece {
 }
 #[derive(Clone)]
 struct Puzzle {
+    name: String,
+    authors: Vec<String>,
     pieces: Vec<Piece>,
-    turns: Vec<Turn>,
-    stack: Vec<Turn>,
+    turns: HashMap<String, Turn>,
+    stack: Vec<String>,
     animation_offset: Turn,
     intern: FloatIntern,
     depth: u16,
+    solved_state: Vec<Piece>,
+    solved: bool,
 }
 #[derive(Clone, Copy)]
 struct Circle {
@@ -138,13 +172,14 @@ struct Arc {
 }
 
 //very temporary
-#[derive(Copy, Clone)]
+#[derive(Clone)]
 struct PuzzleDef {
-    r_right: f64,
-    r_left: f64,
-    n_right: u16,
-    n_left: u16,
-    depth: u16,
+    name: String,
+    authors: Vec<String>,
+    disks: Vec<Circle>,
+    turns: HashMap<String, Turn>,
+    cuts: Vec<Vec<Turn>>,
+    coloring: Vec<(Vec<(Circle, Contains)>, Color32)>,
 }
 
 struct DataHandler {
@@ -198,6 +233,29 @@ fn aeq_shape(s1: &Vec<Arc>, s2: &Vec<Arc>) -> bool {
         return true;
     }
     return false;
+}
+
+fn aeq_piece(p1: &Piece, p2: &Piece) -> bool {
+    return p1.color.r() == p2.color.r()
+        && p1.color.g() == p2.color.g()
+        && p1.color.b() == p2.color.b()
+        && aeq_shape(&p1.shape, &p2.shape);
+}
+
+fn aeq_pieces(v1: &Vec<Piece>, v2: &Vec<Piece>) -> bool {
+    for piece in v1 {
+        let mut found = false;
+        for piece2 in v2 {
+            if aeq_piece(piece, piece2) {
+                found = true;
+                break;
+            }
+        }
+        if !found {
+            return false;
+        }
+    }
+    return true;
 }
 
 fn cmp_f64(a: f64, b: f64) -> Ordering {
@@ -261,22 +319,22 @@ impl Vec2F64 {
 
 impl DataHandler {
     //left_r, right_r, left_n, right_n, depth
-    fn add_from_tuple(&mut self, name: &str, tuple: (f64, f64, u16, u16, u16)) {
-        self.defs.insert(
-            String::from(name),
-            PuzzleDef {
-                r_right: tuple.1,
-                r_left: tuple.0,
-                n_right: tuple.3,
-                n_left: tuple.2,
-                depth: tuple.4,
-            },
-        );
-    }
+    // fn add_from_tuple(&mut self, name: &str, tuple: (f64, f64, u16, u16, u16)) {
+    //     self.defs.insert(
+    //         String::from(name),
+    //         PuzzleDef {
+    //             r_right: tuple.1,
+    //             r_left: tuple.0,
+    //             n_right: tuple.3,
+    //             n_left: tuple.2,
+    //             depth: tuple.4,
+    //         },
+    //     );
+    // }
     fn show_puzzles(&self, ui: &mut Ui, rect: &Rect) -> Option<PuzzleDef> {
         for name in &mut self.defs.clone().into_keys() {
             if ui.add(egui::Button::new(&name)).clicked() {
-                return Some(self.defs[&name]);
+                return Some(self.defs[&name].clone());
             }
         }
         return None;
@@ -284,16 +342,16 @@ impl DataHandler {
 }
 
 impl PuzzleDef {
-    fn to_string(&self) -> String {
-        return String::from(format!(
-            "{},{},{},{},{}",
-            self.n_left.to_string(),
-            self.n_right.to_string(),
-            self.r_left.to_string(),
-            self.r_right.to_string(),
-            self.depth.to_string()
-        ));
-    }
+    // fn to_string(&self) -> String {
+    //     return String::from(format!(
+    //         "{},{},{},{},{}",
+    //         self.n_left.to_string(),
+    //         self.n_right.to_string(),
+    //         self.r_left.to_string(),
+    //         self.r_right.to_string(),
+    //         self.depth.to_string()
+    //     ));
+    // }
 }
 
 impl Circle {
@@ -618,59 +676,14 @@ impl Puzzle {
             }
         }
     }
-    fn write_to_file(&self, path: &str) {
-        let mut buffer = OpenOptions::new()
-            .write(true)
-            .create(true)
-            .open(path)
-            .unwrap();
-        buffer.write(self.get_string().as_str().as_bytes());
-    }
-    fn get_string(&self) -> String {
-        let mut string = String::new();
-        string += &self.get_def().to_string();
-        string += &"\n";
-        string += &self.get_stack_string();
-        return string;
-    }
-    //very temporary and not generalized
-    fn get_def(&self) -> PuzzleDef {
-        return PuzzleDef {
-            r_left: self.turns[0].circle.radius,
-            r_right: self.turns[1].circle.radius,
-            n_left: ((2.0 * PI as f64) / self.turns[0].angle) as u16,
-            n_right: ((2.0 * PI as f64) / self.turns[1].angle) as u16,
-            depth: self.depth,
-        };
-    }
-    //comma separated, with no comma at the end
-    fn get_stack_string(&self) -> String {
-        let mut string = String::new();
-        for turn in &self.stack {
-            string += &self.id_from_turn(*turn).to_string();
-            string += ",";
-        }
-        string.pop();
-        return string;
-    }
-    //temporary
-    fn id_from_turn(&self, turn: Turn) -> usize {
-        for i in 0..self.turns.len() {
-            if aeq_circ(self.turns[i].circle, turn.circle) {
-                if aeq(self.turns[i].angle, turn.angle) {
-                    return 2 * i;
-                }
-                if aeq(self.turns[i].inverse().angle, turn.angle) {
-                    return (2 * i) + 1;
-                }
-            }
-        }
-        return 0;
+    //updates self.solved
+    fn check(&mut self) {
+        self.solved = aeq_pieces(&self.pieces, &self.solved_state)
     }
     //returns if the turn could be completed
     fn turn(&mut self, turn: Turn, cut: bool) -> Option<()> {
         if cut {
-            for adj_turn in &self.turns.clone() {
+            for adj_turn in self.turns.clone().values() {
                 if turn.circle.touching(adj_turn.circle) {
                     self.global_cut_by_circle(turn.circle);
                 }
@@ -694,24 +707,29 @@ impl Puzzle {
             self.animation_offset = turn.inverse();
         }
         self.intern_all();
-        self.stack.push(turn);
         return Some(());
     }
-    fn turn_id(&mut self, id: usize, cut: bool) {
-        let turn = self.turns[id / 2];
-        if id % 2 == 0 {
-            self.turn(turn, cut);
-        } else {
-            self.turn(turn.inverse(), cut);
-        }
+    fn turn_id(&mut self, id: String, cut: bool) {
+        let turn = self.turns[&id];
+        self.turn(turn, cut);
+        self.stack.push(id);
+        self.check();
     }
     fn undo(&mut self) {
         if self.stack.len() == 0 {
             return;
         }
-        let last_turn = self.stack.pop().unwrap();
+        let last_turn = self.turns[&self.stack.pop().unwrap()];
         self.turn(last_turn.inverse(), false);
-        self.stack.pop();
+        self.check();
+    }
+    fn scramble(&mut self, cut: bool) {
+        let mut rng = rand::rng();
+        for i in 0..self.depth {
+            self.turn(*self.turns.values().choose(&mut rng).unwrap(), cut);
+        }
+        self.animation_offset = NONE_TURN;
+        self.check();
     }
     fn render(
         &self,
@@ -745,27 +763,35 @@ impl Puzzle {
     ) {
         let good_pos = from_egui_coords(&pos, rect, scale_factor, offset);
         let mut min_dist: f64 = 10000.0;
-        let mut correct_turn = NONE_TURN;
-        for turn in self.turns.clone() {
-            if alneq(good_pos.distance(turn.circle.center), min_dist) {
-                min_dist = good_pos.distance(turn.circle.center);
-                correct_turn = turn;
+        let mut correct_id: String = String::from("");
+        for turn in &self.turns {
+            if alneq(good_pos.distance(turn.1.circle.center), min_dist)
+                && turn.1.circle.contains(good_pos) == Contains::Inside
+                && turn.1.angle.is_sign_negative()
+            {
+                min_dist = good_pos.distance(turn.1.circle.center);
+                correct_id = turn.0.clone();
             }
         }
-        if left {
-            self.turn(correct_turn, cut);
+        if correct_id.is_empty() {
+            return;
+        }
+        if !left {
+            self.turn_id(correct_id, cut);
         } else {
-            self.turn(correct_turn.inverse(), cut);
+            self.turn_id(correct_id + "'", cut);
         }
     }
     fn get_hovered(&self, rect: &Rect, pos: Pos2, scale_factor: f32, offset: Vec2F64) -> Circle {
         let good_pos = from_egui_coords(&pos, rect, scale_factor, offset);
         let mut min_dist: f64 = 10000.0;
         let mut correct_turn = NONE_TURN;
-        for turn in self.turns.clone() {
-            if alneq(good_pos.distance(turn.circle.center), min_dist) {
+        for turn in self.turns.clone().values() {
+            if alneq(good_pos.distance(turn.circle.center), min_dist)
+                && turn.circle.contains(good_pos) == Contains::Inside
+            {
                 min_dist = good_pos.distance(turn.circle.center);
-                correct_turn = turn;
+                correct_turn = *turn;
             }
         }
         //dbg!(correct_turn.circle.center.to_pos2());
@@ -1507,26 +1533,6 @@ fn get_color_range(start: u16, number: u16, total: u16) -> Vec<Color32> {
     return colors;
 }
 
-// fn puzzle_from_circles(circles: Vec<Circle>, numbers: Vec<u16>) -> Puzzle {
-//     let mut puzzle = Puzzle {
-//         animation_offset: NONE_TURN,
-//         stack: Vec::new(),
-//         turns: Vec::new(),
-//         pieces: Vec::new(),
-//     };
-//     let point = pos2(circles[0].center.x + circles[0].radius, circles[0].center.y);
-//     let piece = Piece {
-//         shape: vec![get_arc(point, point, circles[0], true)],
-//         color: Color32::RED,
-//     };
-//     puzzle.pieces.push(piece);
-//     puzzle.turns.push(Turn {});
-//     for i in 1..circles.len() {
-//         let circle = circles[i];
-
-//     }
-// }
-
 fn collapse_shape(shape: &Vec<Arc>) -> Option<Vec<Arc>> {
     let mut new_shape: Vec<Arc> = vec![shape[0]];
     let mut running_angle = 0.0;
@@ -1547,121 +1553,325 @@ fn collapse_shape(shape: &Vec<Arc>) -> Option<Vec<Arc>> {
     return Some(new_shape);
 }
 
-fn puzzle_from_two_circles(def: PuzzleDef) -> Puzzle {
-    let c1 = Circle {
-        center: pos2_f64(-0.2, 0.0),
-        radius: def.r_left,
-    };
-    let c2 = Circle {
-        center: pos2_f64(0.8, 0.0),
-        radius: def.r_right,
-    };
-    let n_left = def.n_left;
-    let n_right = def.n_right;
-    let point = pos2_f64(c1.center.x - c1.radius, c1.center.y);
-    let piece = Piece {
-        shape: vec![get_arc(point, point, c1, true)],
-        color: Color32::RED,
-    };
+fn make_basic_puzzle(disks: Vec<Circle>) -> Vec<Piece> {
+    let mut pieces = Vec::new();
+    for disk in &disks {
+        let point = pos2_f64(disk.center.x + disk.radius, disk.center.y);
+        let disk_piece = Piece {
+            shape: vec![get_arc(point, point, *disk, true)],
+            color: NONE_COLOR,
+        };
+        let mut disk_pieces = vec![disk_piece];
+        for disk in &disks {
+            let mut new_disk_pieces = Vec::new();
+            for piece in disk_pieces {
+                new_disk_pieces.extend(piece.cut_by_circle(*disk));
+            }
+            disk_pieces = new_disk_pieces.clone();
+        }
+        for piece in disk_pieces {
+            let mut is_repeat = false;
+            for old_piece in &pieces {
+                if aeq_piece(old_piece, &piece) {
+                    is_repeat = true;
+                    break;
+                }
+            }
+            if !is_repeat {
+                pieces.push(piece);
+            }
+        }
+    }
+    return pieces;
+}
+fn make_puzzle(def: PuzzleDef) -> Puzzle {
     let mut puzzle = Puzzle {
-        animation_offset: NONE_TURN,
+        pieces: make_basic_puzzle(def.disks),
+        turns: def.turns,
         stack: Vec::new(),
-        turns: vec![
-            Turn {
-                circle: c1,
-                angle: (2.0 * PI as f64) / (n_left as f64),
-            },
-            Turn {
-                circle: c2,
-                angle: (2.0 * PI as f64) / (n_right as f64),
-            },
-        ],
-        pieces: vec![piece],
+        animation_offset: NONE_TURN,
         intern: FloatIntern {
             floats: Vec::new(),
             leniency: LENIENCY,
         },
-        depth: def.depth,
+        depth: 500,
+        name: def.name,
+        authors: def.authors.clone(),
+        solved_state: Vec::new(),
+        solved: true,
     };
-    let point2 = pos2_f64(c2.center.x + c2.radius, c2.center.y);
-    let arc = get_arc(point2, point2, c2, true);
-    let piece2 = Piece {
-        shape: vec![arc],
-        color: Color32::RED,
-    };
-    puzzle.cut_by_circle(
-        c2,
-        Turn {
-            circle: c1,
-            angle: (2.0 * PI as f64) / (n_left as f64),
-        },
-    );
-    puzzle.pieces.push(piece2.cut_by_circle(c1)[0].clone());
-    puzzle.pieces[1].color = Color32::BLUE;
-    puzzle.pieces[2].color = Color32::GREEN;
-    //cut the puzzle--bad, needs replacing with copy cuts or some bs
-    // for i in 0..def.depth {
-    //     puzzle.turn_cut(puzzle.turns[0]);
-    //     puzzle.turn_cut(puzzle.turns[1]);
-    // }
-    // for i in 0..def.depth {
-    //     puzzle.undo();
-    //     puzzle.undo();
-    // }
-    puzzle.animation_offset = NONE_TURN;
-    return puzzle;
-}
-
-fn puzzle_from_string(string: String) -> Puzzle {
-    let mut components = string.split('\n');
-    let mut def_str = components.next().unwrap().split(',');
-    let mut turns_str = components.next().unwrap().split(',');
-    let def = PuzzleDef {
-        n_left: def_str.next().unwrap().parse().unwrap(),
-        n_right: def_str.next().unwrap().parse().unwrap(),
-        r_left: def_str.next().unwrap().parse().unwrap(),
-        r_right: def_str.next().unwrap().parse().unwrap(),
-        depth: def_str.next().unwrap().parse().unwrap(),
-    };
-    let mut puzzle = puzzle_from_two_circles(def);
-    loop {
-        let next = turns_str.next();
-        if next.is_none() {
-            break;
+    puzzle.solved_state = puzzle.pieces.clone();
+    for cut in &def.cuts {
+        for turn in cut {
+            puzzle.turn(*turn, true);
         }
-        if next.unwrap().is_empty() {
-            break;
+        for turn in cut.into_iter().rev() {
+            puzzle.turn(turn.inverse(), false);
         }
-        puzzle.turn_id(next.unwrap().parse().unwrap(), true);
+    }
+    for color in def.coloring {
+        for piece in &mut puzzle.pieces {
+            let mut do_color = true;
+            for half_space in &color.0 {
+                if !piece
+                    .in_circle(&half_space.0)
+                    .is_some_and(|x| x == half_space.1)
+                {
+                    do_color = false;
+                    break;
+                }
+            }
+            if do_color {
+                piece.color = color.1;
+            }
+        }
     }
     puzzle.animation_offset = NONE_TURN;
     return puzzle;
 }
 
-fn load_puzzle_from_file(path: &str) -> Puzzle {
-    let contents = std::fs::read_to_string(path).expect("No such file found");
-    return puzzle_from_string(contents);
+fn puzzle_from_string(string: String) -> Option<Puzzle> {
+    let mut components = string
+        .split("--LOG FILE \n")
+        .into_iter()
+        .collect::<Vec<&str>>();
+    let mut puzzle = make_puzzle(parse_kdl(components[0])?);
+    if components.len() > 1 {
+        let turns = components[1].split(",");
+        for turn in turns {
+            puzzle.turn_id(String::from(turn), false);
+        }
+    }
+    return Some(puzzle);
 }
 
-fn load(to_load: PuzzleDef, to_set: &mut PuzzleDef) -> Puzzle {
-    *to_set = to_load;
-    return puzzle_from_two_circles(to_load);
+fn load_puzzle_and_def_from_file(path: &str) -> Option<(Puzzle, String)> {
+    let file = std::fs::read_to_string(path);
+    if file.is_err() {
+        return None;
+    }
+    let contents = file.unwrap();
+    return Some((
+        puzzle_from_string(contents.clone())?,
+        String::from(
+            contents
+                .split("--LOG FILE")
+                .into_iter()
+                .collect::<Vec<&str>>()[0],
+        ),
+    ));
+}
+
+// fn load(to_load: PuzzleDef, to_set: &mut PuzzleDef) -> Puzzle {
+//     *to_set = to_load;
+//     return puzzle_from_two_circles(to_load);
+// }
+
+fn strip_number_end(str: &str) -> Option<(String, String)> {
+    let chars = str.chars();
+    let mut collecting = false;
+    let end = chars
+        .rev()
+        .take_while(|x| x.is_numeric())
+        .collect::<Vec<char>>()
+        .into_iter()
+        .rev()
+        .collect::<String>();
+    return match (end.is_empty()) {
+        true => None,
+        false => Some((String::from(str.strip_suffix(&end)?), end)),
+    };
+}
+
+fn parse_kdl(string: &str) -> Option<PuzzleDef> {
+    let mut def = PuzzleDef {
+        name: String::from(""),
+        authors: Vec::new(),
+        disks: Vec::new(),
+        turns: HashMap::new(),
+        cuts: Vec::new(),
+        coloring: Vec::new(),
+    };
+    let doc: KdlDocument = string.parse().expect("FAILED TO PARSE KDL");
+    let mut circles: HashMap<&str, Circle> = HashMap::new();
+    let mut twists: HashMap<&str, Turn> = HashMap::new();
+    let mut colors: HashMap<&str, Color32> = HashMap::new();
+    let mut compounds: HashMap<&str, Vec<Turn>> = HashMap::new();
+    for node in doc.nodes() {
+        match (node.name().value()) {
+            "name" => def.name = String::from(node.entries()[0].value().as_string()?),
+            "author" => def
+                .authors
+                .push(String::from(node.entries()[0].value().as_string()?)),
+            "circles" => {
+                for circle in node.children()?.nodes() {
+                    circles.insert(
+                        circle.name().value(),
+                        Circle {
+                            center: pos2_f64(
+                                circle.get("x")?.as_float()?,
+                                circle.get("y")?.as_float()?,
+                            ),
+                            radius: circle.get("r")?.as_float()?,
+                        },
+                    );
+                }
+            }
+            "base" => {
+                for disk in node.entries().into_iter() {
+                    def.disks.push(circles[disk.value().as_string()?]);
+                }
+            }
+            "twists" => {
+                for turn in node.children()?.nodes() {
+                    twists.insert(
+                        turn.name().value(),
+                        Turn {
+                            circle: circles[turn.entries()[0].value().as_string()?],
+                            angle: -2.0 * PI as f64
+                                / (turn.entries()[1].value().as_integer()? as f64),
+                        },
+                    );
+                    compounds.insert(
+                        turn.name().value(),
+                        vec![Turn {
+                            circle: circles[turn.entries()[0].value().as_string()?],
+                            angle: -2.0 * PI as f64
+                                / (turn.entries()[1].value().as_integer()? as f64),
+                        }],
+                    );
+                }
+            }
+            "compounds" => {
+                let mut compound_add: Vec<Turn> = Vec::new();
+                let mut extend = Vec::new();
+                for compound in node.children()?.nodes() {
+                    for val in compound.entries() {
+                        match val.value().as_string()?.strip_suffix("'") {
+                            None => match strip_number_end(val.value().as_string()?) {
+                                None => {
+                                    extend = compounds[val.value().as_string()?].clone();
+                                }
+                                Some(real) => {
+                                    extend = multiply_turns(
+                                        real.1.parse::<isize>().unwrap(),
+                                        &compounds[real.0.as_str()],
+                                    );
+                                }
+                            },
+                            Some(real) => match (strip_number_end(real)) {
+                                None => {
+                                    extend = invert_compound_turn(&compounds[real]);
+                                }
+                                Some(inside) => {
+                                    extend = invert_compound_turn(&multiply_turns(
+                                        inside.1.parse::<isize>().unwrap(),
+                                        &compounds[inside.0.as_str()],
+                                    ));
+                                }
+                            },
+                        }
+                        compound_add.extend(extend);
+                    }
+                    compounds.insert(compound.name().value(), compound_add.clone());
+                }
+            }
+
+            "cut" => {
+                let mut turns = Vec::new();
+                let mut extend = Vec::new();
+                for val in node.entries() {
+                    match val.value().as_string()?.strip_suffix("'") {
+                        None => match strip_number_end(val.value().as_string()?) {
+                            None => {
+                                extend = compounds[val.value().as_string()?].clone();
+                            }
+                            Some(real) => {
+                                extend = multiply_turns(
+                                    real.1.parse::<isize>().unwrap(),
+                                    &compounds[real.0.as_str()],
+                                );
+                            }
+                        },
+                        Some(real) => match (strip_number_end(real)) {
+                            None => {
+                                extend = invert_compound_turn(&compounds[real]);
+                            }
+                            Some(inside) => {
+                                extend = invert_compound_turn(&multiply_turns(
+                                    inside.1.parse::<isize>().unwrap(),
+                                    &compounds[inside.0.as_str()],
+                                ))
+                            }
+                        },
+                    }
+                    turns.extend(extend);
+                }
+                def.cuts.push(turns);
+            }
+            "colors" => {
+                for color in node.children()?.nodes() {
+                    colors.insert(
+                        color.name().value(),
+                        Color32::from_rgb(
+                            color.entries()[0].value().as_integer()? as u8,
+                            color.entries()[1].value().as_integer()? as u8,
+                            color.entries()[2].value().as_integer()? as u8,
+                        ),
+                    );
+                }
+            }
+            "color" => {
+                let color = colors[node.entries()[0].value().as_string()?];
+                let mut coloring_circles = Vec::new();
+                for i in 1..node.entries().len() {
+                    let circle = node.entries()[i].value().as_string()?;
+                    coloring_circles.push(match circle.strip_prefix("!") {
+                        None => (circles[circle], Contains::Inside),
+                        Some(real) => (circles[real], Contains::Outside),
+                    });
+                }
+                def.coloring.push((coloring_circles, color));
+            }
+            _ => (),
+        }
+    }
+    for turn in twists {
+        def.turns.insert(String::from(turn.0), turn.1);
+        def.turns
+            .insert(String::from(turn.0) + "'", turn.1.inverse());
+    }
+    return Some(def);
+}
+
+fn write_to_file(def: &String, stack: &Vec<String>, path: &str) -> Result<(), std::io::Error> {
+    let mut buffer = OpenOptions::new().write(true).create(true).open(path)?;
+    buffer.write(get_puzzle_string(def.clone(), stack).as_str().as_bytes());
+    Ok(())
+}
+
+fn get_puzzle_string(def: String, stack: &Vec<String>) -> String {
+    return def + "\n --LOG FILE \n" + &stack.join(",");
 }
 fn main() -> eframe::Result {
+    let puzzle_data = load_puzzle_and_def_from_file("Puzzles/Definitions/geranium.kdl").unwrap();
+    let mut puzzle = puzzle_data.0;
+    let mut def_string = puzzle_data.1;
     let mut data = DataHandler {
         defs: HashMap::new(),
     };
-    let mut path: String = String::from("data.txt");
-    data.add_from_tuple("Diamond", (1.0, 1.0, 4, 4, 250));
-    data.add_from_tuple("Nightmare", (0.70, 0.57, 10, 10, 500));
-    data.add_from_tuple("Pyramid", (0.70, 0.57, 15, 5, 500));
-    data.add_from_tuple("Decagons", (0.8, 0.8, 5, 5, 500));
-    data.add_from_tuple("Classic", (0.70, 0.70, 5, 3, 250));
-    data.add_from_tuple("Square", (0.8, 0.8, 4, 4, 250));
-    data.add_from_tuple("Octogons", (0.81, 0.61, 8, 8, 500));
-    data.add_from_tuple("Heptagons", (0.80, 0.65, 7, 7, 500));
-    data.add_from_tuple("Stars", (0.80, 0.70, 5, 5, 500));
-    data.add_from_tuple("Slivers", (0.92, 0.61, 5, 5, 500));
+    let mut def_path: String = String::from("geranium");
+    let mut log_path: String = String::from("geranium");
+    // data.add_from_tuple("Diamond", (1.0, 1.0, 4, 4, 250));
+    // data.add_from_tuple("Nightmare", (0.70, 0.57, 10, 10, 500));
+    // data.add_from_tuple("Pyramid", (0.70, 0.57, 15, 5, 500));
+    // data.add_from_tuple("Decagons", (0.8, 0.8, 5, 5, 500));
+    // data.add_from_tuple("Classic", (0.70, 0.70, 5, 3, 250));
+    // data.add_from_tuple("Square", (0.8, 0.8, 4, 4, 250));
+    // data.add_from_tuple("Octogons", (0.81, 0.61, 8, 8, 500));
+    // data.add_from_tuple("Heptagons", (0.80, 0.65, 7, 7, 500));
+    // data.add_from_tuple("Stars", (0.80, 0.70, 5, 5, 500));
+    // data.add_from_tuple("Slivers", (0.92, 0.61, 5, 5, 500));
     let mut animation_speed = ANIMATION_SPEED;
     let mut rng = rand::rng();
     let mut last_frame_time = std::time::Instant::now();
@@ -1671,15 +1881,8 @@ fn main() -> eframe::Result {
     let right_x = 0.8;
     let mut scale_factor = SCALE_FACTOR;
     let mut offset = vec2_f64(0.0, 0.0);
-    let mut def = PuzzleDef {
-        r_left: 1.0,
-        r_right: 1.0,
-        n_left: 4,
-        n_right: 4,
-        depth: 250,
-    };
-    let mut cut_on_turn = true;
-    let mut puzzle = load(def.clone(), &mut def);
+    let mut cut_on_turn = false;
+    // let mut puzzle = load(def.clone(), &mut def);
     eframe::run_simple_native("circleguy", Default::default(), move |ctx, _frame| {
         egui::CentralPanel::default().show(ctx, |ui| {
             let rect = ui.available_rect_before_wrap();
@@ -1705,21 +1908,7 @@ fn main() -> eframe::Result {
                 puzzle.undo();
             }
             if ui.add(egui::Button::new("SCRAMBLE")).clicked() {
-                for i in 0..def.depth {
-                    puzzle.turn(*puzzle.turns.choose(&mut rng).unwrap(), cut_on_turn);
-                }
-                puzzle.animation_offset = NONE_TURN;
-            }
-            if ui.add(egui::Button::new("CUT")).clicked() {
-                for i in 0..def.depth {
-                    puzzle.turn(puzzle.turns[0], true);
-                    puzzle.turn(puzzle.turns[1], true);
-                }
-                for i in 0..def.depth {
-                    puzzle.undo();
-                    puzzle.undo();
-                }
-                puzzle.animation_offset = NONE_TURN;
+                puzzle.scramble(cut_on_turn);
             }
             ui.add(egui::Slider::new(&mut outline_width, (0.0)..=(10.0)).text("Outline Width"));
             ui.add(egui::Slider::new(&mut detail, (1.0)..=(100.0)).text("Detail"));
@@ -1727,56 +1916,55 @@ fn main() -> eframe::Result {
                 egui::Slider::new(&mut animation_speed, (1.0)..=(100.0)).text("Animation Speed"),
             );
             ui.add(egui::Slider::new(&mut scale_factor, (10.0)..=(5000.0)).text("Rendering Size"));
-            ui.add(egui::Slider::new(&mut def.r_left, (0.01)..=(2.0)).text("Left Radius"));
-            ui.add(egui::Slider::new(&mut def.n_left, 2..=50).text("Left Number"));
-            ui.add(egui::Slider::new(&mut def.r_right, (0.01)..=(2.0)).text("Right Radius"));
-            ui.add(egui::Slider::new(&mut def.n_right, 2..=50).text("Right Number"));
+            // ui.add(egui::Slider::new(&mut def.r_left, (0.01)..=(2.0)).text("Left Radius"));
+            // ui.add(egui::Slider::new(&mut def.n_left, 2..=50).text("Left Number"));
+            // ui.add(egui::Slider::new(&mut def.r_right, (0.01)..=(2.0)).text("Right Radius"));
+            // ui.add(egui::Slider::new(&mut def.n_right, 2..=50).text("Right Number"));
             ui.add(egui::Slider::new(&mut offset.x, (-2.0)..=(2.0)).text("Move X"));
             ui.add(egui::Slider::new(&mut offset.y, (-2.0)..=(2.0)).text("Move Y"));
-            ui.add(egui::Slider::new(&mut def.depth, 0..=5000).text("Scramble Depth"));
-            ui.add(egui::TextEdit::singleline(&mut path));
+            // ui.add(egui::Slider::new(&mut def.depth, 0..=5000).text("Scramble Depth"));
+            ui.label("Definition Path");
+            ui.add(egui::TextEdit::singleline(&mut def_path));
+            ui.label("Log File Path");
+            ui.add(egui::TextEdit::singleline(&mut log_path));
             if ui.add(egui::Button::new("SAVE")).clicked() {
-                puzzle.write_to_file(&path);
+                write_to_file(
+                    &def_string,
+                    &puzzle.stack,
+                    &(String::from("Puzzles/Logs") + &log_path + ".kdl"),
+                );
             }
-            if ui.add(egui::Button::new("LOAD")).clicked() {
-                puzzle = load_puzzle_from_file(&path.as_str());
+            if ui.add(egui::Button::new("LOAD DEF")).clicked() {
+                (puzzle, def_string) = load_puzzle_and_def_from_file(
+                    &(String::from("Puzzles/Definitions") + &def_path + ".kdl").as_str(),
+                )
+                .unwrap_or((puzzle.clone(), def_string.clone()));
             }
-            if ui.add(egui::Button::new("GENERATE")).clicked()
-                && alneq(1.0, def.r_left + def.r_right)
-            {
-                puzzle = load(def.clone(), &mut def);
+            if ui.add(egui::Button::new("LOAD LOG")).clicked() {
+                (puzzle, def_string) = load_puzzle_and_def_from_file(
+                    &(String::from("Puzzles/Logs") + &log_path + ".kdl").as_str(),
+                )
+                .unwrap_or((puzzle.clone(), def_string.clone()));
             }
-            let new_p = data.show_puzzles(ui, &rect);
-            if new_p.is_some() {
-                puzzle = load(new_p.unwrap(), &mut def);
-            }
+            // if ui.add(egui::Button::new("GENERATE")).clicked()
+            //     && alneq(1.0, def.r_left + def.r_right)
+            // {
+            //     puzzle = load(def.clone(), &mut def);
+            // }
+            // let new_p = data.show_puzzles(ui, &rect);
+            // if new_p.is_some() {
+            //     puzzle = load(new_p.unwrap(), &mut def);
+            // }
             ui.checkbox(&mut cut_on_turn, "Cut on turn?");
-            ui.label(puzzle.pieces.len().to_string());
-            let max_rad = f64::max(puzzle.turns[0].circle.radius, puzzle.turns[1].circle.radius);
+            ui.label(String::from("Name: ") + &puzzle.name.clone());
+            ui.label(String::from("Authors: ") + &puzzle.authors.join(","));
+            ui.label(puzzle.pieces.len().to_string() + " pieces");
+            if puzzle.solved {
+                ui.label("Solved!");
+            }
             let cor_rect = (Rect {
-                min: (pos2(
-                    to_egui_coords(
-                        &(puzzle.turns[0].circle.center + (max_rad * vec2_f64(-1.0, 1.0))),
-                        &rect,
-                        scale_factor,
-                        offset,
-                    )
-                    .x
-                    .max(120.0),
-                    to_egui_coords(
-                        &(puzzle.turns[0].circle.center + (max_rad * vec2_f64(-1.0, 1.0))),
-                        &rect,
-                        scale_factor,
-                        offset,
-                    )
-                    .y,
-                )),
-                max: to_egui_coords(
-                    &(puzzle.turns[1].circle.center + (max_rad * vec2_f64(1.0, -1.0))),
-                    &rect,
-                    scale_factor,
-                    offset,
-                ),
+                min: pos2(180.0, 0.0),
+                max: pos2(rect.width(), rect.height()),
             });
             // dbg!((puzzle.turns[1].circle.center).to_pos2());
             if puzzle.animation_offset.angle != 0.0 {
@@ -1834,18 +2022,6 @@ fn main() -> eframe::Result {
                         cut_on_turn,
                     );
                 }
-            }
-            if ui.input(|i| i.key_pressed(egui::Key::D)) {
-                puzzle.turn(puzzle.turns[0], cut_on_turn);
-            }
-            if ui.input(|i| i.key_pressed(egui::Key::F)) {
-                puzzle.turn(puzzle.turns[0].inverse(), cut_on_turn);
-            }
-            if ui.input(|i| i.key_pressed(egui::Key::J)) {
-                puzzle.turn(puzzle.turns[1], cut_on_turn);
-            }
-            if ui.input(|i| i.key_pressed(egui::Key::K)) {
-                puzzle.turn(puzzle.turns[1].inverse(), cut_on_turn);
             }
         });
     })
