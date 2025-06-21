@@ -1,37 +1,21 @@
-#![allow(unused)]
 use std::{
-    any,
-    borrow::Borrow,
-    cmp::Ordering,
-    collections::{HashMap, HashSet},
-    f32::consts::PI,
-    fmt,
-    fs::{self, File, OpenOptions},
-    future::pending,
-    io::Write,
-    iter::once,
-    vec,
+    cmp::Ordering, collections::HashMap, f32::consts::PI, fmt, fs::OpenOptions, io::Write, vec,
 };
 
-use eframe::glow::{NO_RESET_NOTIFICATION, NONE};
 use kdl::KdlDocument;
 use rand::prelude::*;
 
-use colorous::{self, Color};
-
 use egui::{
-    Color32, Event, Label, MouseWheelUnit, Pos2, Rect, Stroke, Ui, Vec2,
-    ahash::RandomState,
-    emath::Float,
+    Color32, Event, MouseWheelUnit, Pos2, Rect, Stroke, Ui,
     epaint::{self, PathShape},
     pos2,
 };
 
-const DETAIL: u16 = 50;
+const DETAIL: f64 = 50.0;
 
 const OUTLINE_COLOR: Color32 = Color32::BLACK;
 
-const SPECTRUM: colorous::Gradient = colorous::TURBO;
+// const SPECTRUM: colorous::Gradient = colorous::TURBO;
 
 const SCALE_FACTOR: f32 = 200.0;
 
@@ -182,20 +166,11 @@ struct PuzzleDef {
     coloring: Vec<(Vec<(Circle, Contains)>, Color32)>,
 }
 
-struct DataHandler {
-    defs: HashMap<String, PuzzleDef>,
-}
-
 //checking if certain float-based variable types are approximately equal due to precision bs
 
 fn aeq(f1: f64, f2: f64) -> bool {
     return (f1 - f2).abs() <= LENIENCY;
 }
-
-fn aeq_32(f1: f32, f2: f32) -> bool {
-    return (f1 - f2).abs() <= (LENIENCY as f32);
-}
-
 fn aleq(f1: f64, f2: f64) -> bool {
     return (f1 - f2) <= LENIENCY;
 }
@@ -205,15 +180,15 @@ fn alneq(f1: f64, f2: f64) -> bool {
 }
 
 fn aeq_pos(p1: Pos2F64, p2: Pos2F64) -> bool {
-    return (aeq(p1.x, p2.x) && aeq(p1.y, p2.y));
+    return aeq(p1.x, p2.x) && aeq(p1.y, p2.y);
 }
 
 fn aeq_circ(c1: Circle, c2: Circle) -> bool {
-    return (aeq_pos(c1.center, c2.center) && aeq(c1.radius, c2.radius));
+    return aeq_pos(c1.center, c2.center) && aeq(c1.radius, c2.radius);
 }
 
 fn aeq_arc(a1: Arc, a2: Arc) -> bool {
-    return (aeq_circ(a1.circle, a2.circle) && aeq(a1.angle, a2.angle));
+    return aeq_circ(a1.circle, a2.circle) && aeq(a1.angle, a2.angle);
 }
 
 fn aeq_shape(s1: &Vec<Arc>, s2: &Vec<Arc>) -> bool {
@@ -278,9 +253,6 @@ impl Turn {
 }
 
 impl Pos2F64 {
-    fn to_pos2(&self) -> Pos2 {
-        return pos2(self.x as f32, self.y as f32);
-    }
     fn distance(&self, other: Pos2F64) -> f64 {
         return (other - *self).magnitude();
     }
@@ -304,40 +276,9 @@ impl Vec2F64 {
     fn angle(&self) -> f64 {
         return self.y.atan2(self.x);
     }
-
-    fn to_vec2(&self) -> Vec2 {
-        return Vec2 {
-            x: self.x as f32,
-            y: self.y as f32,
-        };
-    }
     //ccw
     fn rot90(&self) -> Vec2F64 {
         return vec2_f64(self.y * -1.0, self.x);
-    }
-}
-
-impl DataHandler {
-    //left_r, right_r, left_n, right_n, depth
-    // fn add_from_tuple(&mut self, name: &str, tuple: (f64, f64, u16, u16, u16)) {
-    //     self.defs.insert(
-    //         String::from(name),
-    //         PuzzleDef {
-    //             r_right: tuple.1,
-    //             r_left: tuple.0,
-    //             n_right: tuple.3,
-    //             n_left: tuple.2,
-    //             depth: tuple.4,
-    //         },
-    //     );
-    // }
-    fn show_puzzles(&self, ui: &mut Ui, rect: &Rect) -> Option<PuzzleDef> {
-        for name in &mut self.defs.clone().into_keys() {
-            if ui.add(egui::Button::new(&name)).clicked() {
-                return Some(self.defs[&name].clone());
-            }
-        }
-        return None;
     }
 }
 
@@ -388,7 +329,7 @@ impl Circle {
         if intersects.is_none() {
             return Some(Contains::Border);
         } else {
-            return match (intersects.unwrap().len()) {
+            return match intersects.unwrap().len() {
                 0 => Some(self.contains(arc.midpoint())),
                 _ => {
                     if is_tangent(arc.circle, *self) {
@@ -422,9 +363,6 @@ impl Arc {
     fn midpoint(&self) -> Pos2F64 {
         return rotate_about(self.circle.center, self.start, self.angle / 2.0);
     }
-    fn barely(&self) -> Pos2F64 {
-        return rotate_about(self.circle.center, self.start, self.angle / 100.0);
-    }
     //make the arc go the other way
     fn invert(&self) -> Arc {
         return Arc {
@@ -454,32 +392,32 @@ impl Arc {
             return false;
         }
         if self.angle >= 0.0 {
-            return (alneq(angle, self.angle));
+            return alneq(angle, self.angle);
         } else {
-            return (alneq(self.angle, (-2.0 * PI as f64 + angle)));
+            return alneq(self.angle, -2.0 * PI as f64 + angle);
         }
     }
     //same as contains_properly, but returns true on self.start
-    fn contains_properly_start(&self, point: Pos2F64) -> bool {
-        if self.circle.contains(point) != Contains::Border {
-            return false;
-        }
-        if aeq(self.angle.abs(), 2.0 * PI as f64) {
-            return true;
-        }
-        let angle = angle_on_circle(self.start, point, self.circle);
-        if aeq(angle, 2.0 * PI as f64) {
-            return true;
-        }
-        if aeq(angle, 0.0) {
-            return true;
-        }
-        if self.angle >= 0.0 {
-            return (alneq(angle, self.angle));
-        } else {
-            return (alneq(self.angle, (-2.0 * PI as f64 + angle)));
-        }
-    }
+    // fn contains_properly_start(&self, point: Pos2F64) -> bool {
+    //     if self.circle.contains(point) != Contains::Border {
+    //         return false;
+    //     }
+    //     if aeq(self.angle.abs(), 2.0 * PI as f64) {
+    //         return true;
+    //     }
+    //     let angle = angle_on_circle(self.start, point, self.circle);
+    //     if aeq(angle, 2.0 * PI as f64) {
+    //         return true;
+    //     }
+    //     if aeq(angle, 0.0) {
+    //         return true;
+    //     }
+    //     if self.angle >= 0.0 {
+    //         return (alneq(angle, self.angle));
+    //     } else {
+    //         return (alneq(self.angle, (-2.0 * PI as f64 + angle)));
+    //     }
+    // }
     //get the points where the arc intersects a circle
     fn intersect_circle(&self, circle: &Circle) -> Option<Vec<Pos2F64>> {
         let intersect = circle_intersection(*circle, self.circle)?;
@@ -492,38 +430,38 @@ impl Arc {
         return Some(points);
     }
     //get the points where the circle intersects the arc, including the start point but not the end
-    fn intersect_circle_start(&self, circle: &Circle) -> Option<Vec<Pos2F64>> {
-        let intersect = circle_intersection(*circle, self.circle)?;
-        let mut points = Vec::new();
-        for point in intersect {
-            if self.contains_properly_start(point) {
-                points.push(point);
-            }
-        }
-        return Some(points);
-    }
+    // fn intersect_circle_start(&self, circle: &Circle) -> Option<Vec<Pos2F64>> {
+    //     let intersect = circle_intersection(*circle, self.circle)?;
+    //     let mut points = Vec::new();
+    //     for point in intersect {
+    //         if self.contains_properly_start(point) {
+    //             points.push(point);
+    //         }
+    //     }
+    //     return Some(points);
+    // }
     //get the points where the arc intersects another arc
-    fn intersect_arc(&self, arc: Arc) -> Option<Vec<Pos2F64>> {
-        let intersect = arc.intersect_circle(&self.circle)?;
-        let mut points = Vec::new();
-        for point in intersect {
-            if self.contains_properly(point) {
-                points.push(point);
-            }
-        }
-        return Some(points);
-    }
+    // fn intersect_arc(&self, arc: Arc) -> Option<Vec<Pos2F64>> {
+    //     let intersect = arc.intersect_circle(&self.circle)?;
+    //     let mut points = Vec::new();
+    //     for point in intersect {
+    //         if self.contains_properly(point) {
+    //             points.push(point);
+    //         }
+    //     }
+    //     return Some(points);
+    // }
     //same as above, but intersections at either start point are valid
-    fn intersect_arc_start(&self, arc: Arc) -> Option<Vec<Pos2F64>> {
-        let intersect = arc.intersect_circle_start(&self.circle)?;
-        let mut points = Vec::new();
-        for point in intersect {
-            if self.contains_properly_start(point) {
-                points.push(point);
-            }
-        }
-        return Some(points);
-    }
+    // fn intersect_arc_start(&self, arc: Arc) -> Option<Vec<Pos2F64>> {
+    //     let intersect = arc.intersect_circle_start(&self.circle)?;
+    //     let mut points = Vec::new();
+    //     for point in intersect {
+    //         if self.contains_properly_start(point) {
+    //             points.push(point);
+    //         }
+    //     }
+    //     return Some(points);
+    // }
     //get a polygon representation of the arc for rendering
     fn get_polygon(&self, divisions: u16) -> Vec<Pos2F64> {
         let mut points: Vec<Pos2F64> = Vec::new();
@@ -588,7 +526,7 @@ impl Arc {
         if alneq(y, self.start.y) {
             return false;
         }
-        let angle = (self.get_tangent_vec().angle().rem_euclid(2.0 * PI as f64));
+        let angle = self.get_tangent_vec().angle().rem_euclid(2.0 * PI as f64);
         if aeq(angle, 2.0 * PI as f64) || aeq(angle, 0.0) || aeq(angle, PI as f64) {
             return self.circle.center.y >= y;
         } else if aleq(angle, PI as f64) {
@@ -725,7 +663,7 @@ impl Puzzle {
     }
     fn scramble(&mut self, cut: bool) {
         let mut rng = rand::rng();
-        for i in 0..self.depth {
+        for _i in 0..self.depth {
             self.turn(*self.turns.values().choose(&mut rng).unwrap(), cut);
         }
         self.animation_offset = NONE_TURN;
@@ -797,21 +735,21 @@ impl Puzzle {
         //dbg!(correct_turn.circle.center.to_pos2());
         return correct_turn.circle;
     }
-    fn cut_by_circle(&mut self, circle: Circle, turn: Turn) {
-        let mut new_pieces = Vec::new();
-        for piece in &self.pieces {
-            if piece
-                .in_circle(&turn.circle)
-                .is_none_or(|x| x == Contains::Inside)
-            {
-                new_pieces.extend(piece.cut_by_circle(circle));
-            } else {
-                new_pieces.push(piece.clone());
-            }
-        }
-        self.pieces = new_pieces;
-        self.intern_all();
-    }
+    // fn cut_by_circle(&mut self, circle: Circle, turn: Turn) {
+    //     let mut new_pieces = Vec::new();
+    //     for piece in &self.pieces {
+    //         if piece
+    //             .in_circle(&turn.circle)
+    //             .is_none_or(|x| x == Contains::Inside)
+    //         {
+    //             new_pieces.extend(piece.cut_by_circle(circle));
+    //         } else {
+    //             new_pieces.push(piece.clone());
+    //         }
+    //     }
+    //     self.pieces = new_pieces;
+    //     self.intern_all();
+    // }
     fn global_cut_by_circle(&mut self, circle: Circle) {
         let mut new_pieces = Vec::new();
         for piece in &self.pieces {
@@ -820,58 +758,58 @@ impl Puzzle {
         self.pieces = new_pieces;
         self.intern_all();
     }
-    fn cut_with_turn_symmetry(&mut self, circle: Circle, turn: Turn) {
-        let mut index = 0;
-        while !aeq(turn.angle * (index as f64), 2.0 * PI as f64) {
-            self.cut_by_circle(
-                circle.rotate_about(turn.circle.center, turn.angle * (index as f64)),
-                turn,
-            );
-            index += 1;
-        }
-    }
-    fn draw_outline(
-        &self,
-        ui: &mut Ui,
-        rect: &Rect,
-        detail: f64,
-        outline_width: f32,
-        scale_factor: f32,
-        offset: Vec2F64,
-    ) {
-        for piece in &self.pieces {
-            if piece
-                .in_circle(&self.animation_offset.circle)
-                .is_some_and(|x| x == Contains::Inside)
-            {
-                piece.draw_outline(
-                    ui,
-                    rect,
-                    detail,
-                    self.animation_offset,
-                    outline_width,
-                    scale_factor,
-                    offset,
-                );
-            } else {
-                piece.draw_outline(
-                    ui,
-                    rect,
-                    detail,
-                    NONE_TURN,
-                    outline_width,
-                    scale_factor,
-                    offset,
-                );
-            }
-        }
-    }
+    // fn cut_with_turn_symmetry(&mut self, circle: Circle, turn: Turn) {
+    //     let mut index = 0;
+    //     while !aeq(turn.angle * (index as f64), 2.0 * PI as f64) {
+    //         self.cut_by_circle(
+    //             circle.rotate_about(turn.circle.center, turn.angle * (index as f64)),
+    //             turn,
+    //         );
+    //         index += 1;
+    //     }
+    // }
+    // fn draw_outline(
+    //     &self,
+    //     ui: &mut Ui,
+    //     rect: &Rect,
+    //     detail: f64,
+    //     outline_width: f32,
+    //     scale_factor: f32,
+    //     offset: Vec2F64,
+    // ) {
+    //     for piece in &self.pieces {
+    //         if piece
+    //             .in_circle(&self.animation_offset.circle)
+    //             .is_some_and(|x| x == Contains::Inside)
+    //         {
+    //             piece.draw_outline(
+    //                 ui,
+    //                 rect,
+    //                 detail,
+    //                 self.animation_offset,
+    //                 outline_width,
+    //                 scale_factor,
+    //                 offset,
+    //             );
+    //         } else {
+    //             piece.draw_outline(
+    //                 ui,
+    //                 rect,
+    //                 detail,
+    //                 NONE_TURN,
+    //                 outline_width,
+    //                 scale_factor,
+    //                 offset,
+    //             );
+    //         }
+    //     }
+    // }
 }
 
 impl Piece {
     fn rotate_about(&mut self, center: Pos2F64, angle: f64) {
         let mut new_arcs: Vec<Arc> = Vec::new();
-        for mut arc in self.shape.clone() {
+        for arc in self.shape.clone() {
             new_arcs.push(arc.rotate_about(center, angle));
         }
         self.shape = new_arcs;
@@ -949,8 +887,7 @@ impl Piece {
             let contained = circle.contains_arc(arc);
             if contained.is_some() {
                 if let Some(real_inside) = inside {
-                    if (contained.unwrap() != Contains::Border && real_inside != contained.unwrap())
-                    {
+                    if contained.unwrap() != Contains::Border && real_inside != contained.unwrap() {
                         return None;
                     }
                 } else if contained.unwrap() != Contains::Border {
@@ -996,14 +933,14 @@ impl Piece {
         //dbg!(intersects);
         return (intersects % 2) != 0; //the point is inside the piece if the number of valid intersects is odd, and outside otherwise
     }
-    fn contains_point_border(&self, point: Pos2F64) -> bool {
-        for arc in &self.shape {
-            if arc.contains_properly(point) || aeq_pos(point, arc.start) {
-                return true;
-            }
-        }
-        return false;
-    }
+    // fn contains_point_border(&self, point: Pos2F64) -> bool {
+    //     for arc in &self.shape {
+    //         if arc.contains_properly(point) || aeq_pos(point, arc.start) {
+    //             return true;
+    //         }
+    //     }
+    //     return false;
+    // }
     //doesnt count arcs
     //fn intersect_arc_start(&self, arc: Arc) -> Option<Vec<Pos2F64>> {}
     //fn intersect_piece(&self, other: Piece) -> Vec<Pos2F64> {}
@@ -1098,55 +1035,55 @@ impl Piece {
     //determine which piece occurs earlier on the piece
     //self.shape[0].start is the minimum
     //if the two points are equivalent, returns Less
-    fn order_along_piece(&self, point1: Pos2F64, point2: Pos2F64) -> Ordering {
-        for arc in &self.shape {
-            if aeq_pos(point1, arc.start) {
-                return Ordering::Less;
-            } else if aeq_pos(point2, arc.start) {
-                return Ordering::Greater;
-            } else if arc.contains_properly(point1) {
-                if arc.contains_properly(point2) {
-                    if arc.get_angle(point1).abs() <= arc.get_angle(point2).abs() {
-                        return Ordering::Less;
-                    }
-                    return Ordering::Greater;
-                }
-                return Ordering::Less;
-            } else if arc.contains_properly(point2) {
-                return Ordering::Greater;
-            }
-        }
-        return Ordering::Equal;
-    }
+    // fn order_along_piece(&self, point1: Pos2F64, point2: Pos2F64) -> Ordering {
+    //     for arc in &self.shape {
+    //         if aeq_pos(point1, arc.start) {
+    //             return Ordering::Less;
+    //         } else if aeq_pos(point2, arc.start) {
+    //             return Ordering::Greater;
+    //         } else if arc.contains_properly(point1) {
+    //             if arc.contains_properly(point2) {
+    //                 if arc.get_angle(point1).abs() <= arc.get_angle(point2).abs() {
+    //                     return Ordering::Less;
+    //                 }
+    //                 return Ordering::Greater;
+    //             }
+    //             return Ordering::Less;
+    //         } else if arc.contains_properly(point2) {
+    //             return Ordering::Greater;
+    //         }
+    //     }
+    //     return Ordering::Equal;
+    // }
     //sort points based on how they appear along the piece, ccw
-    fn sort_along_piece(&self, points: &Vec<Pos2F64>) -> Vec<Pos2F64> {
-        let mut sorted = points.clone();
-        sorted.sort_by(|a, b| self.order_along_piece(*a, *b));
-        return sorted;
-    }
+    // fn sort_along_piece(&self, points: &Vec<Pos2F64>) -> Vec<Pos2F64> {
+    //     let mut sorted = points.clone();
+    //     sorted.sort_by(|a, b| self.order_along_piece(*a, *b));
+    //     return sorted;
+    // }
     //cut the piece into segments (cut at a bunch of points)
-    fn cut_at(&self, points: &Vec<Pos2F64>) -> Vec<Vec<Arc>> {
-        let mut remaining_shape = Vec::new();
-        for arc in &self.shape {
-            remaining_shape.extend(arc.cut_at(points))
-        }
-        let sorted_points = self.sort_along_piece(points);
-        let index = 0;
-        let mut segments = Vec::new();
-        let mut curr_segment = Vec::new();
-        while !remaining_shape.is_empty() {
-            let arc = remaining_shape[0];
-            let point = sorted_points[index];
-            if aeq_pos(point, arc.start) {
-                segments.push(curr_segment.clone());
-                curr_segment = Vec::new();
-            }
-        }
-        return segments;
-    }
-    fn cut_by_piece(&self, other: Piece) -> Vec<Piece> {
-        return Vec::new();
-    }
+    // fn cut_at(&self, points: &Vec<Pos2F64>) -> Vec<Vec<Arc>> {
+    //     let mut remaining_shape = Vec::new();
+    //     for arc in &self.shape {
+    //         remaining_shape.extend(arc.cut_at(points))
+    //     }
+    //     let sorted_points = self.sort_along_piece(points);
+    //     let index = 0;
+    //     let mut segments = Vec::new();
+    //     let mut curr_segment = Vec::new();
+    //     while !remaining_shape.is_empty() {
+    //         let arc = remaining_shape[0];
+    //         let point = sorted_points[index];
+    //         if aeq_pos(point, arc.start) {
+    //             segments.push(curr_segment.clone());
+    //             curr_segment = Vec::new();
+    //         }
+    //     }
+    //     return segments;
+    // }
+    // fn cut_by_piece(&self, other: Piece) -> Vec<Piece> {
+    //     return Vec::new();
+    // }
     fn draw_outline(
         &self,
         ui: &mut Ui,
@@ -1169,14 +1106,14 @@ impl Piece {
             );
         }
     }
-    fn get_polygon(&self, detail: u16) -> Vec<Pos2F64> {
-        let mut points = Vec::new();
-        for arc in &self.shape {
-            points.extend(arc.get_polygon(detail));
-            points.pop();
-        }
-        return points;
-    }
+    // fn get_polygon(&self, detail: u16) -> Vec<Pos2F64> {
+    //     let mut points = Vec::new();
+    //     for arc in &self.shape {
+    //         points.extend(arc.get_polygon(detail));
+    //         points.pop();
+    //     }
+    //     return points;
+    // }
 }
 
 //pass an orig_arc with the same start as a1, a2. finds the first arc ccw
@@ -1257,26 +1194,26 @@ fn get_best_arc_and_pop(all_arcs: &mut Vec<Arc>, curr_arc: Arc) -> Arc {
     let index = find_min_arc_index(&good_arcs, curr_arc.invert());
     return all_arcs.remove(indices[index]);
 }
-fn get_best_segment_and_pop(segments: &mut Vec<Vec<Arc>>, curr_segment: &Vec<Arc>) -> Vec<Arc> {
-    let mut good_arcs = Vec::new();
-    let mut indices = Vec::new();
-    for i in 0..segments.len() {
-        if aeq_pos(curr_segment.last().unwrap().end(), segments[i][0].start)
-            && !(aeq_circ(curr_segment.last().unwrap().circle, segments[i][0].circle)
-                && curr_segment.last().unwrap().angle.is_sign_positive()
-                    != segments[i][0].angle.is_sign_positive())
-        {
-            good_arcs.push(segments[i][0].clone());
-            indices.push(i);
-        }
-    }
-    let index = find_min_arc_index(&good_arcs, *curr_segment.last().unwrap());
-    return segments.remove(indices[index]);
-}
+// fn get_best_segment_and_pop(segments: &mut Vec<Vec<Arc>>, curr_segment: &Vec<Arc>) -> Vec<Arc> {
+//     let mut good_arcs = Vec::new();
+//     let mut indices = Vec::new();
+//     for i in 0..segments.len() {
+//         if aeq_pos(curr_segment.last().unwrap().end(), segments[i][0].start)
+//             && !(aeq_circ(curr_segment.last().unwrap().circle, segments[i][0].circle)
+//                 && curr_segment.last().unwrap().angle.is_sign_positive()
+//                     != segments[i][0].angle.is_sign_positive())
+//         {
+//             good_arcs.push(segments[i][0].clone());
+//             indices.push(i);
+//         }
+//     }
+//     let index = find_min_arc_index(&good_arcs, *curr_segment.last().unwrap());
+//     return segments.remove(indices[index]);
+// }
 
 //take in a triangle and return if its 'almost degenerate' within some leniency (i.e. its points are 'almost colinear')
 fn almost_degenerate(triangle: &Vec<Pos2F64>, leniency: f64) -> bool {
-    let angle_1 = ((triangle[1] - triangle[0]).angle() - (triangle[1] - triangle[2]).angle());
+    let angle_1 = (triangle[1] - triangle[0]).angle() - (triangle[1] - triangle[2]).angle();
     let close = angle_1.abs().min((PI as f64 - angle_1).abs());
     if close < leniency {
         return true;
@@ -1304,31 +1241,31 @@ fn avg_points(points: &Vec<Pos2F64>) -> Pos2F64 {
     let n: f64 = points.len() as f64;
     let mut pos = pos2_f64(0.0, 0.0);
     for point in points {
-        pos.x += (point.x / n);
-        pos.y += (point.y / n);
+        pos.x += point.x / n;
+        pos.y += point.y / n;
     }
     return pos;
 }
 
-fn pop_arc_from_vec_from_start(start: Pos2F64, arcs: &mut Vec<Arc>) -> Option<Arc> {
-    for i in 0..arcs.len() {
-        if aeq_pos(arcs[i].start, start) {
-            let ret_arc = arcs[i].clone();
-            arcs.remove(i);
-            return Some(ret_arc);
-        }
-    }
-    return None;
-}
+// fn pop_arc_from_vec_from_start(start: Pos2F64, arcs: &mut Vec<Arc>) -> Option<Arc> {
+//     for i in 0..arcs.len() {
+//         if aeq_pos(arcs[i].start, start) {
+//             let ret_arc = arcs[i].clone();
+//             arcs.remove(i);
+//             return Some(ret_arc);
+//         }
+//     }
+//     return None;
+// }
 
-fn get_arc_starting_at(point: Pos2F64, arcs: Vec<Arc>) -> Option<Arc> {
-    for arc in arcs {
-        if aeq_pos(arc.start, point) {
-            return Some(arc);
-        }
-    }
-    return None;
-}
+// fn get_arc_starting_at(point: Pos2F64, arcs: Vec<Arc>) -> Option<Arc> {
+//     for arc in arcs {
+//         if aeq_pos(arc.start, point) {
+//             return Some(arc);
+//         }
+//     }
+//     return None;
+// }
 
 fn is_tangent(c1: Circle, c2: Circle) -> bool {
     return (aeq(c1.center.distance(c2.center) + c1.radius, c2.radius)
@@ -1357,15 +1294,15 @@ fn angle_on_circle(point1: Pos2F64, point2: Pos2F64, circle: Circle) -> f64 {
     return angle;
 }
 
-fn arc_from_circle(circle: Circle, start: Pos2F64, ccw: bool) -> Arc {
-    return get_arc(start, start, circle, ccw);
-}
+// fn arc_from_circle(circle: Circle, start: Pos2F64, ccw: bool) -> Arc {
+//     return get_arc(start, start, circle, ccw);
+// }
 
 //when start == end is passed, a full circle is returned
 //ccw is true -> creates counterclockwise start -> end, ccw = false does clockwise
 
 fn get_arc(start: Pos2F64, end: Pos2F64, circle: Circle, ccw: bool) -> Arc {
-    let mut angle = angle_on_circle(start, end, circle);
+    let angle = angle_on_circle(start, end, circle);
     if aeq_pos(start, end) {
         if ccw {
             return Arc {
@@ -1406,23 +1343,23 @@ fn to_egui_coords(pos: &Pos2F64, rect: &Rect, scale_factor: f32, offset: Vec2F64
     );
 }
 
-fn to_egui_coords_vec(
-    points: &Vec<Pos2F64>,
-    rect: &Rect,
-    scale_factor: f32,
-    offset: Vec2F64,
-) -> Vec<Pos2> {
-    let mut good_points = Vec::new();
-    for point in points {
-        good_points.push(to_egui_coords(
-            &(*point + offset),
-            rect,
-            scale_factor,
-            offset,
-        ));
-    }
-    return good_points;
-}
+// fn to_egui_coords_vec(
+//     points: &Vec<Pos2F64>,
+//     rect: &Rect,
+//     scale_factor: f32,
+//     offset: Vec2F64,
+// ) -> Vec<Pos2> {
+//     let mut good_points = Vec::new();
+//     for point in points {
+//         good_points.push(to_egui_coords(
+//             &(*point + offset),
+//             rect,
+//             scale_factor,
+//             offset,
+//         ));
+//     }
+//     return good_points;
+// }
 
 //translates from egui coords to nice coords
 fn from_egui_coords(pos: &Pos2, rect: &Rect, scale_factor: f32, offset: Vec2F64) -> Pos2F64 {
@@ -1440,7 +1377,7 @@ fn rotate_about(center: Pos2F64, point: Pos2F64, angle: f64) -> Pos2F64 {
         return point;
     }
     let dist = center.distance(point);
-    let mut curr_angle = (point - center).angle();
+    let curr_angle = (point - center).angle();
     let end_angle = angle + curr_angle;
     return pos2_f64(
         center.x + (dist * end_angle.cos()),
@@ -1448,13 +1385,13 @@ fn rotate_about(center: Pos2F64, point: Pos2F64, angle: f64) -> Pos2F64 {
     );
 }
 
-fn rotate_about_vec(center: Pos2F64, points: &Vec<Pos2F64>, angle: f64) -> Vec<Pos2F64> {
-    let mut rot_points = Vec::new();
-    for point in points {
-        rot_points.push(rotate_about(center, point.clone(), angle));
-    }
-    return rot_points;
-}
+// fn rotate_about_vec(center: Pos2F64, points: &Vec<Pos2F64>, angle: f64) -> Vec<Pos2F64> {
+//     let mut rot_points = Vec::new();
+//     for point in points {
+//         rot_points.push(rotate_about(center, point.clone(), angle));
+//     }
+//     return rot_points;
+// }
 
 //needs to draw ccw with respect to the circle
 // fn circle_region(detail: u16, center: Pos2, point1: Pos2, point2: Pos2) -> Vec<Pos2> {
@@ -1518,26 +1455,8 @@ fn circle_intersection(circle1: Circle, circle2: Circle) -> Option<Vec<Pos2F64>>
     return Some(vec![point1, point2]);
 }
 
-//need to pass in a Vec<Arc> shape with shape[n].end() == shape[n + 1].start and also shape[-1].end() == shape[0].start
-
-fn get_color(i: u16, n: u16) -> Color32 {
-    let color = SPECTRUM.eval_rational((i + 1) as _, (n + 1) as _);
-    return Color32::from_rgb(color.r, color.g, color.b);
-}
-
-fn get_color_range(start: u16, number: u16, total: u16) -> Vec<Color32> {
-    let mut colors: Vec<Color32> = Vec::new();
-    for i in 0..number {
-        colors.push(get_color(start + i, total));
-    }
-    return colors;
-}
-
 fn collapse_shape(shape: &Vec<Arc>) -> Option<Vec<Arc>> {
     let mut new_shape: Vec<Arc> = vec![shape[0]];
-    let mut running_angle = 0.0;
-    let mut curr_circle = shape[0].circle;
-    let mut curr_start = shape[0].start;
     for i in 1..shape.len() {
         let arc = shape[i];
         if aeq_circ(new_shape.last()?.circle, arc.circle) {
@@ -1631,7 +1550,7 @@ fn make_puzzle(def: PuzzleDef) -> Puzzle {
 }
 
 fn puzzle_from_string(string: String) -> Option<Puzzle> {
-    let mut components = string
+    let components = string
         .split("--LOG FILE \n")
         .into_iter()
         .collect::<Vec<&str>>();
@@ -1652,7 +1571,7 @@ fn load_puzzle_and_def_from_file(path: &str) -> Option<(Puzzle, String)> {
             .into_os_string()
             .into_string()
             .unwrap()
-            .split("target")
+            .split("circleguy.exe")
             .into_iter()
             .collect::<Vec<&str>>()[0],
     );
@@ -1679,7 +1598,6 @@ fn load_puzzle_and_def_from_file(path: &str) -> Option<(Puzzle, String)> {
 
 fn strip_number_end(str: &str) -> Option<(String, String)> {
     let chars = str.chars();
-    let mut collecting = false;
     let end = chars
         .rev()
         .take_while(|x| x.is_numeric())
@@ -1687,7 +1605,7 @@ fn strip_number_end(str: &str) -> Option<(String, String)> {
         .into_iter()
         .rev()
         .collect::<String>();
-    return match (end.is_empty()) {
+    return match end.is_empty() {
         true => None,
         false => Some((String::from(str.strip_suffix(&end)?), end)),
     };
@@ -1709,7 +1627,7 @@ fn parse_kdl(string: &str) -> Option<PuzzleDef> {
     let mut colors: HashMap<&str, Color32> = HashMap::new();
     let mut compounds: HashMap<&str, Vec<Turn>> = HashMap::new();
     for node in doc.nodes() {
-        match (node.name().value()) {
+        match node.name().value() {
             "name" => def.name = String::from(node.entries()[0].value().as_string()?),
             "author" => def
                 .authors
@@ -1765,7 +1683,7 @@ fn parse_kdl(string: &str) -> Option<PuzzleDef> {
             }
             "compounds" => {
                 let mut compound_adds: Vec<Vec<Turn>> = vec![Vec::new()];
-                let mut extend = Vec::new();
+                let mut extend;
                 for compound in node.children()?.nodes() {
                     for val in compound.entries() {
                         match val.value().as_string()?.strip_suffix("'") {
@@ -1778,7 +1696,7 @@ fn parse_kdl(string: &str) -> Option<PuzzleDef> {
                                     );
                                 }
                             },
-                            Some(real) => match (strip_number_end(real)) {
+                            Some(real) => match strip_number_end(real) {
                                 None => {
                                     extend = invert_compound_turn(&compounds[real]);
                                 }
@@ -1790,7 +1708,7 @@ fn parse_kdl(string: &str) -> Option<PuzzleDef> {
                                 }
                             },
                         }
-                        for mut compound_add in &mut compound_adds {
+                        for compound_add in &mut compound_adds {
                             compound_add.extend(extend.clone());
                         }
                     }
@@ -1829,7 +1747,7 @@ fn parse_kdl(string: &str) -> Option<PuzzleDef> {
                                 );
                             }
                         },
-                        Some(real) => match (strip_number_end(real)) {
+                        Some(real) => match strip_number_end(real) {
                             None => {
                                 extend = invert_compound_turn(&compounds[real]);
                             }
@@ -1886,7 +1804,7 @@ fn parse_kdl(string: &str) -> Option<PuzzleDef> {
 
 fn write_to_file(def: &String, stack: &Vec<String>, path: &str) -> Result<(), std::io::Error> {
     let mut buffer = OpenOptions::new().write(true).create(true).open(path)?;
-    buffer.write(get_puzzle_string(def.clone(), stack).as_str().as_bytes());
+    buffer.write(get_puzzle_string(def.clone(), stack).as_str().as_bytes())?;
     Ok(())
 }
 
@@ -1897,11 +1815,9 @@ fn main() -> eframe::Result {
     let puzzle_data = load_puzzle_and_def_from_file("Puzzles/Definitions/geranium.kdl").unwrap();
     let mut puzzle = puzzle_data.0;
     let mut def_string = puzzle_data.1;
-    let mut data = DataHandler {
-        defs: HashMap::new(),
-    };
     let mut def_path: String = String::from("geranium");
     let mut log_path: String = String::from("geranium");
+    let mut curr_msg = String::new();
     // data.add_from_tuple("Diamond", (1.0, 1.0, 4, 4, 250));
     // data.add_from_tuple("Nightmare", (0.70, 0.57, 10, 10, 500));
     // data.add_from_tuple("Pyramid", (0.70, 0.57, 15, 5, 500));
@@ -1913,12 +1829,9 @@ fn main() -> eframe::Result {
     // data.add_from_tuple("Stars", (0.80, 0.70, 5, 5, 500));
     // data.add_from_tuple("Slivers", (0.92, 0.61, 5, 5, 500));
     let mut animation_speed = ANIMATION_SPEED;
-    let mut rng = rand::rng();
     let mut last_frame_time = std::time::Instant::now();
     let mut outline_width: f32 = 5.0;
-    let mut detail = 50.0;
-    let left_x = -0.2;
-    let right_x = 0.8;
+    let mut detail = DETAIL;
     let mut scale_factor = SCALE_FACTOR;
     let mut offset = vec2_f64(0.0, 0.0);
     let mut cut_on_turn = false;
@@ -1968,17 +1881,28 @@ fn main() -> eframe::Result {
             ui.label("Log File Path");
             ui.add(egui::TextEdit::singleline(&mut log_path));
             if ui.add(egui::Button::new("SAVE")).clicked() {
-                write_to_file(
+                curr_msg = match write_to_file(
                     &def_string,
                     &puzzle.stack,
                     &(String::from("Puzzles/Logs/") + &log_path + ".kdl"),
-                );
+                ) {
+                    Ok(()) => String::new(),
+                    Err(err) => err.to_string(),
+                }
             }
             if ui.add(egui::Button::new("LOAD DEF")).clicked() {
-                (puzzle, def_string) = load_puzzle_and_def_from_file(
+                (puzzle, def_string) = match load_puzzle_and_def_from_file(
                     &(String::from("Puzzles/Definitions/") + &def_path + ".kdl").as_str(),
-                )
-                .unwrap_or((puzzle.clone(), def_string.clone()));
+                ) {
+                    None => {
+                        curr_msg = String::from("Failed to load puzzle!");
+                        (puzzle.clone(), def_string.clone())
+                    }
+                    Some(data) => {
+                        curr_msg = String::from("Loaded Successfully!");
+                        data
+                    }
+                }
             }
             if ui.add(egui::Button::new("LOAD LOG")).clicked() {
                 (puzzle, def_string) = load_puzzle_and_def_from_file(
@@ -1999,13 +1923,16 @@ fn main() -> eframe::Result {
             ui.label(String::from("Name: ") + &puzzle.name.clone());
             ui.label(String::from("Authors: ") + &puzzle.authors.join(","));
             ui.label(puzzle.pieces.len().to_string() + " pieces");
+            if !curr_msg.is_empty() {
+                ui.label(&curr_msg);
+            }
             if puzzle.solved {
                 ui.label("Solved!");
             }
-            let cor_rect = (Rect {
+            let cor_rect = Rect {
                 min: pos2(180.0, 0.0),
                 max: pos2(rect.width(), rect.height()),
-            });
+            };
             // dbg!((puzzle.turns[1].circle.center).to_pos2());
             if puzzle.animation_offset.angle != 0.0 {
                 ui.ctx().request_repaint();
