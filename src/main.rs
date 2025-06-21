@@ -1695,6 +1695,7 @@ fn parse_kdl(string: &str) -> Option<PuzzleDef> {
     let doc: KdlDocument = string.parse().expect("FAILED TO PARSE KDL");
     let mut circles: HashMap<&str, Circle> = HashMap::new();
     let mut twists: HashMap<&str, Turn> = HashMap::new();
+    let mut real_twists: HashMap<&str, Turn> = HashMap::new();
     let mut colors: HashMap<&str, Color32> = HashMap::new();
     let mut compounds: HashMap<&str, Vec<Turn>> = HashMap::new();
     for node in doc.nodes() {
@@ -1732,6 +1733,16 @@ fn parse_kdl(string: &str) -> Option<PuzzleDef> {
                                 / (turn.entries()[1].value().as_integer()? as f64),
                         },
                     );
+                    if turn.entries().len() == 2 {
+                        real_twists.insert(
+                            turn.name().value(),
+                            Turn {
+                                circle: circles[turn.entries()[0].value().as_string()?],
+                                angle: -2.0 * PI as f64
+                                    / (turn.entries()[1].value().as_integer()? as f64),
+                            },
+                        );
+                    }
                     compounds.insert(
                         turn.name().value(),
                         vec![Turn {
@@ -1743,15 +1754,13 @@ fn parse_kdl(string: &str) -> Option<PuzzleDef> {
                 }
             }
             "compounds" => {
-                let mut compound_add: Vec<Turn> = Vec::new();
+                let mut compound_adds: Vec<Vec<Turn>> = vec![Vec::new()];
                 let mut extend = Vec::new();
                 for compound in node.children()?.nodes() {
                     for val in compound.entries() {
                         match val.value().as_string()?.strip_suffix("'") {
                             None => match strip_number_end(val.value().as_string()?) {
-                                None => {
-                                    extend = compounds[val.value().as_string()?].clone();
-                                }
+                                None => extend = compounds[val.value().as_string()?].clone(),
                                 Some(real) => {
                                     extend = multiply_turns(
                                         real.1.parse::<isize>().unwrap(),
@@ -1771,21 +1780,38 @@ fn parse_kdl(string: &str) -> Option<PuzzleDef> {
                                 }
                             },
                         }
-                        compound_add.extend(extend);
+                        for mut compound_add in &mut compound_adds {
+                            compound_add.extend(extend.clone());
+                        }
                     }
-                    compounds.insert(compound.name().value(), compound_add.clone());
+                    for compound_add in &compound_adds {
+                        compounds.insert(compound.name().value(), compound_add.clone());
+                    }
                 }
             }
 
             "cut" => {
-                let mut turns = Vec::new();
+                let mut turn_seqs = vec![Vec::new()];
                 let mut extend = Vec::new();
                 for val in node.entries() {
                     match val.value().as_string()?.strip_suffix("'") {
                         None => match strip_number_end(val.value().as_string()?) {
-                            None => {
-                                extend = compounds[val.value().as_string()?].clone();
-                            }
+                            None => match val.value().as_string()?.strip_suffix("*") {
+                                None => extend = compounds[val.value().as_string()?].clone(),
+                                Some(real) => {
+                                    let turn = twists[real];
+                                    let number = ((2.0 * PI as f64) / turn.angle.abs()) as isize;
+                                    let mut new_adds = Vec::new();
+                                    for add in &turn_seqs {
+                                        for i in 1..number {
+                                            let mut new_add = add.clone();
+                                            new_add.push(i * turn);
+                                            new_adds.push(new_add);
+                                        }
+                                    }
+                                    turn_seqs.extend(new_adds);
+                                }
+                            },
                             Some(real) => {
                                 extend = multiply_turns(
                                     real.1.parse::<isize>().unwrap(),
@@ -1805,9 +1831,13 @@ fn parse_kdl(string: &str) -> Option<PuzzleDef> {
                             }
                         },
                     }
-                    turns.extend(extend);
+                    for turns in &mut turn_seqs {
+                        turns.extend(extend.clone());
+                    }
                 }
-                def.cuts.push(turns);
+                for turns in &turn_seqs {
+                    def.cuts.push(turns.clone());
+                }
             }
             "colors" => {
                 for color in node.children()?.nodes() {
@@ -1836,7 +1866,7 @@ fn parse_kdl(string: &str) -> Option<PuzzleDef> {
             _ => (),
         }
     }
-    for turn in twists {
+    for turn in real_twists {
         def.turns.insert(String::from(turn.0), turn.1);
         def.turns
             .insert(String::from(turn.0) + "'", turn.1.inverse());
@@ -1931,18 +1961,18 @@ fn main() -> eframe::Result {
                 write_to_file(
                     &def_string,
                     &puzzle.stack,
-                    &(String::from("Puzzles/Logs") + &log_path + ".kdl"),
+                    &(String::from("Puzzles/Logs/") + &log_path + ".kdl"),
                 );
             }
             if ui.add(egui::Button::new("LOAD DEF")).clicked() {
                 (puzzle, def_string) = load_puzzle_and_def_from_file(
-                    &(String::from("Puzzles/Definitions") + &def_path + ".kdl").as_str(),
+                    &(String::from("Puzzles/Definitions/") + &def_path + ".kdl").as_str(),
                 )
                 .unwrap_or((puzzle.clone(), def_string.clone()));
             }
             if ui.add(egui::Button::new("LOAD LOG")).clicked() {
                 (puzzle, def_string) = load_puzzle_and_def_from_file(
-                    &(String::from("Puzzles/Logs") + &log_path + ".kdl").as_str(),
+                    &(String::from("Puzzles/Logs/") + &log_path + ".kdl").as_str(),
                 )
                 .unwrap_or((puzzle.clone(), def_string.clone()));
             }
