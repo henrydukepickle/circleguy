@@ -1646,7 +1646,17 @@ fn puzzle_from_string(string: String) -> Option<Puzzle> {
 }
 
 fn load_puzzle_and_def_from_file(path: &str) -> Option<(Puzzle, String)> {
-    let file = std::fs::read_to_string(path);
+    let curr_path = String::from(
+        std::env::current_exe()
+            .unwrap()
+            .into_os_string()
+            .into_string()
+            .unwrap()
+            .split("target")
+            .into_iter()
+            .collect::<Vec<&str>>()[0],
+    );
+    let file = std::fs::read_to_string(curr_path + path);
     if file.is_err() {
         return None;
     }
