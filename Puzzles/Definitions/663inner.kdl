@@ -1,0 +1,18 @@
+name "663 Inner"
+author "Henry Pickle"
+circles {
+	R x=0.5 y=0.5 r=0.8
+	O x=-0.5 y=0.5 r=0.8
+	I x=-0.5 y=0.5 r=0.65
+}
+base R O I
+twists {
+	R R 6
+	O O 6
+	I I 3
+}
+cut R* O* R* I
+color BLUE O R
+color GREEN R !O
+color YELLOW I !R
+color RED O !I !R
