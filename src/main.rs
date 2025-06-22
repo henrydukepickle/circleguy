@@ -1895,13 +1895,40 @@ fn write_to_file(def: &String, stack: &Vec<String>, path: &str) -> Result<(), st
 fn get_puzzle_string(def: String, stack: &Vec<String>) -> String {
     return def + "\n --LOG FILE \n" + &stack.join(",");
 }
+
+struct App {
+    puzzle: Puzzle,
+    def_string: String,
+    def_path: String,
+    log_path: String,
+    curr_msg: String,
+    animation_speed: f64,
+    last_frame_time: std::time::Instant,
+    outline_width: f32,
+    detail: f64,
+    scale_factor: f32,
+    offset: Vec2F64,
+    cut_on_turn: bool,
+}
 fn main() -> eframe::Result {
-    let puzzle_data = load_puzzle_and_def_from_file("Puzzles/Definitions/666triangle.kdl").unwrap();
-    let mut puzzle = puzzle_data.0;
-    let mut def_string = puzzle_data.1;
-    let mut def_path: String = String::from("geranium");
-    let mut log_path: String = String::from("geranium");
-    let mut curr_msg = String::new();
+    let mut app = App {
+        puzzle: load_puzzle_and_def_from_file("Puzzles/Definitions/666triangle.kdl")
+            .unwrap()
+            .0,
+        def_string: load_puzzle_and_def_from_file("Puzzles/Definitions/666triangle.kdl")
+            .unwrap()
+            .1,
+        def_path: String::from("geranium"),
+        log_path: String::from("geranium"),
+        curr_msg: String::new(),
+        animation_speed: ANIMATION_SPEED,
+        last_frame_time: std::time::Instant::now(),
+        outline_width: 5.0,
+        detail: DETAIL,
+        scale_factor: SCALE_FACTOR,
+        offset: vec2_f64(0.0, 0.0),
+        cut_on_turn: false,
+    };
     // data.add_from_tuple("Diamond", (1.0, 1.0, 4, 4, 250));
     // data.add_from_tuple("Nightmare", (0.70, 0.57, 10, 10, 500));
     // data.add_from_tuple("Pyramid", (0.70, 0.57, 15, 5, 500));
@@ -1912,94 +1939,100 @@ fn main() -> eframe::Result {
     // data.add_from_tuple("Heptagons", (0.80, 0.65, 7, 7, 500));
     // data.add_from_tuple("Stars", (0.80, 0.70, 5, 5, 500));
     // data.add_from_tuple("Slivers", (0.92, 0.61, 5, 5, 500));
-    let mut animation_speed = ANIMATION_SPEED;
-    let mut last_frame_time = std::time::Instant::now();
-    let mut outline_width: f32 = 5.0;
-    let mut detail = DETAIL;
-    let mut scale_factor = SCALE_FACTOR;
-    let mut offset = vec2_f64(0.0, 0.0);
-    let mut cut_on_turn = false;
     // let mut puzzle = load(def.clone(), &mut def);
     eframe::run_simple_native("circleguy", Default::default(), move |ctx, _frame| {
         egui::CentralPanel::default().show(ctx, |ui| {
             let rect = ui.available_rect_before_wrap();
-            let good_detail = 1.0 / (detail);
-            puzzle.render(ui, &rect, good_detail, outline_width, scale_factor, offset);
+            let good_detail = 1.0 / (app.detail);
+            app.puzzle.render(
+                ui,
+                &rect,
+                good_detail,
+                app.outline_width,
+                app.scale_factor,
+                app.offset,
+            );
 
-            let delta_time = last_frame_time.elapsed();
-            last_frame_time = std::time::Instant::now();
-            if puzzle.animation_offset.angle >= 0.0 {
-                puzzle.animation_offset.angle = f64::max(
-                    puzzle.animation_offset.angle - (delta_time.as_secs_f64() * animation_speed),
+            let delta_time = app.last_frame_time.elapsed();
+            app.last_frame_time = std::time::Instant::now();
+            if app.puzzle.animation_offset.angle >= 0.0 {
+                app.puzzle.animation_offset.angle = f64::max(
+                    app.puzzle.animation_offset.angle
+                        - (delta_time.as_secs_f64() * app.animation_speed),
                     0.0,
                 );
             } else {
-                puzzle.animation_offset.angle = f64::min(
-                    puzzle.animation_offset.angle + (delta_time.as_secs_f64() * animation_speed),
+                app.puzzle.animation_offset.angle = f64::min(
+                    app.puzzle.animation_offset.angle
+                        + (delta_time.as_secs_f64() * app.animation_speed),
                     0.0,
                 );
             }
-            if aleq(25.0, animation_speed) {
-                puzzle.animation_offset = NONE_TURN;
+            if aleq(25.0, app.animation_speed) {
+                app.puzzle.animation_offset = NONE_TURN;
             }
             if ui.add(egui::Button::new("UNDO")).clicked()
                 || ui.input(|i| i.key_pressed(egui::Key::Z))
             {
-                puzzle.undo();
+                app.puzzle.undo();
             }
             if ui.add(egui::Button::new("SCRAMBLE")).clicked() {
-                puzzle.scramble(cut_on_turn);
+                app.puzzle.scramble(app.cut_on_turn);
             }
             if ui.add(egui::Button::new("RESET")).clicked() {
-                puzzle.reset();
+                app.puzzle.reset();
             }
-            ui.add(egui::Slider::new(&mut outline_width, (0.0)..=(10.0)).text("Outline Width"));
-            ui.add(egui::Slider::new(&mut detail, (1.0)..=(100.0)).text("Detail"));
-            ui.add(egui::Slider::new(&mut animation_speed, (1.0)..=(25.0)).text("Animation Speed"));
-            ui.add(egui::Slider::new(&mut scale_factor, (10.0)..=(5000.0)).text("Rendering Size"));
+            ui.add(egui::Slider::new(&mut app.outline_width, (0.0)..=(10.0)).text("Outline Width"));
+            ui.add(egui::Slider::new(&mut app.detail, (1.0)..=(100.0)).text("Detail"));
+            ui.add(
+                egui::Slider::new(&mut app.animation_speed, (1.0)..=(25.0)).text("Animation Speed"),
+            );
+            ui.add(
+                egui::Slider::new(&mut app.scale_factor, (10.0)..=(5000.0)).text("Rendering Size"),
+            );
             // ui.add(egui::Slider::new(&mut def.r_left, (0.01)..=(2.0)).text("Left Radius"));
             // ui.add(egui::Slider::new(&mut def.n_left, 2..=50).text("Left Number"));
             // ui.add(egui::Slider::new(&mut def.r_right, (0.01)..=(2.0)).text("Right Radius"));
             // ui.add(egui::Slider::new(&mut def.n_right, 2..=50).text("Right Number"));
-            ui.add(egui::Slider::new(&mut offset.x, (-2.0)..=(2.0)).text("Move X"));
-            ui.add(egui::Slider::new(&mut offset.y, (-2.0)..=(2.0)).text("Move Y"));
+            ui.add(egui::Slider::new(&mut app.offset.x, (-2.0)..=(2.0)).text("Move X"));
+            ui.add(egui::Slider::new(&mut app.offset.y, (-2.0)..=(2.0)).text("Move Y"));
             // ui.add(egui::Slider::new(&mut def.depth, 0..=5000).text("Scramble Depth"));
             if ui.add(egui::Button::new("RESET VIEW")).clicked() {
-                (scale_factor, offset) = (SCALE_FACTOR, vec2_f64(0.0, 0.0))
+                (app.scale_factor, app.offset) = (SCALE_FACTOR, vec2_f64(0.0, 0.0))
             }
             ui.label("Definition Path");
-            ui.add(egui::TextEdit::singleline(&mut def_path));
+            ui.add(egui::TextEdit::singleline(&mut app.def_path));
             ui.label("Log File Path");
-            ui.add(egui::TextEdit::singleline(&mut log_path));
+            ui.add(egui::TextEdit::singleline(&mut app.log_path));
             if ui.add(egui::Button::new("SAVE")).clicked() {
-                curr_msg = match write_to_file(
-                    &def_string,
-                    &puzzle.stack,
-                    &(String::from("Puzzles/Logs/") + &log_path + ".kdl"),
+                app.curr_msg = match write_to_file(
+                    &app.def_string,
+                    &app.puzzle.stack,
+                    &(String::from("Puzzles/Logs/") + &app.log_path + ".kdl"),
                 ) {
                     Ok(()) => String::new(),
                     Err(err) => err.to_string(),
                 }
             }
             if ui.add(egui::Button::new("LOAD DEF")).clicked() {
-                (puzzle, def_string) = match load_puzzle_and_def_from_file(
-                    &(String::from("Puzzles/Definitions/") + &def_path + ".kdl").as_str(),
+                (app.puzzle, app.def_string) = match load_puzzle_and_def_from_file(
+                    &(String::from("Puzzles/Definitions/") + &app.def_path + ".kdl").as_str(),
                 ) {
                     None => {
-                        curr_msg = String::from("Failed to load puzzle!");
-                        (puzzle.clone(), def_string.clone())
+                        app.curr_msg = String::from("Failed to load puzzle!");
+                        (app.puzzle.clone(), app.def_string.clone())
                     }
                     Some(data) => {
-                        curr_msg = String::from("Loaded Successfully!");
+                        app.curr_msg = String::from("Loaded Successfully!");
                         data
                     }
                 }
             }
             if ui.add(egui::Button::new("LOAD LOG")).clicked() {
-                (puzzle, def_string) = load_puzzle_and_def_from_file(
-                    &(String::from("Puzzles/Logs/") + &log_path + ".kdl").as_str(),
+                (app.puzzle, app.def_string) = load_puzzle_and_def_from_file(
+                    &(String::from("Puzzles/Logs/") + &app.log_path + ".kdl").as_str(),
                 )
-                .unwrap_or((puzzle.clone(), def_string.clone()));
+                .unwrap_or((app.puzzle.clone(), app.def_string.clone()));
             }
             // if ui.add(egui::Button::new("GENERATE")).clicked()
             //     && alneq(1.0, def.r_left + def.r_right)
@@ -2010,14 +2043,14 @@ fn main() -> eframe::Result {
             // if new_p.is_some() {
             //     puzzle = load(new_p.unwrap(), &mut def);
             // }
-            ui.checkbox(&mut cut_on_turn, "Cut on turn?");
-            ui.label(String::from("Name: ") + &puzzle.name.clone());
-            ui.label(String::from("Authors: ") + &puzzle.authors.join(","));
-            ui.label(puzzle.pieces.len().to_string() + " pieces");
-            if !curr_msg.is_empty() {
-                ui.label(&curr_msg);
+            ui.checkbox(&mut app.cut_on_turn, "Cut on turn?");
+            ui.label(String::from("Name: ") + &app.puzzle.name.clone());
+            ui.label(String::from("Authors: ") + &app.puzzle.authors.join(","));
+            ui.label(app.puzzle.pieces.len().to_string() + " pieces");
+            if !app.curr_msg.is_empty() {
+                ui.label(&app.curr_msg);
             }
-            if puzzle.solved {
+            if app.puzzle.solved {
                 ui.label("Solved!");
             }
             let cor_rect = Rect {
@@ -2025,7 +2058,7 @@ fn main() -> eframe::Result {
                 max: pos2(rect.width(), rect.height()),
             };
             // dbg!((puzzle.turns[1].circle.center).to_pos2());
-            if puzzle.animation_offset.angle != 0.0 {
+            if app.puzzle.animation_offset.angle != 0.0 {
                 ui.ctx().request_repaint();
             }
             let r = ui.interact(cor_rect, egui::Id::new(19), egui::Sense::all());
@@ -2045,39 +2078,43 @@ fn main() -> eframe::Result {
                     .sum::<i32>()
             });
             if r.clicked() {
-                puzzle.process_click(
+                app.puzzle.process_click(
                     &rect,
                     r.interact_pointer_pos().unwrap(),
                     true,
-                    scale_factor,
-                    offset,
-                    cut_on_turn,
+                    app.scale_factor,
+                    app.offset,
+                    app.cut_on_turn,
                 );
             }
             if r.clicked_by(egui::PointerButton::Secondary) {
-                puzzle.process_click(
+                app.puzzle.process_click(
                     &rect,
                     r.interact_pointer_pos().unwrap(),
                     false,
-                    scale_factor,
-                    offset,
-                    cut_on_turn,
+                    app.scale_factor,
+                    app.offset,
+                    app.cut_on_turn,
                 );
             }
             if r.hover_pos().is_some() {
-                let hovered_circle =
-                    puzzle.get_hovered(&rect, r.hover_pos().unwrap(), scale_factor, offset);
+                let hovered_circle = app.puzzle.get_hovered(
+                    &rect,
+                    r.hover_pos().unwrap(),
+                    app.scale_factor,
+                    app.offset,
+                );
                 if hovered_circle.radius > 0.0 {
-                    hovered_circle.draw(ui, &rect, scale_factor, offset);
+                    hovered_circle.draw(ui, &rect, app.scale_factor, app.offset);
                 }
                 if scroll != 0 {
-                    puzzle.process_click(
+                    app.puzzle.process_click(
                         &rect,
                         r.hover_pos().unwrap(),
                         scroll > 0,
-                        scale_factor,
-                        offset,
-                        cut_on_turn,
+                        app.scale_factor,
+                        app.offset,
+                        app.cut_on_turn,
                     );
                 }
             }
