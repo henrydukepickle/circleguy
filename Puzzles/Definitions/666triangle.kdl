@@ -18,7 +18,3 @@ color RED A !B !C
 color GREEN B !A !C
 color BLUE C !A !B
 color YELLOW A B C
-twist A B'
-twist A B
-twist B
-undo *

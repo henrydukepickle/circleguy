@@ -1,0 +1,36 @@
+name "10 10 10 10 10 Geranium"
+author "Henry Pickle"
+circles {
+	A x=1.0 y=0.0 r=1.4
+	B x=0.3090169 y=0.9510565 r=1.4
+	C x=-0.8090169 y=0.5877852 r=1.4
+	D x=-0.8090169 y=-0.5877852 r=1.4
+	E x=0.3090169 y=-0.9510565 r=1.4
+	SYM x=0.0 y=0.0 r=10.0
+}
+base A B C D E
+twists {
+	A A 10
+	B B 10
+	C C 10
+	D D 10
+	E E 10
+	SYM SYM 5 !
+}
+cut SYM* A3' C3 A3 C3' D
+cut SYM* A3 D3' A3' D3 C
+cut SYM* A4' D3' A C
+cut SYM* A4 C3 A' D
+cut SYM* A' D3' A C
+colors {
+	RED 255 0 0
+	GREEN 0 255 0
+	BLUE 0 0 255
+	PURPLE 120 0 120
+	YELLOW 255 255 0
+}
+color RED A !E
+color BLUE B !A
+color GREEN C !B
+color PURPLE D !C
+color YELLOW E !D

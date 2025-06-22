@@ -39,7 +39,7 @@ const NONE_TURN: Turn = Turn {
 
 const DETAIL_FACTOR: f64 = 3.0; // the amount more detailed the outlines are than the interiors
 
-fn get_def_color_hash() -> HashMap<String, Color32> {
+fn get_default_color_hash() -> HashMap<String, Color32> {
     let mut hash = HashMap::new();
     hash.insert("RED".to_string(), Color32::RED);
     hash.insert("BLUE".to_string(), Color32::BLUE);
@@ -1637,7 +1637,7 @@ fn parse_kdl(string: &str) -> Option<Puzzle> {
     let mut circles: HashMap<&str, Circle> = HashMap::new();
     let mut twists: HashMap<&str, Turn> = HashMap::new();
     let mut real_twists: HashMap<&str, Turn> = HashMap::new();
-    let mut colors: HashMap<String, Color32> = get_def_color_hash();
+    let mut colors: HashMap<String, Color32> = get_default_color_hash();
     let mut compounds: HashMap<&str, Vec<Turn>> = HashMap::new();
     for node in doc.nodes() {
         match node.name().value() {
@@ -1912,14 +1912,14 @@ struct App {
 }
 fn main() -> eframe::Result {
     let mut app = App {
-        puzzle: load_puzzle_and_def_from_file("Puzzles/Definitions/666triangle.kdl")
+        puzzle: load_puzzle_and_def_from_file("Puzzles/Definitions/1010101010geranium.kdl")
             .unwrap()
             .0,
-        def_string: load_puzzle_and_def_from_file("Puzzles/Definitions/666triangle.kdl")
+        def_string: load_puzzle_and_def_from_file("Puzzles/Definitions/1010101010geranium.kdl")
             .unwrap()
             .1,
-        def_path: String::from("geranium"),
-        log_path: String::from("geranium"),
+        def_path: String::from("1010101010geranium"),
+        log_path: String::from("1010101010geranium"),
         curr_msg: String::new(),
         animation_speed: ANIMATION_SPEED,
         last_frame_time: std::time::Instant::now(),
