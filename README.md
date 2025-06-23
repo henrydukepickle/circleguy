@@ -8,7 +8,7 @@ name "puzzle"
 
 the other type is written over multiple lines all enclosed in one brace. these commands are used to define several variables at once, for instance:
 
-colors {
+colors {  
 	RED 255 0 0  
 	GREEN 0 255 0  
 }
@@ -38,7 +38,7 @@ all three values are floats (don't forget to add a decimal, even if your floats 
 
 example:
 
-circles {
+circles {  
 	A x=-0.5 y=0.0 r=1.0  
 	B x=0.0 y=0.0 r=1.0  
 	C x=0.5 y=0.0 r=1.0  
@@ -68,7 +68,7 @@ if you want to exclude a twist from being usable, add a "!" as an extra argument
 
 example: 
 
-twists {
+twists {  
 	A A 4  
 	B B 4  
 	C C 4  
@@ -87,7 +87,7 @@ as with twists { }, avoid using "'" or numbers in your names.
 
 example:
 
-compounds {
+compounds {  
 	COMM_AB A B A' B'  
 	COMM_BC B C B' C'  
 	SUPER_COMM COMM_AB COMM_BC COMM_AB' COMM_BC'  
@@ -153,7 +153,7 @@ colors { } : define your own colors using integer RGB values.
 
 example:
 
-colors {
+colors {  
 	RED 255 0 0  
 	GREEN 0 255 0  
 	BLUE 0 0 255  
