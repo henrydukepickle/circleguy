@@ -1,4 +1,4 @@
-Puzzle Definition Format
+# Puzzle Definition Format
 
 puzzles are defined using the KDL document format. each definition consists of a sequence of commands in an order.
 
