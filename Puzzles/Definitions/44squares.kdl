@@ -1,0 +1,15 @@
+name "44 Squares"
+author "Henry Pickle"
+circles {
+	A x=-0.5 y=0.0 r=0.8
+	B x=0.5 y=0.0 r=0.8
+}
+base A B
+twists {
+	A A 4
+	B B 4
+}
+cut A* B* A* B
+color GREEN A !B
+color BLUE A B
+color RED B !A
