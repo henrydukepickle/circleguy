@@ -11,6 +11,7 @@ use egui::{
     pos2,
 };
 
+#[cfg(not(target_arch = "wasm32"))]
 const DEV: bool = true;
 
 const DETAIL: f64 = 50.0;
@@ -584,7 +585,7 @@ impl Arc {
         let mut return_points = Vec::new();
         let points = circle_points_at_y(self.circle, point.y);
         for circ_point in &points {
-            if (self.contains_properly(*circ_point) || aeq_pos(*circ_point, self.start)) //check if the 
+            if (self.contains_properly(*circ_point) || aeq_pos(*circ_point, self.start)) //check if the
                 && alneq(circ_point.x, point.x)
             {
                 return_points.push(*circ_point);
@@ -1563,7 +1564,8 @@ fn puzzle_from_string(string: String) -> Option<Puzzle> {
     return Some(puzzle);
 }
 
-fn load_puzzle_and_def_from_file(path: &str) -> Option<(Puzzle, String)> {
+#[cfg(not(target_arch = "wasm32"))]
+fn read_file_to_string(path: &str) -> std::io::Result<String> {
     let curr_path = match DEV {
         false => String::from(
             std::env::current_exe()
@@ -1577,11 +1579,24 @@ fn load_puzzle_and_def_from_file(path: &str) -> Option<(Puzzle, String)> {
         ),
         true => String::new(),
     };
-    let file = std::fs::read_to_string(curr_path + path);
-    if file.is_err() {
-        return None;
-    }
-    let contents = file.unwrap();
+    std::fs::read_to_string(curr_path + path)
+}
+
+#[cfg(target_arch = "wasm32")]
+fn read_file_to_string(path: &str) -> Result<String, &'static str> {
+    static PUZZLE_DEFINITIONS: include_dir::Dir<'_> =
+        include_dir::include_dir!("$CARGO_MANIFEST_DIR/Puzzles");
+    let path = path.strip_prefix("Puzzles/").unwrap_or(path);
+    Ok(PUZZLE_DEFINITIONS
+        .get_file(path)
+        .ok_or("no such file")?
+        .contents_utf8()
+        .ok_or("invalid UTF-8")?
+        .to_string())
+}
+
+fn load_puzzle_and_def_from_file(path: &str) -> Option<(Puzzle, String)> {
+    let contents = read_file_to_string(path).ok()?;
     return Some((
         puzzle_from_string(contents.clone())?,
         String::from(
@@ -1903,136 +1918,132 @@ struct App {
     log_path: String,
     curr_msg: String,
     animation_speed: f64,
-    last_frame_time: std::time::Instant,
+    last_frame_time: web_time::Instant,
     outline_width: f32,
     detail: f64,
     scale_factor: f32,
     offset: Vec2F64,
     cut_on_turn: bool,
 }
-fn main() -> eframe::Result {
-    let mut app = App {
-        puzzle: load_puzzle_and_def_from_file("Puzzles/Definitions/1010101010geranium.kdl")
-            .unwrap()
-            .0,
-        def_string: load_puzzle_and_def_from_file("Puzzles/Definitions/1010101010geranium.kdl")
-            .unwrap()
-            .1,
-        def_path: String::from("1010101010geranium"),
-        log_path: String::from("1010101010geranium"),
-        curr_msg: String::new(),
-        animation_speed: ANIMATION_SPEED,
-        last_frame_time: std::time::Instant::now(),
-        outline_width: 5.0,
-        detail: DETAIL,
-        scale_factor: SCALE_FACTOR,
-        offset: vec2_f64(0.0, 0.0),
-        cut_on_turn: false,
-    };
-    // data.add_from_tuple("Diamond", (1.0, 1.0, 4, 4, 250));
-    // data.add_from_tuple("Nightmare", (0.70, 0.57, 10, 10, 500));
-    // data.add_from_tuple("Pyramid", (0.70, 0.57, 15, 5, 500));
-    // data.add_from_tuple("Decagons", (0.8, 0.8, 5, 5, 500));
-    // data.add_from_tuple("Classic", (0.70, 0.70, 5, 3, 250));
-    // data.add_from_tuple("Square", (0.8, 0.8, 4, 4, 250));
-    // data.add_from_tuple("Octogons", (0.81, 0.61, 8, 8, 500));
-    // data.add_from_tuple("Heptagons", (0.80, 0.65, 7, 7, 500));
-    // data.add_from_tuple("Stars", (0.80, 0.70, 5, 5, 500));
-    // data.add_from_tuple("Slivers", (0.92, 0.61, 5, 5, 500));
-    // let mut puzzle = load(def.clone(), &mut def);
-    eframe::run_simple_native("circleguy", Default::default(), move |ctx, _frame| {
+impl App {
+    fn new(_cc: &eframe::CreationContext<'_>) -> Self {
+        Self {
+            puzzle: load_puzzle_and_def_from_file("Puzzles/Definitions/1010101010geranium.kdl")
+                .unwrap()
+                .0,
+            def_string: load_puzzle_and_def_from_file("Puzzles/Definitions/1010101010geranium.kdl")
+                .unwrap()
+                .1,
+            def_path: String::from("1010101010geranium"),
+            log_path: String::from("1010101010geranium"),
+            curr_msg: String::new(),
+            animation_speed: ANIMATION_SPEED,
+            last_frame_time: web_time::Instant::now(),
+            outline_width: 5.0,
+            detail: DETAIL,
+            scale_factor: SCALE_FACTOR,
+            offset: vec2_f64(0.0, 0.0),
+            cut_on_turn: false,
+        }
+    }
+}
+impl eframe::App for App {
+    fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         egui::CentralPanel::default().show(ctx, |ui| {
             let rect = ui.available_rect_before_wrap();
-            let good_detail = 1.0 / (app.detail);
-            app.puzzle.render(
+            let good_detail = 1.0 / (self.detail);
+            self.puzzle.render(
                 ui,
                 &rect,
                 good_detail,
-                app.outline_width,
-                app.scale_factor,
-                app.offset,
+                self.outline_width,
+                self.scale_factor,
+                self.offset,
             );
 
-            let delta_time = app.last_frame_time.elapsed();
-            app.last_frame_time = std::time::Instant::now();
-            if app.puzzle.animation_offset.angle >= 0.0 {
-                app.puzzle.animation_offset.angle = f64::max(
-                    app.puzzle.animation_offset.angle
-                        - (delta_time.as_secs_f64() * app.animation_speed),
+            let delta_time = self.last_frame_time.elapsed();
+            self.last_frame_time = web_time::Instant::now();
+            if self.puzzle.animation_offset.angle >= 0.0 {
+                self.puzzle.animation_offset.angle = f64::max(
+                    self.puzzle.animation_offset.angle
+                        - (delta_time.as_secs_f64() * self.animation_speed),
                     0.0,
                 );
             } else {
-                app.puzzle.animation_offset.angle = f64::min(
-                    app.puzzle.animation_offset.angle
-                        + (delta_time.as_secs_f64() * app.animation_speed),
+                self.puzzle.animation_offset.angle = f64::min(
+                    self.puzzle.animation_offset.angle
+                        + (delta_time.as_secs_f64() * self.animation_speed),
                     0.0,
                 );
             }
-            if aleq(25.0, app.animation_speed) {
-                app.puzzle.animation_offset = NONE_TURN;
+            if aleq(25.0, self.animation_speed) {
+                self.puzzle.animation_offset = NONE_TURN;
             }
             if ui.add(egui::Button::new("UNDO")).clicked()
                 || ui.input(|i| i.key_pressed(egui::Key::Z))
             {
-                app.puzzle.undo();
+                self.puzzle.undo();
             }
             if ui.add(egui::Button::new("SCRAMBLE")).clicked() {
-                app.puzzle.scramble(app.cut_on_turn);
+                self.puzzle.scramble(self.cut_on_turn);
             }
             if ui.add(egui::Button::new("RESET")).clicked() {
-                app.puzzle.reset();
+                self.puzzle.reset();
             }
-            ui.add(egui::Slider::new(&mut app.outline_width, (0.0)..=(10.0)).text("Outline Width"));
-            ui.add(egui::Slider::new(&mut app.detail, (1.0)..=(100.0)).text("Detail"));
             ui.add(
-                egui::Slider::new(&mut app.animation_speed, (1.0)..=(25.0)).text("Animation Speed"),
+                egui::Slider::new(&mut self.outline_width, (0.0)..=(10.0)).text("Outline Width"),
+            );
+            ui.add(egui::Slider::new(&mut self.detail, (1.0)..=(100.0)).text("Detail"));
+            ui.add(
+                egui::Slider::new(&mut self.animation_speed, (1.0)..=(25.0))
+                    .text("Animation Speed"),
             );
             ui.add(
-                egui::Slider::new(&mut app.scale_factor, (10.0)..=(5000.0)).text("Rendering Size"),
+                egui::Slider::new(&mut self.scale_factor, (10.0)..=(5000.0)).text("Rendering Size"),
             );
             // ui.add(egui::Slider::new(&mut def.r_left, (0.01)..=(2.0)).text("Left Radius"));
             // ui.add(egui::Slider::new(&mut def.n_left, 2..=50).text("Left Number"));
             // ui.add(egui::Slider::new(&mut def.r_right, (0.01)..=(2.0)).text("Right Radius"));
             // ui.add(egui::Slider::new(&mut def.n_right, 2..=50).text("Right Number"));
-            ui.add(egui::Slider::new(&mut app.offset.x, (-2.0)..=(2.0)).text("Move X"));
-            ui.add(egui::Slider::new(&mut app.offset.y, (-2.0)..=(2.0)).text("Move Y"));
+            ui.add(egui::Slider::new(&mut self.offset.x, (-2.0)..=(2.0)).text("Move X"));
+            ui.add(egui::Slider::new(&mut self.offset.y, (-2.0)..=(2.0)).text("Move Y"));
             // ui.add(egui::Slider::new(&mut def.depth, 0..=5000).text("Scramble Depth"));
             if ui.add(egui::Button::new("RESET VIEW")).clicked() {
-                (app.scale_factor, app.offset) = (SCALE_FACTOR, vec2_f64(0.0, 0.0))
+                (self.scale_factor, self.offset) = (SCALE_FACTOR, vec2_f64(0.0, 0.0))
             }
             ui.label("Definition Path");
-            ui.add(egui::TextEdit::singleline(&mut app.def_path));
+            ui.add(egui::TextEdit::singleline(&mut self.def_path));
             ui.label("Log File Path");
-            ui.add(egui::TextEdit::singleline(&mut app.log_path));
+            ui.add(egui::TextEdit::singleline(&mut self.log_path));
             if ui.add(egui::Button::new("SAVE")).clicked() {
-                app.curr_msg = match write_to_file(
-                    &app.def_string,
-                    &app.puzzle.stack,
-                    &(String::from("Puzzles/Logs/") + &app.log_path + ".kdl"),
+                self.curr_msg = match write_to_file(
+                    &self.def_string,
+                    &self.puzzle.stack,
+                    &(String::from("Puzzles/Logs/") + &self.log_path + ".kdl"),
                 ) {
                     Ok(()) => String::new(),
                     Err(err) => err.to_string(),
                 }
             }
             if ui.add(egui::Button::new("LOAD DEF")).clicked() {
-                (app.puzzle, app.def_string) = match load_puzzle_and_def_from_file(
-                    &(String::from("Puzzles/Definitions/") + &app.def_path + ".kdl").as_str(),
+                (self.puzzle, self.def_string) = match load_puzzle_and_def_from_file(
+                    &(String::from("Puzzles/Definitions/") + &self.def_path + ".kdl").as_str(),
                 ) {
                     None => {
-                        app.curr_msg = String::from("Failed to load puzzle!");
-                        (app.puzzle.clone(), app.def_string.clone())
+                        self.curr_msg = String::from("Failed to load puzzle!");
+                        (self.puzzle.clone(), self.def_string.clone())
                     }
                     Some(data) => {
-                        app.curr_msg = String::from("Loaded Successfully!");
+                        self.curr_msg = String::from("Loaded Successfully!");
                         data
                     }
                 }
             }
             if ui.add(egui::Button::new("LOAD LOG")).clicked() {
-                (app.puzzle, app.def_string) = load_puzzle_and_def_from_file(
-                    &(String::from("Puzzles/Logs/") + &app.log_path + ".kdl").as_str(),
+                (self.puzzle, self.def_string) = load_puzzle_and_def_from_file(
+                    &(String::from("Puzzles/Logs/") + &self.log_path + ".kdl").as_str(),
                 )
-                .unwrap_or((app.puzzle.clone(), app.def_string.clone()));
+                .unwrap_or((self.puzzle.clone(), self.def_string.clone()));
             }
             // if ui.add(egui::Button::new("GENERATE")).clicked()
             //     && alneq(1.0, def.r_left + def.r_right)
@@ -2043,14 +2054,14 @@ fn main() -> eframe::Result {
             // if new_p.is_some() {
             //     puzzle = load(new_p.unwrap(), &mut def);
             // }
-            ui.checkbox(&mut app.cut_on_turn, "Cut on turn?");
-            ui.label(String::from("Name: ") + &app.puzzle.name.clone());
-            ui.label(String::from("Authors: ") + &app.puzzle.authors.join(","));
-            ui.label(app.puzzle.pieces.len().to_string() + " pieces");
-            if !app.curr_msg.is_empty() {
-                ui.label(&app.curr_msg);
+            ui.checkbox(&mut self.cut_on_turn, "Cut on turn?");
+            ui.label(String::from("Name: ") + &self.puzzle.name.clone());
+            ui.label(String::from("Authors: ") + &self.puzzle.authors.join(","));
+            ui.label(self.puzzle.pieces.len().to_string() + " pieces");
+            if !self.curr_msg.is_empty() {
+                ui.label(&self.curr_msg);
             }
-            if app.puzzle.solved {
+            if self.puzzle.solved {
                 ui.label("Solved!");
             }
             let cor_rect = Rect {
@@ -2058,7 +2069,7 @@ fn main() -> eframe::Result {
                 max: pos2(rect.width(), rect.height()),
             };
             // dbg!((puzzle.turns[1].circle.center).to_pos2());
-            if app.puzzle.animation_offset.angle != 0.0 {
+            if self.puzzle.animation_offset.angle != 0.0 {
                 ui.ctx().request_repaint();
             }
             let r = ui.interact(cor_rect, egui::Id::new(19), egui::Sense::all());
@@ -2078,46 +2089,101 @@ fn main() -> eframe::Result {
                     .sum::<i32>()
             });
             if r.clicked() {
-                app.puzzle.process_click(
+                self.puzzle.process_click(
                     &rect,
                     r.interact_pointer_pos().unwrap(),
                     true,
-                    app.scale_factor,
-                    app.offset,
-                    app.cut_on_turn,
+                    self.scale_factor,
+                    self.offset,
+                    self.cut_on_turn,
                 );
             }
             if r.clicked_by(egui::PointerButton::Secondary) {
-                app.puzzle.process_click(
+                self.puzzle.process_click(
                     &rect,
                     r.interact_pointer_pos().unwrap(),
                     false,
-                    app.scale_factor,
-                    app.offset,
-                    app.cut_on_turn,
+                    self.scale_factor,
+                    self.offset,
+                    self.cut_on_turn,
                 );
             }
             if r.hover_pos().is_some() {
-                let hovered_circle = app.puzzle.get_hovered(
+                let hovered_circle = self.puzzle.get_hovered(
                     &rect,
                     r.hover_pos().unwrap(),
-                    app.scale_factor,
-                    app.offset,
+                    self.scale_factor,
+                    self.offset,
                 );
                 if hovered_circle.radius > 0.0 {
-                    hovered_circle.draw(ui, &rect, app.scale_factor, app.offset);
+                    hovered_circle.draw(ui, &rect, self.scale_factor, self.offset);
                 }
                 if scroll != 0 {
-                    app.puzzle.process_click(
+                    self.puzzle.process_click(
                         &rect,
                         r.hover_pos().unwrap(),
                         scroll > 0,
-                        app.scale_factor,
-                        app.offset,
-                        app.cut_on_turn,
+                        self.scale_factor,
+                        self.offset,
+                        self.cut_on_turn,
                     );
                 }
             }
         });
-    })
+    }
+}
+
+// When compiling natively:
+#[cfg(not(target_arch = "wasm32"))]
+fn main() -> eframe::Result {
+    eframe::run_native(
+        "circleguy",
+        eframe::NativeOptions::default(),
+        Box::new(|cc| Ok(Box::new(App::new(cc)))),
+    )
+}
+
+// When compiling to web using trunk:
+#[cfg(target_arch = "wasm32")]
+fn main() {
+    use eframe::wasm_bindgen::JsCast as _;
+
+    // Redirect `log` message to `console.log` and friends:
+    eframe::WebLogger::init(log::LevelFilter::Debug).ok();
+
+    wasm_bindgen_futures::spawn_local(async {
+        let document = web_sys::window()
+            .expect("No window")
+            .document()
+            .expect("No document");
+
+        let canvas = document
+            .get_element_by_id("the_canvas_id")
+            .expect("Failed to find the_canvas_id")
+            .dyn_into::<web_sys::HtmlCanvasElement>()
+            .expect("the_canvas_id was not a HtmlCanvasElement");
+
+        let start_result = eframe::WebRunner::new()
+            .start(
+                canvas,
+                eframe::WebOptions::default(),
+                Box::new(|cc| Ok(Box::new(App::new(cc)))),
+            )
+            .await;
+
+        // Remove the loading text and spinner:
+        if let Some(loading_text) = document.get_element_by_id("loading_text") {
+            match start_result {
+                Ok(_) => {
+                    loading_text.remove();
+                }
+                Err(e) => {
+                    loading_text.set_inner_html(
+                        "<p> The app has crashed. See the developer console for details. </p>",
+                    );
+                    panic!("Failed to start eframe: {e:?}");
+                }
+            }
+        }
+    });
 }
