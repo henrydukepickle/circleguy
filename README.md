@@ -58,7 +58,7 @@ note: this creates three small circles called `A`, `B`, and `C`, and a large cir
 a note on floats: currently, there is no way to specify numbers like sqrt(3) precisely. for now, specifying the float to 7-8 decimal points should work for most use cases. 
 a more robust system for specifying these numbers is in development.
 
-a note on scale: a circle of radius 1.0 is a reasonable size using the default rendering settings.
+a note on scale: a circle of radius `1.0` is a reasonable size using the default rendering settings.
 
 **`base` : create the base of the puzzle from some circles. this will necessarily cut by every circle passed into it.**
 
@@ -92,9 +92,9 @@ note: this makes 4 turns, one around each circle. the first three turn by PI/2 r
 note: when using twists, the notation A2 refers to the twist done by performing the turn A twice, and the notation `A'` refers to the inverse twist of `A` (counterclockwise). `A2'` does the inverse of `A` twice. 
 for this reason, avoid using numbers or `'` in your twist names.
 
-**`compounds { }` : define compound twists in terms of basic twists (defined using twists { }) and also other compound twists.**
+**`compounds { }` : define compound twists in terms of basic twists (defined using `twists { }`) and also other compound twists.**
 
-note: for a compound twist `COMPOUND`, the notation `COMPOUND2` performs COMPOUND twice (it does not simply double the angle of each turn in `COMPOUND`) and similarly `COMPOUND'` performs the inverse of compound. 
+note: for a compound twist `COMPOUND`, the notation `COMPOUND2` performs `COMPOUND` twice (it does not simply double the angle of each turn in `COMPOUND`) and similarly `COMPOUND'` performs the inverse of compound. 
 as with `twists { }`, avoid using `'` or numbers in your names.
 
 example:
@@ -136,9 +136,9 @@ cut R2 L
 cut R3 L
 ```
 
-twists with * don't have to be initial, and there can be multiple in one cut command (i would, however, advise against using too many, as the complexity of the command, of course, grows multiplicatively).
+twists with `*` don't have to be initial, and there can be multiple in one cut command (i would, however, advise against using too many, as the complexity of the command, of course, grows multiplicatively).
 
-note: notation such as R2* and R'* is not supported. the latter would be redundant. 
+note: notation such as `R2*` and `R'*` is not supported. the latter would be redundant. 
 in cases where the former would be useful, just define a new turn and use that in the cut (remember to exclude it from the actual end puzzle using `!`, see above)
 
 note: often, using additional turns to reduce the number of cut commands needed can make the definition more clean. 
@@ -154,9 +154,9 @@ example:
 twist SUPER_COMM3'
 ```
 
-note: * notation is not supported in twist commands.
+note: `*` notation is not supported in twist commands.
 
-**`undo` : undoes some number of previous twist commands. undo is typically passed a positive integer, which is the number of twists to undo. "undo" alone is equivalent to "undo 1" and "undo *" undoes all twists.**
+**`undo` : undoes some number of previous twist commands. undo is typically passed a positive integer, which is the number of twists to undo. `undo` alone is equivalent to `undo 1` and `undo *` undoes all twists.**
 
 note: each undo undoes the most recent twist COMMAND, not just one twist.
 
