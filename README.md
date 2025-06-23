@@ -9,8 +9,8 @@ name "puzzle"
 the other type is written over multiple lines all enclosed in one brace. these commands are used to define several variables at once, for instance:
 
 colors {
-	RED 255 0 0
-	GREEN 0 255 0
+	RED 255 0 0  
+	GREEN 0 255 0  
 }
 
 in KDL, floats must be typed as '10.0' instead of '10'. the only part of definitions that currently uses floats is the position and radius of the circles in the 'circles' command.
@@ -39,10 +39,10 @@ all three values are floats (don't forget to add a decimal, even if your floats 
 example:
 
 circles {
-	A x=-0.5 y=0.0 r=1.0
-	B x=0.0 y=0.0 r=1.0
-	C x=0.5 y=0.0 r=1.0
-	SYM x=0.0 y=0.0 r=10.0
+	A x=-0.5 y=0.0 r=1.0  
+	B x=0.0 y=0.0 r=1.0  
+	C x=0.5 y=0.0 r=1.0  
+	SYM x=0.0 y=0.0 r=10.0  
 }
 
 note: this creates three small circles called A, B, and C, and a large circle called SYM.
@@ -69,10 +69,10 @@ if you want to exclude a twist from being usable, add a "!" as an extra argument
 example: 
 
 twists {
-	A A 4
-	B B 4
-	C C 4
-	SYM SYM 2 !
+	A A 4  
+	B B 4  
+	C C 4  
+	SYM SYM 2 !  
 }
 
 note: this makes 4 turns, one around each circle. the first three turn by PI/2 radians clockwise and the last by PI radians clockwise. the first three turns will be usable in the final puzzle, while SYM will not.
@@ -88,9 +88,9 @@ as with twists { }, avoid using "'" or numbers in your names.
 example:
 
 compounds {
-	COMM_AB A B A' B'
-	COMM_BC B C B' C'
-	SUPER_COMM COMM_AB COMM_BC COMM_AB' COMM_BC'
+	COMM_AB A B A' B'  
+	COMM_BC B C B' C'  
+	SUPER_COMM COMM_AB COMM_BC COMM_AB' COMM_BC'  
 }
 
 note: this defines 3 compound twists. the final compound twist is equivalent to A B A' B' B C B' C' B A B' A'.
@@ -111,10 +111,10 @@ cut R* L
 
 is equivalent to the series of commands:
 
-cut L
-cut R L
-cut R2 L
-cut R3 L
+cut L  
+cut R L  
+cut R2 L  
+cut R3 L  
 
 twists with * don't have to be initial, and there can be multiple in one cut command (i would, however, advise against using too many, as the complexity of the command, of course, grows multiplicatively).
 
@@ -139,24 +139,24 @@ undo : undoes some number of previous twist commands. undo is typically passed a
 note: each undo undoes the most recent twist COMMAND, not just one twist.
 
 example: 
-	twist SUPER_COMM3'
-	twist A B
-	cut COMM_AB
-	undo
-	cut COMM_BC
-	twist A B
-	undo 2
-	twist B A
-	undo *
+	twist SUPER_COMM3'  
+	twist A B  
+	cut COMM_AB  
+	undo  
+	cut COMM_BC  
+	twist A B  
+	undo 2  
+	twist B A  
+	undo *  
 
 colors { } : define your own colors using integer RGB values.
 
 example:
 
 colors {
-	RED 255 0 0
-	GREEN 0 255 0
-	BLUE 0 0 255
+	RED 255 0 0  
+	GREEN 0 255 0  
+	BLUE 0 0 255  
 }
 
 note: there are many default colors that you can use without the colors { } command. the full list is:
@@ -175,10 +175,10 @@ for an example, see the "666 Oriented Sphenic Triaxe" puzzle definition. multico
 
 example:
 
-color RED A !B
-twist SYM
-color BLUE A !B
-undo *
+color RED A !B  
+twist SYM  
+color BLUE A !B  
+undo *  
 
 for examples of full puzzle definitions, see the puzzles included in the program on GitHub.
 
@@ -203,8 +203,8 @@ after making and generating your puzzle in the program, if reasonably possible, 
 if for some reason you want to specify a log file, just put "--LOG FILE" in a new line below the definition, followed by a new line, followed by a comma-separated list of twist names. 
 only twists accessible in the puzzle (basic twists defined without ! in the twists { } command) are allowed, and numbers are also not allowed. for instance, it could look like:
 
-[definition]
---LOG FILE
+[definition]  
+--LOG FILE  
 R,L,L,R,R',L,L,L',L,R,R',R,R,R
 
 note the lack of whitespace and terminal comma. only twists actually performed in the program itself are added to the log file--twists done via the 'twist' command are not stored there.
