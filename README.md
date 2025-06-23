@@ -21,7 +21,7 @@ strings can either be quoted (e.g. `"9ABCD 789"`) or unquoted (e.g. `puzzle`). u
 
 below is a list of the supported commands.
 
-# name
+## name
 
 `name:` name the puzzle
 
@@ -31,7 +31,7 @@ example:
 name "666 Sphenic Triaxe"
 ```
 
-# author
+## author
 
 `author`: add to the list of authors.
 
@@ -43,7 +43,7 @@ author "Henry Pickle"
 
 note: when adding multiple authors, the author command can be used more than once.
 
-# circles
+## circles
 
 `circles { }` : define the circles for further use in the definition. each circle is given a name, and then defined by the x and y coordinates of its center, and its radius. 
 all three values are floats (don't forget to add a decimal, even if your floats happen to be integers!)
@@ -66,7 +66,7 @@ a more robust system for specifying these numbers is in development.
 
 a note on scale: a circle of radius `1.0` is a reasonable size using the default rendering settings.
 
-# base
+## base
 
 `base` : create the base of the puzzle from some circles. this will necessarily cut by every circle passed into it.
 
@@ -78,7 +78,7 @@ base A B C
 
 note: you will often want to define circles not used in the 'base' command for other uses in the definition, for instance, coloring.
 
-# twists
+## twists
 
 `twists { }` : define the twists of the puzzle. each twist is given a name, and defined by a circle and a positive integer. the integer determines the angle of the turn, which is always (2PI / n) clockwise.
 often, it is most convenient to give your turns the same names as the circles they use.
@@ -102,7 +102,7 @@ note: this makes 4 turns, one around each circle. the first three turn by PI/2 r
 note: when using twists, the notation A2 refers to the twist done by performing the turn A twice, and the notation `A'` refers to the inverse twist of `A` (counterclockwise). `A2'` does the inverse of `A` twice. 
 for this reason, avoid using numbers or `'` in your twist names.
 
-# compounds
+## compounds
 
 `compounds { }` : define compound twists in terms of basic twists (defined using `twists { }`) and also other compound twists.
 
@@ -121,7 +121,7 @@ compounds {
 
 note: this defines 3 compound twists. the final compound twist is equivalent to `A B A' B' B C B' C' B A B' A'`.
 
-# cut
+## cut
 
 `cut` : cuts the puzzle along a series of (compound) twists.*
 essentially, you pass a sequence of (compound, or normal) twists into the cut command in sequence, and it performs these turns on the puzzle, cutting the puzzle wherever necessary to make these turns possible.
@@ -134,7 +134,7 @@ example:
 cut A B2 C' SUPER_COMM2'
 ```
 
-# `*` notation
+### `*` notation
 
 `*` notation: you may add a `*` immediately after a NORMAL twist in a cutting sequence (compound twists with `*` are not supported and will not parse!) will essentially replace the twist with all possible multiples of itself, creating multiple cut commands.
 * for example, if `R` is a 4-fold turn (PI/2 radians), then the command:
@@ -161,7 +161,7 @@ note: often, using additional turns to reduce the number of cut commands needed 
 for instance, the turn SYM defined above along with the circles defined above that allows each cut command to be applied with 2-fold rotational symmetry to the puzzle by beginning each cut command with SYM*. 
 the convention for these whole-puzzle turns is to be of radius `10.0`.
 
-# twist
+## twist
 
 `twist` : turns the puzzle according to a (compound or normal) twist. this twist will not cut, and may be stopped if the puzzle is bandaged along the twist. 
 unlike the twists from the cut command, these twists are not automatically undone. this is often useful as a setup to a series of cuts, or as a setup to a coloring.
@@ -174,11 +174,11 @@ twist SUPER_COMM3'
 
 note: `*` notation is not supported in twist commands.
 
-# undo
+## undo
 
 `undo` : undoes some number of previous twist commands. undo is typically passed a positive integer, which is the number of twists to undo. `undo` alone is equivalent to `undo 1` and `undo *` undoes all twists.
 
-note: each undo undoes the most recent twist COMMAND, not just one twist.
+note: each `undo` undoes the most recent twist COMMAND, not just one twist.
 
 example: 
 ```
@@ -193,9 +193,9 @@ example:
 	undo *
 ```
 
-# colors
+## colors
 
-colors { } : define your own colors using integer RGB values.
+`colors { } `: define your own colors using integer RGB values.
 
 example:
 
@@ -213,7 +213,7 @@ defining colors with these names using colors { } will overwrite their value for
 
 note: `BLACK` is the same color as the outlines of the pieces and GRAY is the same color as pieces that have not been colored.
 
-# color
+## color
 
 color : colors a region a given color.
 
