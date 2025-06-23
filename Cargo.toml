@@ -10,4 +10,16 @@ colorous = "1.0.16"
 eframe = "0.31.1"
 egui = "0.31.1"
 kdl = "6.3.4"
+log = "0.4.27"
 rand = "0.9.1"
+getrandom = { version = "0.3", features = ["wasm_js"] }
+web-time = "1.1.0"
+
+# web:
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+include_dir = "0.7.4"
+wasm-bindgen-futures = "0.4"
+web-sys = "0.3.70"           # to access the DOM (to hide the loading text)
+
+[profile.release]
+opt-level = 2 # fast and small wasm

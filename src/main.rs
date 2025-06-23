@@ -11,6 +11,7 @@ use egui::{
     pos2,
 };
 
+#[cfg(not(target_arch = "wasm32"))]
 const DEV: bool = true;
 
 const DETAIL: f64 = 50.0;
@@ -1563,7 +1564,8 @@ fn puzzle_from_string(string: String) -> Option<Puzzle> {
     return Some(puzzle);
 }
 
-fn load_puzzle_and_def_from_file(path: &str) -> Option<(Puzzle, String)> {
+#[cfg(not(target_arch = "wasm32"))]
+fn read_file_to_string(path: &str) -> std::io::Result<String> {
     let curr_path = match DEV {
         false => String::from(
             std::env::current_exe()
@@ -1577,11 +1579,24 @@ fn load_puzzle_and_def_from_file(path: &str) -> Option<(Puzzle, String)> {
         ),
         true => String::new(),
     };
-    let file = std::fs::read_to_string(curr_path + path);
-    if file.is_err() {
-        return None;
-    }
-    let contents = file.unwrap();
+    std::fs::read_to_string(curr_path + path)
+}
+
+#[cfg(target_arch = "wasm32")]
+fn read_file_to_string(path: &str) -> Result<String, &'static str> {
+    static PUZZLE_DEFINITIONS: include_dir::Dir<'_> =
+        include_dir::include_dir!("$CARGO_MANIFEST_DIR/Puzzles");
+    let path = path.strip_prefix("Puzzles/").unwrap_or(path);
+    Ok(PUZZLE_DEFINITIONS
+        .get_file(path)
+        .ok_or("no such file")?
+        .contents_utf8()
+        .ok_or("invalid UTF-8")?
+        .to_string())
+}
+
+fn load_puzzle_and_def_from_file(path: &str) -> Option<(Puzzle, String)> {
+    let contents = read_file_to_string(path).ok()?;
     return Some((
         puzzle_from_string(contents.clone())?,
         String::from(
@@ -1903,7 +1918,7 @@ struct App {
     log_path: String,
     curr_msg: String,
     animation_speed: f64,
-    last_frame_time: std::time::Instant,
+    last_frame_time: web_time::Instant,
     outline_width: f32,
     detail: f64,
     scale_factor: f32,
@@ -1923,7 +1938,7 @@ impl App {
             log_path: String::from("1010101010geranium"),
             curr_msg: String::new(),
             animation_speed: ANIMATION_SPEED,
-            last_frame_time: std::time::Instant::now(),
+            last_frame_time: web_time::Instant::now(),
             outline_width: 5.0,
             detail: DETAIL,
             scale_factor: SCALE_FACTOR,
@@ -1933,7 +1948,7 @@ impl App {
     }
 }
 impl eframe::App for App {
-    fn update(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
+    fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         egui::CentralPanel::default().show(ctx, |ui| {
             let rect = ui.available_rect_before_wrap();
             let good_detail = 1.0 / (self.detail);
@@ -1947,7 +1962,7 @@ impl eframe::App for App {
             );
 
             let delta_time = self.last_frame_time.elapsed();
-            self.last_frame_time = std::time::Instant::now();
+            self.last_frame_time = web_time::Instant::now();
             if self.puzzle.animation_offset.angle >= 0.0 {
                 self.puzzle.animation_offset.angle = f64::max(
                     self.puzzle.animation_offset.angle
@@ -2117,10 +2132,58 @@ impl eframe::App for App {
         });
     }
 }
+
+// When compiling natively:
+#[cfg(not(target_arch = "wasm32"))]
 fn main() -> eframe::Result {
     eframe::run_native(
         "circleguy",
         eframe::NativeOptions::default(),
         Box::new(|cc| Ok(Box::new(App::new(cc)))),
     )
+}
+
+// When compiling to web using trunk:
+#[cfg(target_arch = "wasm32")]
+fn main() {
+    use eframe::wasm_bindgen::JsCast as _;
+
+    // Redirect `log` message to `console.log` and friends:
+    eframe::WebLogger::init(log::LevelFilter::Debug).ok();
+
+    wasm_bindgen_futures::spawn_local(async {
+        let document = web_sys::window()
+            .expect("No window")
+            .document()
+            .expect("No document");
+
+        let canvas = document
+            .get_element_by_id("the_canvas_id")
+            .expect("Failed to find the_canvas_id")
+            .dyn_into::<web_sys::HtmlCanvasElement>()
+            .expect("the_canvas_id was not a HtmlCanvasElement");
+
+        let start_result = eframe::WebRunner::new()
+            .start(
+                canvas,
+                eframe::WebOptions::default(),
+                Box::new(|cc| Ok(Box::new(App::new(cc)))),
+            )
+            .await;
+
+        // Remove the loading text and spinner:
+        if let Some(loading_text) = document.get_element_by_id("loading_text") {
+            match start_result {
+                Ok(_) => {
+                    loading_text.remove();
+                }
+                Err(e) => {
+                    loading_text.set_inner_html(
+                        "<p> The app has crashed. See the developer console for details. </p>",
+                    );
+                    panic!("Failed to start eframe: {e:?}");
+                }
+            }
+        }
+    });
 }
