@@ -1,9 +1,0 @@
-circles {
-	A x=0.0 y=0.0 r=1.0
-	B x=0.0 y=0.0 r=0.5
-	C x=1.0 y=0.0 r=0.5
-}
-base A B
-twists {
-	C C 1 !
-}
