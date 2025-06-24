@@ -68,7 +68,9 @@ a note on scale: a circle of radius `1.0` is a reasonable size using the default
 
 ## base
 
-`base` : create the base of the puzzle from some circles. this will necessarily cut by every circle passed into it.
+`base` : create the base of the puzzle from some circles.
+
+note: the order of the circles passed is relevant. each passed circle is cut by the previous passed circles. this means that in particular the first passed circle will always be a full circle piece in the puzzle `base` makes.
 
 example:
 
