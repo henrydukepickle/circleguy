@@ -1,0 +1,18 @@
+name "55 Decagons"
+author "Henry Pickle"
+circles {
+	A x=-0.5 y=0.0 r=0.8
+	B x=0.5 y=0.0 r=0.8
+}
+base A B
+twists {
+	A A 5
+	B B 5
+}
+compounds {
+	AB A B
+}
+cut AB200
+color RED A !B
+color BLUE A B
+color GREEN B !A

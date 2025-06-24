@@ -1519,6 +1519,7 @@ fn collapse_shape(shape: &Vec<Arc>) -> Option<Vec<Arc>> {
 
 fn make_basic_puzzle(disks: Vec<Circle>) -> Vec<Piece> {
     let mut pieces = Vec::new();
+    let mut old_disks = Vec::new();
     for disk in &disks {
         let point = pos2_f64(disk.center.x + disk.radius, disk.center.y);
         let disk_piece = Piece {
@@ -1526,25 +1527,28 @@ fn make_basic_puzzle(disks: Vec<Circle>) -> Vec<Piece> {
             color: NONE_COLOR,
         };
         let mut disk_pieces = vec![disk_piece];
-        for disk in &disks {
-            let mut new_disk_pieces = Vec::new();
-            for piece in disk_pieces {
-                new_disk_pieces.extend(piece.cut_by_circle(*disk));
+        for old_disk in &old_disks {
+            let mut new_pieces = Vec::new();
+            for piece in &disk_pieces {
+                new_pieces.extend(piece.cut_by_circle(*old_disk));
             }
-            disk_pieces = new_disk_pieces.clone();
+            disk_pieces = new_pieces.clone();
         }
-        for piece in disk_pieces {
-            let mut is_repeat = false;
-            for old_piece in &pieces {
-                if aeq_piece(old_piece, &piece) {
-                    is_repeat = true;
+        let mut valid_pieces = Vec::new();
+        for piece in &disk_pieces {
+            let mut add = true;
+            for disk in &old_disks {
+                if piece.in_circle(disk).unwrap() == Contains::Inside {
+                    add = false;
                     break;
                 }
             }
-            if !is_repeat {
-                pieces.push(piece);
+            if add {
+                valid_pieces.push(piece.clone());
             }
         }
+        old_disks.push(*disk);
+        pieces.extend(valid_pieces);
     }
     return pieces;
 }

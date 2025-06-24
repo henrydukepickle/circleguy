@@ -1,0 +1,22 @@
+name "666 Sphenic Triaxe (Unoriented)"
+author "HactarCE"
+circles {
+	A x=-0.5 y=0.0 r=0.5773502692
+	B x=0.5 y=0.0 r=0.5773502692
+	C x=0.0 y=0.8660254 r=0.5773502692
+	SYM x=0.0 y=0.2886751 r=10.0
+}
+base A B C
+twists {
+	A A 6
+	B B 6
+	C C 6
+	SYM SYM 3 !
+}
+cut SYM* A* B
+color RED A !B !C
+color GREEN B !A !C
+color BLUE C !A !B
+color YELLOW A B
+color MAGENTA A C
+color CYAN B C
