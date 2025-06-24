@@ -5,7 +5,7 @@ circles {
     // for A radius (aligns 3 triangles on a corner): r = 0.5/cos(pi/7)
     // B radius WIP, make 2 adjacent pieces to the spiky tangent so it looks better, 6+ can full spiky
     A x=-0.5 y=0.0 r=0.57735026919
-    B x=0.5 y=0.0 r=0.865
+    B x=0.5 y=0.0 r=0.86
 }
 base A B
 twists {
@@ -16,7 +16,7 @@ compounds {
     AB A B
     BA B A
 }
-cut AB19
+cut B AB19
 colors {
 	WHITE 245 245 245
 	GREEN 128 239 128

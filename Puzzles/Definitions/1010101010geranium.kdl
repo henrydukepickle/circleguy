@@ -34,3 +34,4 @@ color BLUE B !A
 color GREEN C !B
 color PURPLE D !C
 color YELLOW E !D
+color BLACK A B C D E

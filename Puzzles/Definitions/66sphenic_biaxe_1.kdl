@@ -1,0 +1,20 @@
+name "66 Sphenic Biaxe 1"
+author "Henry Pickle"
+circles {
+	A x=-0.5 y=0.0 r=0.55
+	B x=0.5 y=0.0 r=0.55
+}
+base A B
+twists {
+	A A 6
+	B B 6
+}
+cut A* B* A
+color RED A
+color GREEN B
+color BLUE A B
+twist A3
+color BLUE A B
+twist B3
+color BLUE A B
+undo *

@@ -109,9 +109,14 @@ const fn scale_vec2_f64(scalar: f64, vec: Vec2F64) -> Vec2F64 {
 const fn add_vec_to_pos2_f64(pos: Pos2F64, vec: Vec2F64) -> Pos2F64 {
     return pos2_f64(pos.x + vec.x, pos.y + vec.y);
 }
+
+const fn add_vec_to_vec_f64(v1: Vec2F64, v2: Vec2F64) -> Vec2F64 {
+    return vec2_f64(v1.x + v2.x, v1.y + v2.y);
+}
 auto_ops::impl_op!(-|a: Pos2F64, b: Pos2F64| -> Vec2F64 { subtract_pos2_f64(a, b) });
 auto_ops::impl_op!(+|a: Pos2F64, b: Vec2F64| -> Pos2F64 { add_vec_to_pos2_f64(a, b) });
 auto_ops::impl_op!(*|a: f64, b: Vec2F64| -> Vec2F64 { scale_vec2_f64(a, b) });
+auto_ops::impl_op!(+|a: Vec2F64, b: Vec2F64| -> Vec2F64 { add_vec_to_vec_f64(a, b) });
 auto_ops::impl_op!(*|a: isize, b: Turn| -> Turn {
     Turn {
         circle: b.circle,
@@ -2122,7 +2127,10 @@ impl eframe::App for App {
                 if hovered_circle.radius > 0.0 {
                     hovered_circle.draw(ui, &rect, self.scale_factor, self.offset);
                 }
-                if scroll != 0 {
+                if scroll != 0
+                    && !r.dragged_by(egui::PointerButton::Middle)
+                    && !ui.input(|i| i.modifiers.command_only())
+                {
                     self.puzzle.process_click(
                         &rect,
                         r.hover_pos().unwrap(),
@@ -2132,6 +2140,29 @@ impl eframe::App for App {
                         self.cut_on_turn,
                     );
                 }
+            }
+            if r.dragged_by(egui::PointerButton::Middle) {
+                let delta = r.drag_delta();
+                let good_delta = vec2_f64(
+                    (delta.x / self.scale_factor) as f64,
+                    -1.0 * (delta.y / self.scale_factor) as f64,
+                );
+                self.offset = self.offset + good_delta;
+            }
+            if ui.input(|i| i.modifiers.command_only()) && scroll != 0 {
+                self.scale_factor += 10.0 * scroll as f32;
+                // if r.hover_pos().is_some() {
+                //     let pos = from_egui_coords(
+                //         &r.hover_pos().unwrap(),
+                //         &rect,
+                //         self.scale_factor,
+                //         self.offset,
+                //     );
+                //     let curr_center =
+                //         from_egui_coords(&rect.center(), &rect, self.scale_factor, self.offset)
+                //             + self.offset;
+                //     self.offset = self.offset + (curr_center - pos);
+                //}
             }
         });
     }
