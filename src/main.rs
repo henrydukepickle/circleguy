@@ -1,3 +1,4 @@
+#![windows_subsystem = "windows"]
 use std::{
     cmp::Ordering,
     collections::HashMap,
@@ -18,7 +19,7 @@ use egui::{
 };
 
 #[cfg(not(target_arch = "wasm32"))]
-const DEV: bool = true;
+const DEV: bool = false;
 
 const DETAIL: f64 = 50.0;
 
@@ -2015,12 +2016,32 @@ fn parse_kdl(string: &str) -> Option<Puzzle> {
 }
 
 fn write_to_file(def: &String, stack: &Vec<String>, path: &str) -> Result<(), std::io::Error> {
-    let mut buffer = OpenOptions::new().write(true).create(true).open(path)?;
+    let curr_path = match DEV {
+        false => String::from(
+            std::env::current_exe()
+                .unwrap()
+                .into_os_string()
+                .into_string()
+                .unwrap()
+                .split("circleguy.exe")
+                .into_iter()
+                .collect::<Vec<&str>>()[0],
+        ),
+        true => String::new(),
+    };
+    let real_path = curr_path + path;
+    let mut buffer = OpenOptions::new()
+        .write(true)
+        .create(true)
+        .open(real_path)?;
     buffer.write(get_puzzle_string(def.clone(), stack).as_str().as_bytes())?;
     Ok(())
 }
 
 fn get_puzzle_string(def: String, stack: &Vec<String>) -> String {
+    if stack.is_empty() {
+        return def;
+    };
     return def + "\n --LOG FILE \n" + &stack.join(",");
 }
 
