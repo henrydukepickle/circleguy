@@ -1453,9 +1453,12 @@ fn get_arc(start: Pos2F64, end: Pos2F64, circle: Circle, ccw: bool) -> Arc {
 //translates from nice coords to egui coords
 fn to_egui_coords(pos: &Pos2F64, rect: &Rect, scale_factor: f32, offset: Vec2F64) -> Pos2 {
     return pos2(
-        ((pos.x + offset.x) as f32) * (scale_factor * rect.width() / 1920.0) + (rect.width() / 2.0),
+        ((pos.x + offset.x) as f32) * (scale_factor * rect.width() / 1920.0)
+            + (rect.width() / 2.0)
+            + rect.min.x,
         -1.0 * ((pos.y + offset.y) as f32) * (scale_factor * rect.width() / 1920.0)
-            + (rect.height() / 2.0),
+            + (rect.height() / 2.0)
+            + rect.min.y,
     );
 }
 
@@ -2057,6 +2060,7 @@ struct App {
     scale_factor: f32,
     offset: Vec2F64,
     cut_on_turn: bool,
+    preview: bool,
 }
 impl App {
     fn new(_cc: &eframe::CreationContext<'_>) -> Self {
@@ -2083,6 +2087,7 @@ impl App {
             scale_factor: SCALE_FACTOR,
             offset: vec2_f64(0.0, 0.0),
             cut_on_turn: false,
+            preview: false,
         };
     }
 }
@@ -2091,14 +2096,28 @@ impl eframe::App for App {
         egui::CentralPanel::default().show(ctx, |ui| {
             let rect = ui.available_rect_before_wrap();
             let good_detail = 1.0 / (self.detail);
-            self.puzzle.render(
-                ui,
-                &rect,
-                good_detail,
-                self.outline_width,
-                self.scale_factor,
-                self.offset,
-            );
+            if !self.preview {
+                self.puzzle.render(
+                    ui,
+                    &rect,
+                    good_detail,
+                    self.outline_width,
+                    self.scale_factor,
+                    self.offset,
+                );
+            } else {
+                for piece in &self.puzzle.solved_state {
+                    piece.render(
+                        ui,
+                        &rect,
+                        NONE_TURN,
+                        good_detail,
+                        self.outline_width,
+                        self.scale_factor,
+                        self.offset,
+                    );
+                }
+            }
             match self.data_storer.render_panel(ctx) {
                 Err(()) => {
                     self.curr_msg =
@@ -2127,15 +2146,16 @@ impl eframe::App for App {
             if aleq(25.0, self.animation_speed) {
                 self.puzzle.animation_offset = NONE_TURN;
             }
-            if ui.add(egui::Button::new("UNDO")).clicked()
-                || ui.input(|i| i.key_pressed(egui::Key::Z))
+            if (ui.add(egui::Button::new("UNDO")).clicked()
+                || ui.input(|i| i.key_pressed(egui::Key::Z)))
+                && !self.preview
             {
                 let _ = self.puzzle.undo();
             }
-            if ui.add(egui::Button::new("SCRAMBLE")).clicked() {
+            if ui.add(egui::Button::new("SCRAMBLE")).clicked() && !self.preview {
                 let _ = self.puzzle.scramble(self.cut_on_turn);
             }
-            if ui.add(egui::Button::new("RESET")).clicked() {
+            if ui.add(egui::Button::new("RESET")).clicked() && !self.preview {
                 self.puzzle.reset();
             }
             ui.add(
@@ -2190,6 +2210,7 @@ impl eframe::App for App {
             //     puzzle = load(new_p.unwrap(), &mut def);
             // }
             ui.checkbox(&mut self.cut_on_turn, "Cut on turn?");
+            ui.checkbox(&mut self.preview, "Preview solved state?");
             ui.label(String::from("Name: ") + &self.puzzle.name.clone());
             ui.label(String::from("Authors: ") + &self.puzzle.authors.join(","));
             ui.label(self.puzzle.pieces.len().to_string() + " pieces");
@@ -2223,7 +2244,7 @@ impl eframe::App for App {
                     })
                     .sum::<i32>()
             });
-            if r.clicked() {
+            if r.clicked() && !self.preview {
                 let _ = self.puzzle.process_click(
                     &rect,
                     r.interact_pointer_pos().unwrap(),
@@ -2233,7 +2254,7 @@ impl eframe::App for App {
                     self.cut_on_turn,
                 );
             }
-            if r.clicked_by(egui::PointerButton::Secondary) {
+            if r.clicked_by(egui::PointerButton::Secondary) && !self.preview {
                 let _ = self.puzzle.process_click(
                     &rect,
                     r.interact_pointer_pos().unwrap(),
@@ -2243,7 +2264,7 @@ impl eframe::App for App {
                     self.cut_on_turn,
                 );
             }
-            if r.hover_pos().is_some() {
+            if r.hover_pos().is_some() && !self.preview {
                 let hovered_circle = self.puzzle.get_hovered(
                     &rect,
                     r.hover_pos().unwrap(),
@@ -2256,6 +2277,7 @@ impl eframe::App for App {
                 if scroll != 0
                     && !r.dragged_by(egui::PointerButton::Middle)
                     && !ui.input(|i| i.modifiers.command_only())
+                    && !self.preview
                 {
                     let _ = self.puzzle.process_click(
                         &rect,
