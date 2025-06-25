@@ -1,4 +1,4 @@
-name "666 Triangle"
+name "Triangle"
 author "Henry Pickle"
 circles {
     A x=-0.5 y=0.0 r=0.7

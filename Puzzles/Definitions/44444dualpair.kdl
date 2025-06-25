@@ -1,4 +1,4 @@
-name "4 4 4 4 4 Dual Pair"
+name "Dual Pair"
 author "Hollister Ream"
 circles {
     Centerc x=0.0 y=0.0 r=1.25

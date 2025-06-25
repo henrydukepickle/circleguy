@@ -1,4 +1,4 @@
-name "665 Inner"
+name "Inner"
 author "Henry Pickle"
 circles {
 	R x=0.5 y=0.5 r=0.7

@@ -1,0 +1,47 @@
+name "Moonshine"
+author "cryofractal"
+circles {
+    M x=0.0 y=0.0 r=1.0
+    A x=-0.41984660878 y=-0.577869281696 r=1.0
+    B x=0.41984660878 y=-0.577869281696 r=1.0
+    C x=-0.679326083068 y=0.220726424554 r=1.0
+    D x=0.679326083068 y=0.220726424554 r=1.0
+    E x=0.0 y=0.714285714286 r=1.0
+    SYM x=0.0 y=0.0 r=10.0
+}
+base M A B C D E
+twists {
+    M M 5
+    A A 2
+    B B 2
+    C C 2
+    D D 2
+    E E 2
+    SYM SYM 5 !
+}
+compounds {
+    OUT SYM M'
+}
+cut A* OUT A M
+cut A* OUT2 A M
+cut A* OUT3 A M
+cut A* OUT4 A M
+// colors {
+//     YELLOW 255 238 140
+//     ORANGE 255 192 103
+//     RED 255 116 108
+// 	GREEN 128 239 128
+// 	BLUE 179 235 242
+// 	PURPLE 179 158 181
+// }
+color PURPLE
+color BLUE B
+color BLUE D
+color RED E
+color YELLOW A
+twist A
+color GREEN M
+undo
+color ORANGE M !A
+ --LOG FILE 
+C',E,D',A',C,M',M',E,C,C',C',B,A',D',M',D',C,D,D,A,A,M,M',M',E',B,B,D',M',C',C',B,E',E',M',A',M',C,A',M',C,C,D',B',B,C,D',A,A',B,D,D',C',A',A,D',M,C,M',C',C,M',D',M,C,B,M,D,M',E',A,C',C,B',M',A',C,B,E,C,A',C,D',M,C',A,A,M,B,M,E',M',D,M',M',D,B',M,E,E',D,A',C,M,C,B',E',A,A',E',C,B',M',A,D',D',A',B',B',M',E,C',E',A',D',C,B',M,M,A,D,M',E,M,M,M',D,C,M,M',B',A',M',B,M,A',A,C,C,D',A',C,B',D',A',M',A',E',E,A,D,B,C,D',M',B',M',M',E,A',B,C,A',M',C,A,M',A,D',A',D',D,E,B',C',E,M,E',E,B',A,M,C,D',M,C',A',C,D',M,D,M,C,B,E',C,M',A,C',A',E,C',M',E,E,C',B,M',M,B,E',M,M,E,A',E',D,M,B',A',A,A,A,B,C',M,A,D',M',A',A,E,E,C',C,M',C,C',E',M,C',B',D',M',D,M,A,E',A',M',D,M',C',D,E,E,B',C',E',D',M,E,C,A',C',A',B',B',D',B',M,D',D,B,A',M,M',E',C,A',A,E,A',A',B',D,D,M,D,M,A,A,E,E,A,B',B',C',M',M',B',D',A,A',E',M',D',B,M,A,C,D,E',E',E',D',C,B',M,B,E,M',B',A,M,B,A,B',B',E',A',B',M',C',D,C,A',E',M',M',C',B',M',E',E',E,E,E,M,M,B,A',C,B,E',C',B,D',E',M,M,M,E',M,M',C',C',B,B',A',E,E,M,M,A,E',D,B,D',M',M,B,M',C',C',M',M,C',M',D',B,D,B,M,B',D',D',B',M,E,C,M',D,D',B',M',A,A,M,B,C',E,A',M,D,D',B,A,A',E,A',M,E',D',B,M',E',A,C',B',B',B',C,C',E,B,B',B',A,B',C',M,C',A,D,D',D',C',E,B,E',B',B,E',A',D',D,D',C',C',B,D',C',C',D',D',D',D',M,E',B,D,E,E,E,M,M,A',M',D,A',A',D',D',A,D,M,C,M,A',M,A',B,A',D',E,M,M,D',D,D,B',B',M,M,D,E',A',B,D,B,C',A',D',C',M,E,C',M',E,E,C,E',E,M,A',C,A',B',C,E,D',E,D,C,D',A',D',D,M,E',D,C',A,B',B',C',D',M,M',B,C',C,M',A',D,M',A',B',A',E,M,D,A,E',B',B',C,D,E',D,E,E,C',M',M',M',C,B',D',B,D,C,C,B,B,M,A',E,E',D',E,E,E,M',M',C',B,C',E,B,D,B,A',B',M',C,E',D,E',B',A',C',D,M,E,E,A',E',B,M,A,M',B,M',C',E,M,D',E,D',D',B',A,D,C',A,A,C,A',E',B,A,B,E,A',E',M',A,M,M,E,M',A',D,B,C',C',M,C,E,A',E',E',D,D',B,M,E,A',M',D,C,B,B,D',B,A,C,D,C,B,E,A,C,C,D',D',D,M,C',D',C,C',M,B',E',A',E',E',D',B,C',A',D,D',D,D,D,B,A',M',E,C',A',B',B,B,D',B,E,C',A',A',M,B,A',M',B,A',B',B',M,B',C,B',C',E',E',D,D',C,M',C',D,D,A,C',A',D',C',A,M',M,C,E,M',B,C',A',C,M,A,C',D',A,D',A',B,D',E',B',C,M',E',M',A,E',M,C,A,E,B,B',E,A',D,B',E',D,B',C',B,C,C,B,E',A,B',B,C,D,C',E',A',B',A',A',C,M',M,A,C',M,E,E,C,C,B,B',M,M,E',D',D',M,M',D',E',A',E',A,D',E',E,A,C,A,B,B,E',B',E,B',B,M,C,A',M,M',B,E',M,C',C',A,B',D,E',C',C',E',D,A,E,M',D',D,D',B,D',E,B',B',M,D',B,A',A',M',C,M,A,A,E,C',B,M',B',A',E,A,E',D',D',B',A',D',D',M',B',D,M,D,M',D,E',B',A',M,C,M,D,C,B',A',M',D',E',D',E,E',B',B,E',B',B,A',A',E',M,C',B',M,C',A',M,B,B',M,E',B,E,D',E',D,M',D,A,E,C',A',B',B,M,M,E',C',E,D',A',C,M,M,C,M',A,D',C',D,B',D',C',B,B',E,E',M,E,B,E',B',B',A',E,B,C',M,D,B,E',C,C',B',A',D,D',M,A,M,C',C,D,E',A',D,D',B,E,A',M,A,C',M,C',E',C,A,D',M',C,M,D,E,B',M,M,D,C,M',M,M,E,D',M,C',M,M',B',D,A',M',M,E',M,C',E',C',C,D,B',B,C,D,C,D',M',A',E',D,E,C',D,M',D,B,B,B',A,A',A',E',E,C,D,M',A',M',M',M',E',M',E',M',C,C',M,B,D',E',D',E',M',E,B',B',A',D',M',C',M,M,B',D',E,M,C,E,B,E',E,D,B,A,D',A',C',M',M,M,D',B',A,C',D,M',D',E,C',D',M,M',D,B',D,D,E,E,D,C',M',E',A',M',C',A,M,B',E,B',D',B',C',B',C',C',A,M,C',C',E,A,M,M,C,E,D',E,A',D',D,E,D,A,B,M,B,A',M',M,D,E',B,D',C',E',E',B',M',B,B',C,D',E,A,E',M',C',M,A',E,D,B',E,D,M,M',B',B',D',D,B',M,C,M',E,E',C',A,D',B,B',M',A,E',E,A',E,B,C,M,A,B,D',D,M',D,M',A',E',B,B',E,B',A,B,A,M,B',M,C',M',D',E,M',D',B',M',E',M,C',B,E',B',M',D',D',C',M',M',C',C',M',C,M,B',C,M,M,M,A',A,D',A',A',M,D',E,D',B,E,E',A,M,B,B',B',M',B,M',M,D,E,C,B',C',M,C',D,A',E',B',B',B',C,E',A',B,D',E,A',D',M',A',A',D,M,D,C,M,A',A,M',D,A,A,D',B',E',A',D',D,E',E,B',B',E,M',M,B,B',M,A',C,C',C',D',C,M',E',C',E',E,B',A',D,M,A,C,D,C',A,A,C,E',A,B,C',M',B',E,D,D',C,A,B',M',B,M,E',M,C',D',A',A,M',E,A',M',D,D',M',M',D,M',D',E',M',C',D,C,M',B,M,A',A',M',E',E,M,A',D,B,E,M',C,C',D',M',A',A',E,D',A,D',A,M',A,D,A',C,C,A',A,B',M,B',C,M,D',A',E',A',D,B',A,A',A,A,E',B',D,M',C,M,M',D',M',C,A',E,C,D,A',A,B,D',C,A',C,A,D,M,M',E',D,M,B,C',C',M',E,A,M,M',A,A',M,C',M,M',B',D,D',A,D',A',B,B,C,B',M,M,D,B',D,C,A,D,C',C',E,M,B',C,A,D,C,E,D,B',C',D',D,A,B,B',A,B,E',C',E,M,M,B',M,D',D,B',C',D',D',E,C,M',B',B',B',D',B,M,C,D,C',A',M,B',C',A,B,A,M',C,M',D',E',B,B,B,D',C,E',C',C,A,D,C',B,B,E,B,E',E,D',B,D,A,C',M',D,A',D,B,C,C',M,A,A',D,M',M,D',M',M,C',B',E,A',C,M',A,M,C,M,E,M,M,D',M',B',E',B,A,C',D,B',M',C',D',D',B',M,B',A,D,C',D,A',D',C',E,D,D,M',C,B',E',C,B',A',B,C',B',E',B',M,M,M',M,C',A,M',B,A',M,B,C',D,A,E,D',M,D',M',B',M,D',E,E',M',A',B,B,B',B,A',B,E,M,B',E',E,A,D',B,B,E,E',A,D',B',D,A',E,B,B',A',A',M',E',C,D',M',M',C',B,E',E,M,B',D',M,A,C',A,C',E',D',M,M',B',M',M,B',D',D,B,A,A,E,A',B',B,B,M',E',E',B,M,C',A',A',E',C,C,B',M',D',A',B,B',C,C,E,C,D',C,E',B,M,A,D',B,M',A',A,A,E',B',A',B',M,B,C',E',E,C,A',B,M,A',M,A',E',E,B,E,C,E',D,A,B',M',B',E',D,D,C',D,D',D,D',M',C',C,B',C',E',E,E',E,A,C',D',B,E,E',M',E,C,M,D',A,C',C',B',E',A,M,C,M',B,A,D,E,B,M',A,D,M',A',E,D,A,E',E,M',B',M',A',E,C,D',C,B',M',C',D',A',E,E',E',E,D',B,B,D',M',A',C',C',D,A',D',B,M',E',E,C',M,B',D,D',C,C,C',C,B,A',E',B',E,B,M,A',C',C',M,E,A,A,M,E,B,D',D',M',D',A,M,A',B',E,D,E,B',B',B',B,M,E',A',A,D',E,A',E',A,B,A',E',B,C,E',C',B',D,D,D',C,M',M,E',E',E,C,B',B,D,A,D',M',D,A,B,A',M',M,M',D',E',D,E',A',C,D',E,C',B,D,M',M,M,M',M',A',A,M,M,A,M',M,A',A',M,C',M',A,A',A,A',M',B,M',D',D,M,B',M,A',A,M,M',M',B',B,C',M,C',M,C',C,C',M',M',M,M,M',M',M',D',M,M,A',M',M',D,M,M,A',A',A,D,M',M',B,M,M',M,M',D',M,M',M',M,M,B,B',M,A,M',M',M,M,A',M',M',M',M

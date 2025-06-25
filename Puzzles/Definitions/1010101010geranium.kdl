@@ -1,4 +1,4 @@
-name "10 10 10 10 10 Geranium"
+name "Geranium"
 author "Henry Pickle"
 circles {
 	A x=1.0 y=0.0 r=1.4

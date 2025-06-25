@@ -1,12 +1,18 @@
 use std::{
-    cmp::Ordering, collections::HashMap, f32::consts::PI, fmt, fs::OpenOptions, io::Write, vec,
+    cmp::Ordering,
+    collections::HashMap,
+    f32::consts::PI,
+    fmt,
+    fs::{self, OpenOptions},
+    io::Write,
+    vec,
 };
 
 use kdl::KdlDocument;
 use rand::prelude::*;
 
 use egui::{
-    Color32, Event, MouseWheelUnit, Pos2, Rect, Stroke, Ui,
+    Color32, Event, MouseWheelUnit, Pos2, Rect, ScrollArea, Stroke, Ui,
     epaint::{self, PathShape},
     pos2,
 };
@@ -85,6 +91,11 @@ struct Pos2F64 {
 struct Vec2F64 {
     x: f64,
     y: f64,
+}
+
+#[derive(Clone)]
+struct DataStorer {
+    data: Vec<String>,
 }
 
 type Cut = Vec<Turn>;
@@ -174,6 +185,11 @@ struct Puzzle {
     depth: u16,
     solved_state: Vec<Piece>,
     solved: bool,
+}
+
+struct PuzzlePrevData {
+    name: String,
+    turns: Vec<String>,
 }
 #[derive(Clone, Copy)]
 struct Circle {
@@ -1171,6 +1187,47 @@ impl Piece {
     // }
 }
 
+impl DataStorer {
+    fn load_puzzles(&mut self, def_path: &str) -> Result<(), ()> {
+        let paths = fs::read_dir(def_path).or(Err(())).unwrap().into_iter();
+        for path in paths {
+            self.data.push(
+                read_file_to_string(
+                    &(String::from(def_path)
+                        + (&path
+                            .or(Err(()))
+                            .unwrap()
+                            .file_name()
+                            .into_string()
+                            .or(Err(()))
+                            .unwrap())),
+                )
+                .or(Err(()))
+                .unwrap(),
+            )
+        }
+        Ok(())
+    }
+    fn render_panel(&self, ctx: &egui::Context) -> Result<Option<(Puzzle, String)>, ()> {
+        let panel = egui::SidePanel::new(egui::panel::Side::Right, "data_panel").resizable(false);
+        let mut puzzle = None;
+        panel.show(ctx, |ui| {
+            ScrollArea::vertical().show(ui, |ui| {
+                for puz in &self.data {
+                    let string = get_preview_string(puz);
+                    if ui.add(egui::Button::new(string)).clicked() {
+                        puzzle = match parse_kdl(puz) {
+                            Some(inside) => Some((inside, puz.clone())),
+                            None => None,
+                        }
+                    }
+                }
+            })
+        });
+        Ok(puzzle)
+    }
+}
+
 //pass an orig_arc with the same start as a1, a2. finds the first arc ccw
 
 fn order_arcs(a1: Arc, a2: Arc, orig_arc: Arc) -> Ordering {
@@ -1582,7 +1639,7 @@ fn puzzle_from_string(string: String) -> Option<Puzzle> {
 }
 
 #[cfg(not(target_arch = "wasm32"))]
-fn read_file_to_string(path: &str) -> std::io::Result<String> {
+fn read_file_to_string(path: &String) -> std::io::Result<String> {
     let curr_path = match DEV {
         false => String::from(
             std::env::current_exe()
@@ -1596,7 +1653,7 @@ fn read_file_to_string(path: &str) -> std::io::Result<String> {
         ),
         true => String::new(),
     };
-    std::fs::read_to_string(curr_path + path)
+    std::fs::read_to_string(curr_path + &path)
 }
 
 #[cfg(target_arch = "wasm32")]
@@ -1612,7 +1669,7 @@ fn read_file_to_string(path: &str) -> Result<String, &'static str> {
         .to_string())
 }
 
-fn load_puzzle_and_def_from_file(path: &str) -> Option<(Puzzle, String)> {
+fn load_puzzle_and_def_from_file(path: &String) -> Option<(Puzzle, String)> {
     let contents = read_file_to_string(path).ok()?;
     return Some((
         puzzle_from_string(contents.clone())?,
@@ -1645,6 +1702,43 @@ fn strip_number_end(str: &str) -> Option<(String, String)> {
     };
 }
 
+fn get_preview_string(data: &String) -> String {
+    let data = match prev_parse_kdl(data.as_str()) {
+        None => return String::from("Could not parse preview!"),
+        Some(real) => real,
+    };
+    return data.name + ": " + &data.turns.join(",");
+}
+
+fn prev_parse_kdl(string: &str) -> Option<PuzzlePrevData> {
+    let mut data = PuzzlePrevData {
+        name: String::new(),
+        turns: Vec::new(),
+    };
+    let mut numbers = Vec::new();
+    let doc: KdlDocument = string.parse().ok()?;
+    for node in doc.nodes() {
+        match node.name().value() {
+            "name" => {
+                data.name = String::from(node.entries().get(0)?.value().as_string()?);
+            }
+            "twists" => {
+                for twist in node.children()?.nodes() {
+                    if twist.entries().len() == 2 {
+                        numbers.push(twist.entries().get(1)?.value().as_integer()?)
+                    }
+                }
+            }
+            _ => {}
+        }
+    }
+    numbers.sort();
+    numbers.reverse();
+    for turn in &numbers {
+        data.turns.push(turn.to_string());
+    }
+    return Some(data);
+}
 fn parse_kdl(string: &str) -> Option<Puzzle> {
     let mut puzzle = Puzzle {
         name: String::new(),
@@ -1930,9 +2024,9 @@ fn get_puzzle_string(def: String, stack: &Vec<String>) -> String {
 }
 
 struct App {
+    data_storer: DataStorer,
     puzzle: Puzzle,
     def_string: String,
-    def_path: String,
     log_path: String,
     curr_msg: String,
     animation_speed: f64,
@@ -1945,15 +2039,21 @@ struct App {
 }
 impl App {
     fn new(_cc: &eframe::CreationContext<'_>) -> Self {
-        Self {
-            puzzle: load_puzzle_and_def_from_file("Puzzles/Definitions/1010101010geranium.kdl")
-                .unwrap()
-                .0,
-            def_string: load_puzzle_and_def_from_file("Puzzles/Definitions/1010101010geranium.kdl")
-                .unwrap()
-                .1,
-            def_path: String::from("1010101010geranium"),
-            log_path: String::from("1010101010geranium"),
+        let mut data_storer = DataStorer { data: Vec::new() };
+        let _ = data_storer.load_puzzles(&String::from("Puzzles/Definitions/"));
+        return Self {
+            data_storer,
+            puzzle: load_puzzle_and_def_from_file(&String::from(
+                "Puzzles/Definitions/1010101010geranium.kdl",
+            ))
+            .unwrap()
+            .0,
+            def_string: load_puzzle_and_def_from_file(&String::from(
+                "Puzzles/Definitions/1010101010geranium.kdl",
+            ))
+            .unwrap()
+            .1,
+            log_path: String::from("logfile"),
             curr_msg: String::new(),
             animation_speed: ANIMATION_SPEED,
             last_frame_time: web_time::Instant::now(),
@@ -1962,7 +2062,7 @@ impl App {
             scale_factor: SCALE_FACTOR,
             offset: vec2_f64(0.0, 0.0),
             cut_on_turn: false,
-        }
+        };
     }
 }
 impl eframe::App for App {
@@ -1978,7 +2078,16 @@ impl eframe::App for App {
                 self.scale_factor,
                 self.offset,
             );
-
+            match self.data_storer.render_panel(ctx) {
+                Err(()) => {
+                    self.curr_msg =
+                        String::from("Failed to render side panel or failed to create puzzle!")
+                }
+                Ok(Some(puz)) => {
+                    (self.puzzle, self.def_string) = puz;
+                }
+                _ => {}
+            }
             let delta_time = self.last_frame_time.elapsed();
             self.last_frame_time = web_time::Instant::now();
             if self.puzzle.animation_offset.angle >= 0.0 {
@@ -2000,10 +2109,10 @@ impl eframe::App for App {
             if ui.add(egui::Button::new("UNDO")).clicked()
                 || ui.input(|i| i.key_pressed(egui::Key::Z))
             {
-                self.puzzle.undo();
+                let _ = self.puzzle.undo();
             }
             if ui.add(egui::Button::new("SCRAMBLE")).clicked() {
-                self.puzzle.scramble(self.cut_on_turn);
+                let _ = self.puzzle.scramble(self.cut_on_turn);
             }
             if ui.add(egui::Button::new("RESET")).clicked() {
                 self.puzzle.reset();
@@ -2029,8 +2138,6 @@ impl eframe::App for App {
             if ui.add(egui::Button::new("RESET VIEW")).clicked() {
                 (self.scale_factor, self.offset) = (SCALE_FACTOR, vec2_f64(0.0, 0.0))
             }
-            ui.label("Definition Path");
-            ui.add(egui::TextEdit::singleline(&mut self.def_path));
             ui.label("Log File Path");
             ui.add(egui::TextEdit::singleline(&mut self.log_path));
             if ui.add(egui::Button::new("SAVE")).clicked() {
@@ -2043,23 +2150,9 @@ impl eframe::App for App {
                     Err(err) => err.to_string(),
                 }
             }
-            if ui.add(egui::Button::new("LOAD DEF")).clicked() {
-                (self.puzzle, self.def_string) = match load_puzzle_and_def_from_file(
-                    &(String::from("Puzzles/Definitions/") + &self.def_path + ".kdl").as_str(),
-                ) {
-                    None => {
-                        self.curr_msg = String::from("Failed to load puzzle!");
-                        (self.puzzle.clone(), self.def_string.clone())
-                    }
-                    Some(data) => {
-                        self.curr_msg = String::from("Loaded Successfully!");
-                        data
-                    }
-                }
-            }
             if ui.add(egui::Button::new("LOAD LOG")).clicked() {
                 (self.puzzle, self.def_string) = load_puzzle_and_def_from_file(
-                    &(String::from("Puzzles/Logs/") + &self.log_path + ".kdl").as_str(),
+                    &(String::from("Puzzles/Logs/") + &self.log_path + ".kdl"),
                 )
                 .unwrap_or((self.puzzle.clone(), self.def_string.clone()));
             }
@@ -2084,7 +2177,7 @@ impl eframe::App for App {
             }
             let cor_rect = Rect {
                 min: pos2(180.0, 0.0),
-                max: pos2(rect.width(), rect.height()),
+                max: pos2(rect.width() - 180.0, rect.height()),
             };
             // dbg!((puzzle.turns[1].circle.center).to_pos2());
             if self.puzzle.animation_offset.angle != 0.0 {
@@ -2107,7 +2200,7 @@ impl eframe::App for App {
                     .sum::<i32>()
             });
             if r.clicked() {
-                self.puzzle.process_click(
+                let _ = self.puzzle.process_click(
                     &rect,
                     r.interact_pointer_pos().unwrap(),
                     true,
@@ -2117,7 +2210,7 @@ impl eframe::App for App {
                 );
             }
             if r.clicked_by(egui::PointerButton::Secondary) {
-                self.puzzle.process_click(
+                let _ = self.puzzle.process_click(
                     &rect,
                     r.interact_pointer_pos().unwrap(),
                     false,
@@ -2140,7 +2233,7 @@ impl eframe::App for App {
                     && !r.dragged_by(egui::PointerButton::Middle)
                     && !ui.input(|i| i.modifiers.command_only())
                 {
-                    self.puzzle.process_click(
+                    let _ = self.puzzle.process_click(
                         &rect,
                         r.hover_pos().unwrap(),
                         scroll > 0,

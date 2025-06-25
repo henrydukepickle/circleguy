@@ -1,4 +1,4 @@
-name "4 2 Buffer"
+name "Buffer"
 author "Hollister Ream"
 circles {
     Ac x=-0.5 y=0.0 r=1.0
