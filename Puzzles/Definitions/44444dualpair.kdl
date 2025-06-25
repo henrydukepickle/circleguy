@@ -1,0 +1,35 @@
+name "4 4 4 4 4 Dual Pair"
+author "Hollister Ream"
+circles {
+    Centerc x=0.0 y=0.0 r=1.25
+    Ac x=1.0 y=1.0 r=0.5
+    Bc x=-1.0 y=-1.0 r=0.5
+    Cc x=0.0 y=1.4 r=0.4
+    Dc x=0.0 y=-1.4 r=0.4
+    SYMc x=0.0 y=0.0 r=10.0
+}
+base Ac Bc Centerc Cc Dc
+//base Ac Bc Centerc
+twists {
+    Ct Centerc 4
+    A Ac 4
+    B Bc 4
+    C Cc 4
+    D Dc 4
+    SYM SYMc 4 !
+}
+compounds {
+    CompA A Ct
+    CompB C Ct
+}
+cut SYM* CompA6
+cut SYM* CompB6
+color DARK_GRAY Centerc
+color RED Ac !Centerc
+color BLUE Bc !Centerc
+color DARK_RED Ac Centerc
+color DARK_BLUE Bc Centerc
+color GREEN Cc
+color DARK_GREEN Cc Centerc
+color YELLOW Dc
+color GOLD Dc Centerc
