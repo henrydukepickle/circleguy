@@ -2,9 +2,9 @@ name "Pleione"
 author "cryofractal"
 // comments are for potential future Pleione generator
 circles {
-    // for A radius (aligns 3 triangles on a corner): r = 0.5/cos(pi/7)
+    // for A radius (aligns 3 triangles on a corner): r = 0.5/cos(pi/7) rounded because otherwise it doesnt load (please fractal please)
     // for B radius (aligns spiky shape to edge of circle) r = a^2 + 1^2 - 2*a*cos(2pi/7)
-    A x=-0.5 y=0.0 r=0.554958132087
+    A x=-0.5 y=0.0 r=0.55
     B x=0.5 y=0.0 r=0.784829316947
 }
 base A B

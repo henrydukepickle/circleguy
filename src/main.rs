@@ -1189,6 +1189,7 @@ impl Piece {
 
 impl DataStorer {
     fn load_puzzles(&mut self, def_path: &str) -> Result<(), ()> {
+        self.data = Vec::new();
         let paths = fs::read_dir(def_path).or(Err(())).unwrap().into_iter();
         for path in paths {
             self.data.push(
@@ -2155,6 +2156,9 @@ impl eframe::App for App {
                     &(String::from("Puzzles/Logs/") + &self.log_path + ".kdl"),
                 )
                 .unwrap_or((self.puzzle.clone(), self.def_string.clone()));
+            }
+            if ui.add(egui::Button::new("RELOAD PUZZLES")).clicked() {
+                let _ = self.data_storer.load_puzzles("Puzzles/Definitions/");
             }
             // if ui.add(egui::Button::new("GENERATE")).clicked()
             //     && alneq(1.0, def.r_left + def.r_right)
