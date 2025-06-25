@@ -96,7 +96,7 @@ struct Vec2F64 {
 
 #[derive(Clone)]
 struct DataStorer {
-    data: Vec<String>,
+    data: Vec<(String, String)>, //puzzle preview string, puzzle data string
 }
 
 type Cut = Vec<Turn>;
@@ -1193,21 +1193,21 @@ impl DataStorer {
         self.data = Vec::new();
         let paths = fs::read_dir(def_path).or(Err(())).unwrap().into_iter();
         for path in paths {
-            self.data.push(
-                read_file_to_string(
-                    &(String::from(def_path)
-                        + (&path
-                            .or(Err(()))
-                            .unwrap()
-                            .file_name()
-                            .into_string()
-                            .or(Err(()))
-                            .unwrap())),
-                )
-                .or(Err(()))
-                .unwrap(),
+            let data = read_file_to_string(
+                &(String::from(def_path)
+                    + (&path
+                        .or(Err(()))
+                        .unwrap()
+                        .file_name()
+                        .into_string()
+                        .or(Err(()))
+                        .unwrap())),
             )
+            .or(Err(()))
+            .unwrap();
+            self.data.push((get_preview_string(&data), data));
         }
+        self.data.sort_by_key(|a| a.0.clone());
         Ok(())
     }
     fn render_panel(&self, ctx: &egui::Context) -> Result<Option<(Puzzle, String)>, ()> {
@@ -1216,10 +1216,9 @@ impl DataStorer {
         panel.show(ctx, |ui| {
             ScrollArea::vertical().show(ui, |ui| {
                 for puz in &self.data {
-                    let string = get_preview_string(puz);
-                    if ui.add(egui::Button::new(string)).clicked() {
-                        puzzle = match parse_kdl(puz) {
-                            Some(inside) => Some((inside, puz.clone())),
+                    if ui.add(egui::Button::new(&puz.0)).clicked() {
+                        puzzle = match parse_kdl(&puz.1) {
+                            Some(inside) => Some((inside, puz.1.clone())),
                             None => None,
                         }
                     }
