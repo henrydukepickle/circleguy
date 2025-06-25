@@ -634,14 +634,14 @@ impl Puzzle {
         self.solved = aeq_pieces(&self.pieces, &self.solved_state)
     }
     //returns if the turn could be completed
-    fn turn(&mut self, turn: Turn, cut: bool) -> Option<()> {
+    fn turn(&mut self, turn: Turn, cut: bool) -> Result<(), ()> {
         if cut {
-            self.global_cut_by_circle(turn.circle);
+            self.global_cut_by_circle(turn.circle)?;
         }
         let mut new_pieces = Vec::new();
         for piece in &self.pieces {
             let mut new_piece = piece.clone();
-            if new_piece.in_circle(&turn.circle)? == Contains::Inside {
+            if new_piece.in_circle(&turn.circle).ok_or(())? == Contains::Inside {
                 new_piece.rotate_about(turn.circle.center, turn.angle);
             }
             new_pieces.push(new_piece);
@@ -653,30 +653,32 @@ impl Puzzle {
             self.animation_offset = turn.inverse();
         }
         self.intern_all();
-        return Some(());
+        Ok(())
     }
-    fn turn_id(&mut self, id: String, cut: bool) {
+    fn turn_id(&mut self, id: String, cut: bool) -> Result<(), ()> {
         let turn = self.turns[&id];
-        self.turn(turn, cut);
+        self.turn(turn, cut)?;
         self.stack.push(id);
         self.check();
+        Ok(())
     }
-    fn undo(&mut self) -> Option<()> {
+    fn undo(&mut self) -> Result<(), ()> {
         if self.stack.len() == 0 {
-            return None;
+            return Err(());
         }
         let last_turn = self.turns[&self.stack.pop().unwrap()];
-        self.turn(last_turn.inverse(), false);
+        self.turn(last_turn.inverse(), false)?;
         self.check();
-        Some(())
+        Ok(())
     }
-    fn cut(&mut self, cut: &Cut) {
+    fn cut(&mut self, cut: &Cut) -> Result<(), ()> {
         for turn in cut {
-            self.turn(*turn, true);
+            self.turn(*turn, true)?;
         }
         for turn in cut.clone().into_iter().rev() {
-            self.turn(turn.inverse(), false);
+            self.turn(turn.inverse(), false)?;
         }
+        Ok(())
     }
     fn color(&mut self, coloring: &Coloring) {
         for piece in &mut self.pieces {
@@ -693,19 +695,20 @@ impl Puzzle {
             }
         }
     }
-    fn scramble(&mut self, cut: bool) {
+    fn scramble(&mut self, cut: bool) -> Result<(), ()> {
         let mut rng = rand::rng();
         for _i in 0..self.depth {
             let key = self.turns.keys().choose(&mut rng).unwrap().clone();
-            self.turn(self.turns[&key], cut);
+            self.turn(self.turns[&key], cut)?;
             self.stack.push(key);
         }
         self.animation_offset = NONE_TURN;
         self.check();
+        Ok(())
     }
     fn reset(&mut self) {
         loop {
-            if self.undo().is_none() {
+            if self.undo().is_err() {
                 self.animation_offset = NONE_TURN;
                 return;
             }
@@ -740,7 +743,7 @@ impl Puzzle {
         scale_factor: f32,
         offset: Vec2F64,
         cut: bool,
-    ) {
+    ) -> Result<(), ()> {
         let good_pos = from_egui_coords(&pos, rect, scale_factor, offset);
         let mut min_dist: f64 = 10000.0;
         let mut min_rad: f64 = 10000.0;
@@ -758,13 +761,14 @@ impl Puzzle {
             }
         }
         if correct_id.is_empty() {
-            return;
+            return Ok(());
         }
         if !left {
-            self.turn_id(correct_id, cut);
+            self.turn_id(correct_id, cut)?;
         } else {
-            self.turn_id(correct_id + "'", cut);
+            self.turn_id(correct_id + "'", cut)?;
         }
+        Ok(())
     }
     fn get_hovered(&self, rect: &Rect, pos: Pos2, scale_factor: f32, offset: Vec2F64) -> Circle {
         let good_pos = from_egui_coords(&pos, rect, scale_factor, offset);
@@ -800,13 +804,14 @@ impl Puzzle {
     //     self.pieces = new_pieces;
     //     self.intern_all();
     // }
-    fn global_cut_by_circle(&mut self, circle: Circle) {
+    fn global_cut_by_circle(&mut self, circle: Circle) -> Result<(), ()> {
         let mut new_pieces = Vec::new();
         for piece in &self.pieces {
-            new_pieces.extend(piece.cut_by_circle(circle));
+            new_pieces.extend(piece.cut_by_circle(circle).ok_or(())?);
         }
         self.pieces = new_pieces;
         self.intern_all();
+        Ok(())
     }
     // fn cut_with_turn_symmetry(&mut self, circle: Circle, turn: Turn) {
     //     let mut index = 0;
@@ -996,13 +1001,13 @@ impl Piece {
     //fn intersect_piece(&self, other: Piece) -> Vec<Pos2F64> {}
     // cut a piece by a circle and return the resulting pieces as a Vec
     //the color is maintained
-    fn cut_by_circle(&self, circle: Circle) -> Vec<Piece> {
+    fn cut_by_circle(&self, circle: Circle) -> Option<Vec<Piece>> {
         let mut shapes: Vec<Vec<Arc>> = Vec::new(); // the shapes of the final pieces
         let mut piece_arcs = Vec::new(); // the arcs obtained by cutting up the piece by the circle
         for arc in &self.shape {
             let bits = arc.cut_by_circle(circle); //bits created from cutting up the arc -- None iff the arc lies on circle
             if bits.is_none() {
-                return vec![self.clone()]; //don't cut the shape in this case
+                return Some(vec![self.clone()]); //don't cut the shape in this case
             }
             let arc_bits = bits.unwrap(); //add the bits to the piece_arcs
             piece_arcs.extend(arc_bits);
@@ -1018,7 +1023,7 @@ impl Piece {
             }
         }
         if circle_cut_points.is_empty() {
-            return vec![self.clone()]; //if the circle lies fully outside the piece
+            return Some(vec![self.clone()]); //if the circle lies fully outside the piece
         }
         // for point in &circle_cut_points {
         //     println!("{}", point);
@@ -1058,7 +1063,7 @@ impl Piece {
                 curr_shape.push(get_best_arc_and_pop(
                     &mut all_arcs,
                     *curr_shape.last().unwrap(),
-                ));
+                )?);
                 // println!(
                 //     "{} -> {} ->  {}, {}",
                 //     curr_shape.last().unwrap().start,
@@ -1080,7 +1085,7 @@ impl Piece {
                 color: self.color,
             });
         }
-        return pieces;
+        return Some(pieces);
     }
     //determine which piece occurs earlier on the piece
     //self.shape[0].start is the minimum
@@ -1229,7 +1234,7 @@ fn find_min_arc_index(arcs: &Vec<Arc>, orig_arc: Arc) -> usize {
     return min;
 }
 
-fn get_best_arc_and_pop(all_arcs: &mut Vec<Arc>, curr_arc: Arc) -> Arc {
+fn get_best_arc_and_pop(all_arcs: &mut Vec<Arc>, curr_arc: Arc) -> Option<Arc> {
     let mut good_arcs = Vec::new();
     let mut indices = Vec::new();
     for i in 0..all_arcs.len() {
@@ -1242,7 +1247,10 @@ fn get_best_arc_and_pop(all_arcs: &mut Vec<Arc>, curr_arc: Arc) -> Arc {
         }
     }
     let index = find_min_arc_index(&good_arcs, curr_arc.invert());
-    return all_arcs.remove(indices[index]);
+    if good_arcs.len() == 0 {
+        return None;
+    }
+    return Some(all_arcs.remove(indices[index]));
 }
 // fn get_best_segment_and_pop(segments: &mut Vec<Vec<Arc>>, curr_segment: &Vec<Arc>) -> Vec<Arc> {
 //     let mut good_arcs = Vec::new();
@@ -1522,7 +1530,7 @@ fn collapse_shape(shape: &Vec<Arc>) -> Option<Vec<Arc>> {
     return Some(new_shape);
 }
 
-fn make_basic_puzzle(disks: Vec<Circle>) -> Vec<Piece> {
+fn make_basic_puzzle(disks: Vec<Circle>) -> Result<Vec<Piece>, ()> {
     let mut pieces = Vec::new();
     let mut old_disks = Vec::new();
     for disk in &disks {
@@ -1533,9 +1541,9 @@ fn make_basic_puzzle(disks: Vec<Circle>) -> Vec<Piece> {
         };
         let mut disk_pieces = vec![disk_piece];
         for old_disk in &old_disks {
-            let mut new_pieces = Vec::new();
+            let mut new_pieces: Vec<Piece> = Vec::new();
             for piece in &disk_pieces {
-                new_pieces.extend(piece.cut_by_circle(*old_disk));
+                new_pieces.extend(piece.cut_by_circle(*old_disk).ok_or(())?);
             }
             disk_pieces = new_pieces.clone();
         }
@@ -1555,7 +1563,7 @@ fn make_basic_puzzle(disks: Vec<Circle>) -> Vec<Piece> {
         old_disks.push(*disk);
         pieces.extend(valid_pieces);
     }
-    return pieces;
+    return Ok(pieces);
 }
 
 fn puzzle_from_string(string: String) -> Option<Puzzle> {
@@ -1563,11 +1571,11 @@ fn puzzle_from_string(string: String) -> Option<Puzzle> {
         .split("--LOG FILE \n")
         .into_iter()
         .collect::<Vec<&str>>();
-    let mut puzzle = parse_kdl(components[0])?;
+    let mut puzzle = parse_kdl(components.get(0)?)?;
     if components.len() > 1 {
-        let turns = components[1].split(",");
+        let turns = components.get(1)?.split(",");
         for turn in turns {
-            puzzle.turn_id(String::from(turn), false);
+            puzzle.turn_id(String::from(turn), false).ok()?;
         }
     }
     return Some(puzzle);
@@ -1665,10 +1673,10 @@ fn parse_kdl(string: &str) -> Option<Puzzle> {
     let mut compounds: HashMap<&str, Vec<Turn>> = HashMap::new();
     for node in doc.nodes() {
         match node.name().value() {
-            "name" => puzzle.name = String::from(node.entries()[0].value().as_string()?),
+            "name" => puzzle.name = String::from(node.entries().get(0)?.value().as_string()?),
             "author" => puzzle
                 .authors
-                .push(String::from(node.entries()[0].value().as_string()?)),
+                .push(String::from(node.entries().get(0)?.value().as_string()?)),
             "circles" => {
                 for circle in node.children()?.nodes() {
                     circles.insert(
@@ -1686,63 +1694,64 @@ fn parse_kdl(string: &str) -> Option<Puzzle> {
             "base" => {
                 let mut disks = Vec::new();
                 for disk in node.entries().into_iter() {
-                    disks.push(circles[disk.value().as_string()?]);
+                    disks.push(*circles.get(disk.value().as_string()?)?);
                 }
-                puzzle.pieces = make_basic_puzzle(disks);
+                puzzle.pieces = make_basic_puzzle(disks).ok()?;
             }
             "twists" => {
                 for turn in node.children()?.nodes() {
                     twists.insert(
                         turn.name().value(),
                         Turn {
-                            circle: circles[turn.entries()[0].value().as_string()?],
+                            circle: *circles.get(turn.entries().get(0)?.value().as_string()?)?,
                             angle: -2.0 * PI as f64
-                                / (turn.entries()[1].value().as_integer()? as f64),
+                                / (turn.entries().get(1)?.value().as_integer()? as f64),
                         },
                     );
                     if turn.entries().len() == 2 {
                         real_twists.insert(
                             turn.name().value(),
                             Turn {
-                                circle: circles[turn.entries()[0].value().as_string()?],
+                                circle: *circles
+                                    .get(turn.entries().get(0)?.value().as_string()?)?,
                                 angle: -2.0 * PI as f64
-                                    / (turn.entries()[1].value().as_integer()? as f64),
+                                    / (turn.entries().get(1)?.value().as_integer()? as f64),
                             },
                         );
                     }
                     compounds.insert(
                         turn.name().value(),
                         vec![Turn {
-                            circle: circles[turn.entries()[0].value().as_string()?],
+                            circle: *circles.get(turn.entries().get(0)?.value().as_string()?)?,
                             angle: -2.0 * PI as f64
-                                / (turn.entries()[1].value().as_integer()? as f64),
+                                / (turn.entries().get(1)?.value().as_integer()? as f64),
                         }],
                     );
                 }
             }
             "compounds" => {
                 let mut compound_adds: Vec<Vec<Turn>> = vec![Vec::new()];
-                let mut extend;
+                let mut extend: Vec<Turn>;
                 for compound in node.children()?.nodes() {
                     for val in compound.entries() {
                         match val.value().as_string()?.strip_suffix("'") {
                             None => match strip_number_end(val.value().as_string()?) {
-                                None => extend = compounds[val.value().as_string()?].clone(),
+                                None => extend = compounds.get(val.value().as_string()?)?.clone(),
                                 Some(real) => {
                                     extend = multiply_turns(
                                         real.1.parse::<isize>().unwrap(),
-                                        &compounds[real.0.as_str()],
+                                        compounds.get(real.0.as_str())?,
                                     );
                                 }
                             },
                             Some(real) => match strip_number_end(real) {
                                 None => {
-                                    extend = invert_compound_turn(&compounds[real]);
+                                    extend = invert_compound_turn(compounds.get(real)?);
                                 }
                                 Some(inside) => {
                                     extend = invert_compound_turn(&multiply_turns(
                                         inside.1.parse::<isize>().unwrap(),
-                                        &compounds[inside.0.as_str()],
+                                        compounds.get(inside.0.as_str())?,
                                     ));
                                 }
                             },
@@ -1764,9 +1773,9 @@ fn parse_kdl(string: &str) -> Option<Puzzle> {
                     match val.value().as_string()?.strip_suffix("'") {
                         None => match strip_number_end(val.value().as_string()?) {
                             None => match val.value().as_string()?.strip_suffix("*") {
-                                None => extend = compounds[val.value().as_string()?].clone(),
+                                None => extend = compounds.get(val.value().as_string()?)?.clone(),
                                 Some(real) => {
-                                    let turn = twists[real];
+                                    let turn = *twists.get(real)?;
                                     let number: isize =
                                         ((2.0 * PI as f64) / turn.angle.abs()) as isize;
                                     let mut new_adds = Vec::new();
@@ -1783,18 +1792,18 @@ fn parse_kdl(string: &str) -> Option<Puzzle> {
                             Some(real) => {
                                 extend = multiply_turns(
                                     real.1.parse::<isize>().unwrap(),
-                                    &compounds[real.0.as_str()],
+                                    compounds.get(real.0.as_str())?,
                                 );
                             }
                         },
                         Some(real) => match strip_number_end(real) {
                             None => {
-                                extend = invert_compound_turn(&compounds[real]);
+                                extend = invert_compound_turn(compounds.get(real)?);
                             }
                             Some(inside) => {
                                 extend = invert_compound_turn(&multiply_turns(
                                     inside.1.parse::<isize>().unwrap(),
-                                    &compounds[inside.0.as_str()],
+                                    compounds.get(inside.0.as_str())?,
                                 ))
                             }
                         },
@@ -1804,7 +1813,7 @@ fn parse_kdl(string: &str) -> Option<Puzzle> {
                     }
                 }
                 for turns in &turn_seqs {
-                    puzzle.cut(turns);
+                    puzzle.cut(turns).ok()?;
                     puzzle.pieces.len();
                 }
             }
@@ -1813,21 +1822,21 @@ fn parse_kdl(string: &str) -> Option<Puzzle> {
                     colors.insert(
                         color.name().value().to_string(),
                         Color32::from_rgb(
-                            color.entries()[0].value().as_integer()? as u8,
-                            color.entries()[1].value().as_integer()? as u8,
-                            color.entries()[2].value().as_integer()? as u8,
+                            color.entries().get(0)?.value().as_integer()? as u8,
+                            color.entries().get(1)?.value().as_integer()? as u8,
+                            color.entries().get(2)?.value().as_integer()? as u8,
                         ),
                     );
                 }
             }
             "color" => {
-                let color = colors[node.entries()[0].value().as_string()?];
+                let color = *colors.get(node.entries()[0].value().as_string()?)?;
                 let mut coloring_circles = Vec::new();
                 for i in 1..node.entries().len() {
-                    let circle = node.entries()[i].value().as_string()?;
+                    let circle = node.entries().get(i)?.value().as_string()?;
                     coloring_circles.push(match circle.strip_prefix("!") {
-                        None => (circles[circle], Contains::Inside),
-                        Some(real) => (circles[real], Contains::Outside),
+                        None => (*circles.get(circle)?, Contains::Inside),
+                        Some(real) => (*circles.get(real)?, Contains::Outside),
                     });
                 }
                 puzzle.color(&(coloring_circles, color));
@@ -1839,23 +1848,23 @@ fn parse_kdl(string: &str) -> Option<Puzzle> {
                     match val.value().as_string()?.strip_suffix("'") {
                         None => match strip_number_end(val.value().as_string()?) {
                             None => {
-                                extend = compounds[val.value().as_string()?].clone();
+                                extend = compounds.get(val.value().as_string()?)?.clone();
                             }
                             Some(real) => {
                                 extend = multiply_turns(
                                     real.1.parse::<isize>().unwrap(),
-                                    &compounds[real.0.as_str()],
+                                    compounds.get(real.0.as_str())?,
                                 );
                             }
                         },
                         Some(real) => match strip_number_end(real) {
                             None => {
-                                extend = invert_compound_turn(&compounds[real]);
+                                extend = invert_compound_turn(compounds.get(real)?);
                             }
                             Some(inside) => {
                                 extend = invert_compound_turn(&multiply_turns(
                                     inside.1.parse::<isize>().unwrap(),
-                                    &compounds[inside.0.as_str()],
+                                    compounds.get(inside.0.as_str())?,
                                 ))
                             }
                         },
@@ -1864,7 +1873,7 @@ fn parse_kdl(string: &str) -> Option<Puzzle> {
                 }
                 let mut add_seq = Vec::new();
                 for turn in &sequence {
-                    puzzle.turn(*turn, false);
+                    puzzle.turn(*turn, false).ok()?;
                     add_seq.push(turn.clone());
                 }
                 def_stack.push(add_seq);
@@ -1874,7 +1883,7 @@ fn parse_kdl(string: &str) -> Option<Puzzle> {
                 if node.entries().is_empty() {
                     number = 1;
                 } else {
-                    let entry = &node.entries()[0];
+                    let entry = &node.entries().get(0)?;
                     match entry.value().as_integer() {
                         None => {
                             number = -1;
@@ -1888,7 +1897,7 @@ fn parse_kdl(string: &str) -> Option<Puzzle> {
                     number -= 1;
                     if let Some(turns) = def_stack.pop() {
                         for turn in invert_compound_turn(&turns) {
-                            puzzle.turn(turn, false);
+                            puzzle.turn(turn, false).ok()?;
                         }
                     } else {
                         break;

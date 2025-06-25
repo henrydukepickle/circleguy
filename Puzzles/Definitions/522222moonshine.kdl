@@ -1,0 +1,45 @@
+name "Moonshine"
+author "cryofractal"
+circles {
+    M x=0.0 y=0.0 r=1.0
+    A x=-0.41984660878 y=-0.577869281696 r=1.0
+    B x=0.41984660878 y=-0.577869281696 r=1.0
+    C x=-0.679326083068 y=0.220726424554 r=1.0
+    D x=0.679326083068 y=0.220726424554 r=1.0
+    E x=0.0 y=0.714285714286 r=1.0
+    SYM x=0.0 y=0.0 r=10.0
+}
+base M A B C D E
+twists {
+    M M 5
+    A A 2
+    B B 2
+    C C 2
+    D D 2
+    E E 2
+    SYM SYM 5 !
+}
+compounds {
+    OUT SYM M'
+}
+cut A* OUT A M
+cut A* OUT2 A M
+cut A* OUT3 A M
+cut A* OUT4 A M
+// colors {
+//     YELLOW 255 238 140
+//     ORANGE 255 192 103
+//     RED 255 116 108
+// 	GREEN 128 239 128
+// 	BLUE 179 235 242
+// 	PURPLE 179 158 181
+// }
+color PURPLE
+color BLUE B
+color BLUE D
+color RED E
+color YELLOW A
+twist A
+color GREEN M
+undo
+color ORANGE M !A
