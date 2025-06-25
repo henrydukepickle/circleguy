@@ -19,7 +19,7 @@ use egui::{
 };
 
 #[cfg(not(target_arch = "wasm32"))]
-const DEV: bool = false;
+const DEV: bool = true;
 
 const DETAIL: f64 = 50.0;
 
