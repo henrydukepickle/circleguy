@@ -1,4 +1,4 @@
-#![windows_subsystem = "windows"]
+//#![windows_subsystem = "windows"]
 use std::{
     cmp::Ordering,
     collections::HashMap,
@@ -94,11 +94,6 @@ struct Vec2F64 {
     y: f64,
 }
 
-#[derive(Clone)]
-struct DataStorer {
-    data: Vec<(String, String)>, //puzzle preview string, puzzle data string
-}
-
 type Cut = Vec<Turn>;
 type Coloring = (Vec<(Circle, Contains)>, Color32);
 
@@ -160,6 +155,11 @@ impl fmt::Display for Pos2F64 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "({}, {})", self.x, self.y)
     }
+}
+
+#[derive(Clone)]
+struct DataStorer {
+    data: Vec<(String, String)>, //puzzle preview string, puzzle data string
 }
 
 #[derive(PartialEq, Clone, Copy, Debug)]
@@ -1775,22 +1775,66 @@ fn parse_kdl(string: &str) -> Option<Puzzle> {
     let mut real_twists: HashMap<&str, Turn> = HashMap::new();
     let mut colors: HashMap<String, Color32> = get_default_color_hash();
     let mut compounds: HashMap<&str, Vec<Turn>> = HashMap::new();
+    let mut ctx = meval::Context::new();
     for node in doc.nodes() {
         match node.name().value() {
             "name" => puzzle.name = String::from(node.entries().get(0)?.value().as_string()?),
             "author" => puzzle
                 .authors
                 .push(String::from(node.entries().get(0)?.value().as_string()?)),
+            "vars" => {
+                for var in node.children()?.nodes() {
+                    let val = var.entries().get(0)?.value();
+                    let float_val = match val.is_string() {
+                        true => meval::eval_str_with_context(val.as_string()?, &ctx).ok()?,
+                        false => match val.is_integer() {
+                            true => val.as_integer()? as f64,
+                            false => val.as_float()?,
+                        },
+                    };
+                    ctx.var(var.name().value(), float_val);
+                }
+            }
             "circles" => {
                 for circle in node.children()?.nodes() {
                     circles.insert(
                         circle.name().value(),
                         Circle {
                             center: pos2_f64(
-                                circle.get("x")?.as_float()?,
-                                circle.get("y")?.as_float()?,
+                                match circle.get("x")?.is_string() {
+                                    true => meval::eval_str_with_context(
+                                        circle.get("x")?.as_string()?,
+                                        &ctx,
+                                    )
+                                    .ok()?,
+                                    false => match circle.get("x")?.is_float() {
+                                        true => circle.get("x")?.as_float()?,
+                                        false => circle.get("x")?.as_integer()? as f64,
+                                    },
+                                },
+                                match circle.get("y")?.is_string() {
+                                    true => meval::eval_str_with_context(
+                                        circle.get("y")?.as_string()?,
+                                        &ctx,
+                                    )
+                                    .ok()?,
+                                    false => match circle.get("y")?.is_float() {
+                                        true => circle.get("y")?.as_float()?,
+                                        false => circle.get("y")?.as_integer()? as f64,
+                                    },
+                                },
                             ),
-                            radius: circle.get("r")?.as_float()?,
+                            radius: match circle.get("r")?.is_string() {
+                                true => meval::eval_str_with_context(
+                                    circle.get("r")?.as_string()?,
+                                    &ctx,
+                                )
+                                .ok()?,
+                                false => match circle.get("r")?.is_float() {
+                                    true => circle.get("r")?.as_float()?,
+                                    false => circle.get("r")?.as_integer()? as f64,
+                                },
+                            },
                         },
                     );
                 }
