@@ -651,14 +651,18 @@ impl Puzzle {
         self.solved = aeq_pieces(&self.pieces, &self.solved_state)
     }
     //returns if the turn could be completed
-    fn turn(&mut self, turn: Turn, cut: bool) -> Result<(), ()> {
+    //Err(true) means that the turn was bandaged
+    //Err(false) means that the cutting failed
+    fn turn(&mut self, turn: Turn, cut: bool) -> Result<(), bool> {
         if cut {
-            self.global_cut_by_circle(turn.circle)?;
+            if self.global_cut_by_circle(turn.circle).is_err() {
+                return Err(false);
+            }
         }
         let mut new_pieces = Vec::new();
         for piece in &self.pieces {
             let mut new_piece = piece.clone();
-            if new_piece.in_circle(&turn.circle).ok_or(())? == Contains::Inside {
+            if new_piece.in_circle(&turn.circle).ok_or(true)? == Contains::Inside {
                 new_piece.rotate_about(turn.circle.center, turn.angle);
             }
             new_pieces.push(new_piece);
@@ -672,7 +676,7 @@ impl Puzzle {
         self.intern_all();
         Ok(())
     }
-    fn turn_id(&mut self, id: String, cut: bool) -> Result<(), ()> {
+    fn turn_id(&mut self, id: String, cut: bool) -> Result<(), bool> {
         let turn = self.turns[&id];
         self.turn(turn, cut)?;
         self.stack.push(id);
@@ -684,16 +688,16 @@ impl Puzzle {
             return Err(());
         }
         let last_turn = self.turns[&self.stack.pop().unwrap()];
-        self.turn(last_turn.inverse(), false)?;
+        self.turn(last_turn.inverse(), false).or(Err(())).unwrap();
         self.check();
         Ok(())
     }
     fn cut(&mut self, cut: &Cut) -> Result<(), ()> {
         for turn in cut {
-            self.turn(*turn, true)?;
+            self.turn(*turn, true).or(Err(())).unwrap();
         }
         for turn in cut.clone().into_iter().rev() {
-            self.turn(turn.inverse(), false)?;
+            self.turn(turn.inverse(), false).or(Err(())).unwrap();
         }
         Ok(())
     }
@@ -716,7 +720,9 @@ impl Puzzle {
         let mut rng = rand::rng();
         for _i in 0..self.depth {
             let key = self.turns.keys().choose(&mut rng).unwrap().clone();
-            self.turn(self.turns[&key], cut)?;
+            if self.turn(self.turns[&key], cut).is_err_and(|x| !x) {
+                return Err(());
+            }
             self.stack.push(key);
         }
         self.animation_offset = NONE_TURN;
@@ -760,7 +766,7 @@ impl Puzzle {
         scale_factor: f32,
         offset: Vec2F64,
         cut: bool,
-    ) -> Result<(), ()> {
+    ) -> Result<(), bool> {
         let good_pos = from_egui_coords(&pos, rect, scale_factor, offset);
         let mut min_dist: f64 = 10000.0;
         let mut min_rad: f64 = 10000.0;
