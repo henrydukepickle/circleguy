@@ -16,6 +16,7 @@ getrandom = { version = "0.3", features = ["wasm_js"] }
 web-time = "1.1.0"
 trunk = "0.21.14"
 meval = "0.2.0"
+include_dir = "0.7.4"
 
 # web:
 [target.'cfg(target_arch = "wasm32")'.dependencies]
