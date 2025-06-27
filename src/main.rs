@@ -1195,6 +1195,7 @@ impl Piece {
 }
 
 impl DataStorer {
+    #[cfg(not(target_arch = "wasm32"))]
     fn load_puzzles(&mut self, def_path: &str) -> Result<(), ()> {
         self.data = Vec::new();
         let paths = fs::read_dir(def_path).or(Err(())).unwrap().into_iter();
@@ -1211,6 +1212,24 @@ impl DataStorer {
             )
             .or(Err(()))
             .unwrap();
+            self.data.push((get_preview_string(&data), data));
+        }
+        self.data.sort_by_key(|a| a.0.clone());
+        Ok(())
+    }
+    #[cfg(target_arch = "wasm32")]
+    fn load_puzzles(&mut self, def_path: &str) -> Result<(), ()> {
+        self.data = Vec::new();
+        static PUZZLE_DEFINITIONS: include_dir::Dir<'_> =
+            include_dir::include_dir!("$CARGO_MANIFEST_DIR/Puzzles/Definitions");
+        let mut paths = Vec::new();
+        for file in PUZZLE_DEFINITIONS.files() {
+            paths.push(file.path().to_str().unwrap());
+        }
+        for path in paths {
+            let data = read_file_to_string(&(String::from(def_path) + &path))
+                .or(Err(()))
+                .unwrap();
             self.data.push((get_preview_string(&data), data));
         }
         self.data.sort_by_key(|a| a.0.clone());
@@ -2067,6 +2086,7 @@ fn parse_kdl(string: &str) -> Option<Puzzle> {
     return Some(puzzle);
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 fn write_to_file(def: &String, stack: &Vec<String>, path: &str) -> Result<(), std::io::Error> {
     let curr_path = match DEV {
         false => String::from(
@@ -2231,6 +2251,7 @@ impl eframe::App for App {
             }
             ui.label("Log File Path");
             ui.add(egui::TextEdit::singleline(&mut self.log_path));
+            #[cfg(not(target_arch = "wasm32"))]
             if ui.add(egui::Button::new("SAVE")).clicked() {
                 self.curr_msg = match write_to_file(
                     &self.def_string,
@@ -2241,6 +2262,7 @@ impl eframe::App for App {
                     Err(err) => err.to_string(),
                 }
             }
+            #[cfg(not(target_arch = "wasm32"))]
             if ui.add(egui::Button::new("LOAD LOG")).clicked() {
                 (self.puzzle, self.def_string) = load_puzzle_and_def_from_file(
                     &(String::from("Puzzles/Logs/") + &self.log_path + ".kdl"),
