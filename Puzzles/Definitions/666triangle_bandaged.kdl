@@ -1,4 +1,4 @@
-name "Triangle"
+name "Bandaged Triangle"
 author "Henry Pickle"
 circles {
     A x=-0.5 y=0.0 r=0.7
@@ -13,7 +13,10 @@ twists {
     C C 6
     SYM SYM 3 !
 }
-cut SYM* A* B
+cut SYM* A3 C
+cut SYM* A3 B
+cut SYM* A2 C A
+cut SYM* A2' B' A
 color RED A !B !C
 color GREEN B !A !C
 color BLUE C !A !B
