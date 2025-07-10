@@ -12,7 +12,7 @@ twists {
 compounds {
 	AB A B
 }
-cut AB200
+cut AB100
 color GREEN A !B
 color BLUE A B
 color RED B !A

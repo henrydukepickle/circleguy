@@ -13,6 +13,10 @@ base M A B C D E
 twists {
     M M 5
     A A 2
+    B B 2
+    C C 2
+    D D 2
+    E E 2
     SYM SYM 5 !
 }
 compounds {
