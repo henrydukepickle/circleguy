@@ -6,6 +6,7 @@ use std::{
     fmt,
     fs::{self, OpenOptions},
     io::Write,
+    ops::Bound,
     vec,
 };
 
@@ -251,10 +252,10 @@ struct Turn {
 //checking if certain float-based variable types are approximately equal due to precision bs
 
 fn aeq(f1: f64, f2: f64) -> bool {
-    return (f1 - f2).abs() <= LENIENCY;
+    return f1.approx_eq(&f2, Precision::new_simple(20));
 }
 fn aleq(f1: f64, f2: f64) -> bool {
-    return (f1 - f2) <= LENIENCY;
+    return f1 < f2 || aeq(f1, f2);
 }
 
 fn alneq(f1: f64, f2: f64) -> bool {
@@ -269,29 +270,30 @@ fn aeq_pos(p1: Pos2, p2: Pos2) -> bool {
 //     return aeq_pos(c1.center, c2.center) && aeq(c1.radius, c2.radius);
 // }
 
-fn aeq_shape(s1: &PieceShape, s2: &PieceShape) -> bool {
-    for circ in &s1.bounds {
-        let mut same = false;
-        for circ2 in &s2.bounds {
-            if aeq_circle(*circ, *circ2)
-                && circle_orientation_euclid(*circ) == circle_orientation_euclid(*circ2)
-            {
-                same = true;
-                break;
-            }
-        }
-        if !same {
-            return false;
-        }
-    }
-    return true;
-}
+// fn aeq_shape(s1: &PieceShape, s2: &PieceShape) -> bool {
+//     for circ in &s1.bounds {
+//         let mut same = false;
+//         for circ2 in &s2.bounds {
+//             if aeq_circle(*circ, *circ2)
+//                 && circle_orientation_euclid(*circ) == circle_orientation_euclid(*circ2)
+//             {
+//                 same = true;
+//                 break;
+//             }
+//         }
+//         if !same {
+//             return false;
+//         }
+//     }
+//     return true;
+// }
 
 fn aeq_piece(p1: &Piece, p2: &Piece) -> bool {
-    return p1.color.r() == p2.color.r()
-        && p1.color.g() == p2.color.g()
-        && p1.color.b() == p2.color.b()
-        && aeq_shape(&p1.shape, &p2.shape);
+    // return p1.color.r() == p2.color.r()
+    //     && p1.color.g() == p2.color.g()
+    //     && p1.color.b() == p2.color.b()
+    //     && aeq_shape(&p1.shape, &p2.shape);
+    false
 }
 
 fn aeq_pieces(v1: &Vec<Piece>, v2: &Vec<Piece>) -> bool {
@@ -321,8 +323,8 @@ fn cmp_f64(a: f64, b: f64) -> Ordering {
 }
 
 fn euc_center_rad(circ: Blade3) -> (Pos2, f32) {
-    return match circ.unpack(LENIENCY) {
-        LineOrCircle::Circle { cx, cy, r } => (pos2(cx as f32, cy as f32), r as f32),
+    return match circ.unpack() {
+        Circle::Circle { cx, cy, r, ori } => (pos2(cx as f32, cy as f32), r as f32),
         _ => {
             dbg!(circ);
             panic!("you passed a line!")
@@ -341,12 +343,12 @@ impl Turn {
 
 impl FloatIntern {
     fn intern_blade3(&mut self, b: &mut Blade3) {
-        for mut t in b.normalize().terms() {
+        for mut t in b.terms() {
             self.intern(&mut t.coef);
         }
     }
     fn intern_blade2(&mut self, b: &mut Blade2) {
-        for mut t in b.normalize().terms() {
+        for mut t in b.terms() {
             self.intern(&mut t.coef);
         }
     }
@@ -366,8 +368,8 @@ impl Puzzle {
         for piece in &mut self.pieces {
             for arc in &mut piece.shape.border {
                 self.intern.intern_blade3(&mut arc.circle);
-                if let Some(mut bound) = arc.boundary {
-                    self.intern.intern_blade2(&mut bound);
+                if let Some(bound) = arc.boundary.as_mut() {
+                    self.intern.intern_blade2(bound);
                 }
             }
             for circ in &mut piece.shape.bounds {
@@ -395,7 +397,7 @@ impl Puzzle {
         self.pieces = new_pieces;
         self.anim_left = 1.0;
         self.animation_offset = turn.inverse();
-        self.intern_all();
+        //self.intern_all();
         Ok(())
     }
     fn turn_id(&mut self, id: String, cut: bool) -> Result<(), bool> {
@@ -499,9 +501,9 @@ impl Puzzle {
         let mut min_rad: f32 = 10000.0;
         let mut correct_id: String = String::from("");
         for turn in &self.turns {
-            let (center, radius) = match turn.1.circle.unpack(LENIENCY) {
-                LineOrCircle::Line { a: _, b: _, c: _ } => panic!("dont do it!"),
-                LineOrCircle::Circle { cx, cy, r } => (pos2(cx as f32, cy as f32), r as f32),
+            let (center, radius) = match turn.1.circle.unpack() {
+                Circle::Circle { cx, cy, r, ori } => (pos2(cx as f32, cy as f32), r as f32),
+                _ => panic!("not a circle lol!"),
             };
             if (alneq(good_pos.distance(center) as f64, min_dist as f64)
                 || (aeq(good_pos.distance(center) as f64, min_dist as f64)
@@ -579,20 +581,17 @@ impl PieceArc {
             return Some(Contains::Inside);
         }
         Some(contains_from_metric(
-            -(self.boundary.unwrap() ^ point) << self.circle,
+            (-(self.boundary.unwrap() ^ point) << self.circle),
         ))
     }
     fn intersect_circle(&self, circle: Blade3) -> [Option<Blade1>; 2] {
-        let Some(intersection) = intersect_blade3(self.circle, circle) else {
+        let Dipole::Real(int_points) = (self.circle & circle).unpack() else {
             return [None; 2];
         };
-        let Some(int_points) = intersection.unpack_point_pair() else {
-            return [None; 2];
-        };
-        return int_points.map(|a| match self.contains(a) {
+        return int_points.map(|a| match self.contains(a.into()) {
             None => None,
             Some(Contains::Outside) => None,
-            Some(Contains::Border) | Some(Contains::Inside) => Some(a),
+            Some(Contains::Border) | Some(Contains::Inside) => Some(a.into()),
         });
     }
 
@@ -607,11 +606,11 @@ impl PieceArc {
         let mut sorted_arcs = [Vec::new(), Vec::new()];
         let mut segments = Vec::new();
         let mut new_points = Vec::new();
-        match intersect_blade3(circle, self.circle) {
-            Some(intersects) => {
-                for intersect in intersects.unpack_point_pair().unwrap() {
-                    if self.contains(intersect).unwrap() == Contains::Inside {
-                        new_points.push(intersect);
+        match (circle & self.circle).unpack() {
+            Dipole::Real(intersects) => {
+                for intersect in intersects {
+                    if self.contains(intersect.into()).unwrap() == Contains::Inside {
+                        new_points.push(intersect.into());
                     }
                 }
                 if new_points.is_empty() {
@@ -622,7 +621,10 @@ impl PieceArc {
                         comp_points_on_circle(
                             match self.boundary {
                                 None => base,
-                                Some(x) => x.unpack_point_pair().unwrap()[0],
+                                Some(x) => match x.unpack() {
+                                    Dipole::Real(r) => r[0].into(),
+                                    _ => panic!("television"),
+                                },
                             },
                             *a,
                             *b,
@@ -630,21 +632,30 @@ impl PieceArc {
                         )
                     });
                     if let Some(x) = self.boundary {
-                        new_points.insert(0, x.unpack_point_pair().unwrap()[0]);
-                        new_points.push(x.unpack_point_pair().unwrap()[1]);
+                        new_points.insert(
+                            0,
+                            match x.unpack() {
+                                Dipole::Real(r) => r[0].into(),
+                                _ => panic!("horseplay"),
+                            },
+                        );
+                        new_points.push(match x.unpack() {
+                            Dipole::Real(r) => r[1].into(),
+                            _ => panic!("chemically"),
+                        });
                     } else {
                         new_points.push(base);
                     }
                     //(&new_points);
                     for i in 0..(new_points.len() - 1) {
                         segments.push(PieceArc {
-                            circle: self.circle.normalize(),
-                            boundary: Some((new_points[i] ^ new_points[i + 1]).normalize()),
+                            circle: self.circle,
+                            boundary: Some((new_points[i] ^ new_points[i + 1])),
                         })
                     }
                 }
             }
-            None => segments = vec![*self],
+            _ => segments = vec![*self],
         }
         for arc in segments {
             //dbg!(arc.circle);
@@ -652,7 +663,10 @@ impl PieceArc {
             match arc.in_circle(circle) {
                 None => panic!("whats going on? who are you?"),
                 Some(Contains::Inside) => sorted_arcs[0].push(arc),
-                Some(Contains::Border) => panic!("well, now ive gotta hunt you down"),
+                Some(Contains::Border) => {
+                    sorted_arcs[0].push(arc);
+                    sorted_arcs[1].push(arc)
+                } //in this case the arc is tangent to the circle and on the circle
                 Some(Contains::Outside) => sorted_arcs[1].push(arc),
             }
         }
@@ -670,13 +684,16 @@ impl PieceArc {
     }
     //helper for in_circle
     fn contains_either_properly(&self, pair: Blade2) -> bool {
-        let points = pair.unpack_point_pair().unwrap();
+        let points = match pair.unpack() {
+            Dipole::Real(real) => real,
+            _ => panic!("492830948234"),
+        };
         for p in points {
-            if self.contains(p) == Some(Contains::Inside) {
+            if self.contains(p.into()) == Some(Contains::Inside) {
                 return true;
             }
         }
-        false
+        (false)
     }
     fn rotate(&self, rot: Rotoflector) -> PieceArc {
         PieceArc {
@@ -702,50 +719,70 @@ impl PieceArc {
         {
             return Some(Contains::Outside);
         }
-        let arc_circle = self.circle.normalize();
-        let circ = circle.normalize();
-        if aeq_circle(circ, arc_circle) || aeq_circle(circ, -arc_circle) {
+        let arc_circle = self.circle;
+        let circ = circle;
+        if (circ.approx_eq(&arc_circle, Precision::new_simple(20)))
+            || (circ.approx_eq(&-arc_circle, Precision::new_simple(20)))
+        {
             return Some(Contains::Border);
         }
-        let intersect = intersect_blade3(circ, arc_circle);
-        if intersect.is_none() {
-            return Some(circ_border_inside_circ(circ, arc_circle));
-        }
-        if intersect.is_some() {
-            if self.contains_either_properly(intersect.unwrap().normalize()) {
-                return None;
-            }
-            //FLIP SIGN MAYBE
-            let bound_points = self.boundary?.normalize().unpack_point_pair().unwrap();
-            let contains = [
-                circle_contains(circ, bound_points[0]),
-                circle_contains(circ, bound_points[1]),
-            ];
-            return match contains {
-                [Contains::Inside, Contains::Inside]
-                | [Contains::Inside, Contains::Border]
-                | [Contains::Border, Contains::Inside] => Some(Contains::Inside),
-                [Contains::Outside, Contains::Outside]
-                | [Contains::Outside, Contains::Border]
-                | [Contains::Border, Contains::Outside] => Some(Contains::Outside),
-                [Contains::Border, Contains::Border] => Some(
-                    //SIGN NEEDS CHECKING
-                    match aeq_point(
-                        intersect.unwrap().normalize().unpack_point_pair().unwrap()[0],
-                        self.boundary?.normalize().unpack_point_pair().unwrap()[0],
-                    ) {
-                        true => Contains::Outside,
-                        false => Contains::Inside,
-                    },
-                ),
-                _ => {
-                    dbg!(self);
-                    dbg!(circ);
-                    panic!("what have you done.")
+        let intersect = circ & arc_circle;
+        match intersect.unpack() {
+            Dipole::Real(real) => {
+                if self.contains_either_properly(intersect) {
+                    return None;
                 }
-            };
+                //FLIP SIGN MAYBE
+                let bound_points = match self.boundary?.unpack() {
+                    Dipole::Real(r) => r,
+                    _ => {
+                        dbg!(self.boundary.unwrap().mag2());
+                        dbg!(self.boundary);
+                        dbg!(self.boundary.unwrap().unpack());
+                        panic!("schlimble")
+                    }
+                };
+                let contains = [
+                    circle_contains(circ, bound_points[0].into()),
+                    circle_contains(circ, bound_points[1].into()),
+                ];
+                return match contains {
+                    [Contains::Inside, Contains::Inside]
+                    | [Contains::Inside, Contains::Border]
+                    | [Contains::Border, Contains::Inside] => Some(Contains::Inside),
+                    [Contains::Outside, Contains::Outside]
+                    | [Contains::Outside, Contains::Border]
+                    | [Contains::Border, Contains::Outside] => Some(Contains::Outside),
+                    [Contains::Border, Contains::Border] => Some(
+                        //SIGN NEEDS CHECKING
+                        match real[0].approx_eq(
+                            &match self.boundary?.unpack() {
+                                Dipole::Real(real_boundary) => real_boundary[0],
+                                _ => panic!("terrorism"),
+                            },
+                            Precision::new_simple(20),
+                        ) {
+                            false => Contains::Outside,
+                            true => Contains::Inside,
+                        },
+                    ),
+                    _ => {
+                        dbg!(self);
+                        dbg!(circ);
+                        dbg!(
+                            dbg!(
+                                -(self.boundary.unwrap() ^ Into::<Blade1>::into(real[0]))
+                                    << self.circle
+                            )
+                            .approx_eq(&0.0, Precision::new_simple(20))
+                        );
+                        dbg!(3.2195042811735317e-5.approx_eq(&0.0, Precision::new_simple(20)));
+                        panic!("what have you done.")
+                    }
+                };
+            }
+            _ => Some(circ_border_inside_circ(circ, arc_circle)),
         }
-        return None;
     }
     fn draw(
         &self,
@@ -772,13 +809,19 @@ impl PieceArc {
         ui.painter()
             .add(PathShape::line(coords, Stroke::new(width, OUTLINE_COLOR)));
     }
+    //precondition: the boundary is not a tangent
     fn get_polygon(&self, divisions: u16) -> Vec<Pos2> {
         let mut points: Vec<Pos2> = Vec::new();
         let start_point = match self.boundary {
             None => euc_center_rad(self.circle).0 + vec2(0.0, euc_center_rad(self.circle).1),
             Some(b2) => {
-                let (x, y) = b2.unpack_point_pair().unwrap()[0].unpack_point();
-                pos2(x as f32, y as f32)
+                if let Dipole::Real(real) = b2.unpack()
+                    && let Point::Finite([x, y]) = real[0]
+                {
+                    pos2(x as f32, y as f32)
+                } else {
+                    panic!("doorbell")
+                }
             }
         };
 
@@ -796,6 +839,9 @@ impl PieceArc {
     }
     fn triangulate(&self, center: Pos2, detail: f32) -> Vec<Vec<Pos2>> {
         let size = self.angle_euc().abs() as f32 * euc_center_rad(self.circle).1;
+        if aeq(self.angle_euc() as f64, 0.0) {
+            dbg!(self.angle_euc());
+        }
         let div = (detail * size * DETAIL as f32).max(2.0) as u16;
         let polygon = self.get_polygon(div);
         let mut triangles = Vec::new();
@@ -807,30 +853,54 @@ impl PieceArc {
     //what it does: 'angle' returns the angle 'between' the lines going through the euclidian center of self.circle and the points of the boundary. this angle is between
     //-PI and PI and the sign is inverted based on the orientation of both self.circle and self.boundary. this answer is then taken mod 2PI, yielding a positive answer between
     //0 and 2PI. if the circle is clockwise (negative orientation), then the sign of the final answer is inverted and then returned
-    fn angle_euc(&self) -> f64 {
+    fn angle_euc(&self) -> f32 {
         let orientation = circle_orientation_euclid(self.circle) == Contains::Inside;
         if self.boundary == None {
-            return if orientation {
-                2.0 * PI as f64
-            } else {
-                -2.0 * PI as f64
-            };
+            return if orientation { 2.0 * PI } else { -2.0 * PI };
         } else {
-            let [a, b] = self.boundary.unwrap().unpack_point_pair().unwrap();
-            let cp = !self.circle ^ NI;
-            let (la, lb) = ((cp ^ a).normalize(), (cp ^ b).normalize());
-            let lp = -(!la ^ cp).normalize();
-            let (a1, a2) = (la << lb, lp << lb);
-            let angle = f64::atan2(a2, a1);
-            let pos_angle = angle.rem_euclid(2.0 * PI as f64);
-            return if !orientation { -pos_angle } else { pos_angle };
+            let Dipole::Real([p1, p2]) = self.boundary.unwrap().unpack() else {
+                return 0.0;
+            };
+            let (pos1, pos2) = match (p1, p2) {
+                (Point::Finite([x1, y1]), Point::Finite([x2, y2])) => {
+                    (pos2(x1 as f32, y1 as f32), pos2(x2 as f32, y2 as f32))
+                }
+                _ => panic!("the boundary isnt real"),
+            };
+            let center = euc_center_rad(self.circle).0;
+            let angle = ((pos2 - center).angle() - (pos1 - center).angle()).rem_euclid(2.0 * PI);
+            if orientation {
+                angle
+            } else {
+                angle - (2.0 * PI)
+            }
         }
+        // } else {
+        //     let [a, b] = match self.boundary.unwrap().unpack() {
+        //         Dipole::Real(k) => k,
+        //         _ => panic!("boundary is not real!"),
+        //     };
+        //     let cp = !self.circle ^ NI;
+        //     let (la, lb) = ((cp ^ a).normalize(), (cp ^ b).normalize());
+        //     let lp = -(!la ^ cp).normalize();
+        //     //lp ~= !la ^ !self.circle ^ NI, imagine the zodiac sign its that
+        //     let (a1, a2) = (la << lb, lp << lb);
+        //     let angle = f64::atan2(a2, a1);
+        //     let pos_angle = angle.rem_euclid(2.0 * PI as f64);
+        //     return if !orientation { -pos_angle } else { pos_angle };
+        // }
     }
     fn midpoint_euc(&self) -> Option<Pos2> {
-        let p = self.boundary?.unpack_point_pair().unwrap()[0].unpack_point();
+        let p = match self.boundary?.unpack() {
+            Dipole::Real(real) => match real[0] {
+                Point::Finite([x, y]) => pos2(x as f32, y as f32),
+                _ => panic!("point is infinite!"),
+            },
+            _ => panic!("ABSOLUTELY NOT!"),
+        };
         Some(rotate_about(
             euc_center_rad(self.circle).0,
-            pos2(p.0 as f32, p.1 as f32),
+            p,
             self.angle_euc() as f32 / 2.0,
         ))
     }
@@ -841,7 +911,7 @@ fn circ_border_inside_circ(c1: Blade3, c2: Blade3) -> Contains {
     for point in [NI, NO] {
         let val = !(point ^ (c1 & c2) ^ !c2);
         if contains_from_metric(val) != Contains::Border {
-            return contains_from_metric(-val);
+            return contains_from_metric(val);
         }
     }
     return Contains::Border;
@@ -849,7 +919,7 @@ fn circ_border_inside_circ(c1: Blade3, c2: Blade3) -> Contains {
 
 //will panic if passed a line
 fn basic_turn(raw_circle: Blade3, angle: f64) -> Turn {
-    if let LineOrCircle::Circle { cx, cy, r: _ } = raw_circle.unpack(LENIENCY) {
+    if let Circle::Circle { cx, cy, r: _, ori } = raw_circle.unpack() {
         let p1 = point(cx, cy);
         let p2 = point(cx + 1.0, cy);
         let p3 = point(cx + (angle / 2.0).cos(), cy + (angle / 2.0).sin());
@@ -864,7 +934,7 @@ fn basic_turn(raw_circle: Blade3, angle: f64) -> Turn {
 
 //Blade3 Helpers
 fn circle_contains(circ: Blade3, point: Blade1) -> Contains {
-    contains_from_metric(!(circ.normalize() ^ point))
+    contains_from_metric(!(circ ^ point))
 }
 fn blade2_almost_null(blade: Blade2) -> bool {
     for i in blade.terms() {
@@ -876,13 +946,13 @@ fn blade2_almost_null(blade: Blade2) -> bool {
 }
 //NOT FINISHED
 //CHECK UP TO SCALING?
-fn aeq_circle(c1: Blade3, c2: Blade3) -> bool {
-    return blade2_almost_null(!(c1.normalize()) ^ !(c2.normalize()));
-}
+// fn aeq_circle(c1: Blade3, c2: Blade3) -> bool {
+//     return blade2_almost_null(!(c1.normalize()) ^ !(c2.normalize()));
+// }
 
-fn aeq_point(p1: Blade1, p2: Blade1) -> bool {
-    return blade2_almost_null(p1 ^ p2);
-}
+// fn aeq_point(p1: Blade1, p2: Blade1) -> bool {
+//     return blade2_almost_null(p1 ^ p2);
+// }
 
 //circles created from the circle() fn are counterclockwise and Contains::Inside
 fn circle_orientation_euclid(circ: Blade3) -> Contains {
@@ -897,30 +967,59 @@ fn cut_boundary(bound: &BoundaryShape, circle: Blade3) -> Option<[BoundaryShape;
     let mut ends = Vec::new();
     let mut inside = Vec::new();
     let mut outside = Vec::new();
-    for arc in bound {
-        if aeq_circle(arc.circle, circle) {
+    for i in 0..bound.len() {
+        let arc = bound[i];
+        if (arc.circle.approx_eq(&circle, Precision::new_simple(20))
+            || arc.circle.approx_eq(&-circle, Precision::new_simple(20)))
+        {
             return None;
         }
         let mut cut_points = Vec::new();
         let int = arc.intersect_circle(circle);
         if int[0].is_some()
             && !(arc.boundary.is_some()
-                && aeq_point(
-                    int[0].unwrap(),
-                    arc.boundary.unwrap().unpack_point_pair().unwrap()[1],
-                ))
+                && arc
+                    .boundary
+                    .unwrap()
+                    .mag2()
+                    .approx_sign(Precision::new_simple(20))
+                    != Sign::Zero
+                && int[0].unwrap().approx_eq(
+                    &match arc.boundary.unwrap().unpack() {
+                        Dipole::Real(real) => real[0].into(),
+                        _ => panic!("JIM???? I HAVENT SEEN YOU IN YEARS!"),
+                    },
+                    Precision::new_simple(20),
+                )
+                && (next_arc(&bound, arc).unwrap().circle & circle)
+                    .mag2()
+                    .approx_sign(Precision::new_simple(20))
+                    == Sign::Positive)
         {
-            ends.push(int[0].unwrap());
+            starts.push(int[0].unwrap());
             cut_points.push(int[0].unwrap());
         }
         if int[1].is_some()
             && !(arc.boundary.is_some()
-                && aeq_point(
-                    int[1].unwrap(),
-                    arc.boundary.unwrap().unpack_point_pair().unwrap()[1],
-                ))
+                && arc
+                    .boundary
+                    .unwrap()
+                    .mag2()
+                    .approx_sign(Precision::new_simple(20))
+                    != Sign::Zero
+                && int[1].unwrap().approx_eq(
+                    &match arc.boundary.unwrap().unpack() {
+                        Dipole::Real(real) => real[1].into(),
+                        _ => panic!("JIM???? I HAVENT SEEN YOU IN YEARS!"),
+                    },
+                    Precision::new_simple(20),
+                )
+                && (next_arc(&bound, arc).unwrap().circle & circle)
+                    .mag2()
+                    .approx_sign(Precision::new_simple(20))
+                    == Sign::Positive)
         {
-            starts.push(int[1].unwrap());
+            ends.push(int[1].unwrap());
             cut_points.push(int[1].unwrap());
         }
         let [add_inside, add_outside] = arc.cut_by_circle(circle);
@@ -1290,10 +1389,10 @@ impl DataStorer {
 //undefined when A aeq B
 //point aeq to base is minimal
 fn comp_points_on_circle(base: Blade1, a: Blade1, b: Blade1, circ: Blade3) -> Ordering {
-    if aeq_point(a, base) {
+    if a.approx_eq(&base, Precision::new_simple(20)) {
         return Ordering::Less;
     }
-    if aeq_point(b, base) {
+    if b.approx_eq(&base, Precision::new_simple(20)) {
         return Ordering::Greater;
     }
     cmp_f64(((base ^ b) ^ a) << circ, 0.0)
@@ -1314,6 +1413,9 @@ fn inner_circle_arcs(
     mut ends: Vec<Blade1>,
     circ: Blade3,
 ) -> Vec<PieceArc> {
+    if (starts.len()) != (ends.len()) {
+        panic!("inequal number of starts and ends passed");
+    }
     if starts.is_empty() {
         return Vec::new();
     }
@@ -1321,12 +1423,29 @@ fn inner_circle_arcs(
     ends.sort_by(|a, b| comp_points_on_circle(starts[0], *a, *b, circ));
     starts.sort_by(|a, b| comp_points_on_circle(*ends.last().unwrap(), *a, *b, circ));
     for i in 0..starts.len() {
-        arcs.push(PieceArc {
-            circle: circ.normalize(),
-            boundary: Some((starts[i] ^ ends[i]).normalize()),
-        })
+        if starts[i].approx_eq(&ends[i], Precision::new_simple(20)) {
+            continue;
+        } else {
+            arcs.push(PieceArc {
+                circle: circ,
+                boundary: Some((starts[i] ^ ends[i])),
+            });
+        }
     }
     return arcs;
+}
+
+fn next_arc(bound: &BoundaryShape, curr: PieceArc) -> Option<PieceArc> {
+    for arc in bound {
+        if let Some(boundary) = arc.boundary
+            && let Dipole::Real(real) = boundary.unpack()
+            && let Dipole::Real(real_curr) = curr.boundary?.unpack()
+            && (real_curr[1].approx_eq(&real[0], Precision::new_simple(20)))
+        {
+            return Some(*arc);
+        }
+    }
+    None
 }
 
 //take in a triangle and return if its 'almost degenerate' within some leniency (i.e. its points are 'almost colinear')
@@ -1368,13 +1487,6 @@ fn avg_points(points: &Vec<Pos2>) -> Pos2 {
 //     }
 //     return None;
 // }
-
-fn un_tangent(pair: Option<Blade2>) -> Option<Blade2> {
-    match aeq_point(pair?.unpack_point_pair()?[0], pair?.unpack_point_pair()?[1]) {
-        true => None,
-        false => pair,
-    }
-}
 
 //translates from nice coords to egui coords
 fn to_egui_coords(pos: Pos2, rect: &Rect, scale_factor: f32, offset: Vec2) -> Pos2 {
@@ -1497,10 +1609,6 @@ fn rotate_about(center: Pos2, point: Pos2, angle: f32) -> Pos2 {
 //     let point2 = rotate_about(circle1.center, arc_point, angle);
 //     return Some(vec![point1, point2]);
 // }
-
-fn intersect_blade3(b1: Blade3, b2: Blade3) -> Option<Blade2> {
-    un_tangent(Some((b1 & b2).normalize()))
-}
 
 // fn collapse_shape(shape: &Vec<Arc>) -> Option<Vec<Arc>> {
 //     let mut new_shape: Vec<Arc> = vec![shape[0]];
@@ -2035,21 +2143,32 @@ struct App {
     offset: Vec2,
     cut_on_turn: bool,
     preview: bool,
+    debug: usize,
 }
 impl App {
     fn new(_cc: &eframe::CreationContext<'_>) -> Self {
         let mut data_storer = DataStorer { data: Vec::new() };
         let _ = data_storer.load_puzzles(&String::from("Puzzles/Definitions/"));
+        let mut p =
+            load_puzzle_and_def_from_file(&String::from("Puzzles/Definitions/44squares.kdl"))
+                .unwrap();
+        let rel_piece = p.0.pieces[0].clone();
+        let c1 = rel_piece.shape.border[0].circle;
+        let c2 = p.0.turns["A"].circle;
+        dbg!(dbg!(c1).approx_eq(&dbg!(c2), Precision::new_simple(20)));
+
+        // for arc in &rel_piece.shape.border {
+        //     dbg!(dbg!(arc.circle).approx_eq(dbg!(&p.0.turns["A"].circle), Precision::new_simple(20)));
+        //     dbg!(
+        //         arc.circle
+        //             .approx_eq(&dbg!(-p.0.turns["A"].circle), Precision::new_simple(20))
+        //     );
+        // }
+        // p.0.pieces = vec![rel_piece];
         return Self {
             data_storer,
-            puzzle: load_puzzle_and_def_from_file(&String::from("Puzzles/Definitions/test.kdl"))
-                .unwrap()
-                .0,
-            def_string: load_puzzle_and_def_from_file(&String::from(
-                "Puzzles/Definitions/test.kdl",
-            ))
-            .unwrap()
-            .1,
+            puzzle: p.0,
+            def_string: p.1,
             log_path: String::from("logfile"),
             curr_msg: String::new(),
             animation_speed: ANIMATION_SPEED,
@@ -2058,8 +2177,9 @@ impl App {
             detail: 50.0,
             scale_factor: SCALE_FACTOR,
             offset: vec2(0.0, 0.0),
-            cut_on_turn: false,
+            cut_on_turn: true,
             preview: false,
+            debug: 0,
         };
     }
 }
@@ -2099,14 +2219,77 @@ impl eframe::App for App {
             // );
             // dbg!(self.puzzle.pieces[0].shape.bounds.len());
             if !self.preview {
-                self.puzzle.render(
-                    ui,
-                    &rect,
-                    self.detail,
-                    self.outline_width,
-                    self.scale_factor,
-                    self.offset,
-                );
+                // self.puzzle.render(
+                //     ui,
+                //     &rect,
+                //     self.detail,
+                //     self.outline_width,
+                //     self.scale_factor,
+                //     self.offset,
+                // );
+                let a = PieceArc {
+                    boundary: Some(Blade2 {
+                        mp: -0.0293736,
+                        mx: -0.03444056,
+                        px: 0.024306666,
+                        my: -0.01304419,
+                        py: 0.03105767,
+                        xy: 0.02562106,
+                    }),
+                    circle: Blade3 {
+                        mpx: 0.00000011,
+                        mpy: 0.499999863,
+                        mxy: 0.58625006,
+                        pxy: -0.41374993,
+                    },
+                };
+                let c = Blade3 {
+                    mpx: 0.0,
+                    mpy: -0.5,
+                    mxy: 0.695000,
+                    pxy: -0.304999999,
+                };
+                let ca = PieceArc {
+                    boundary: None,
+                    circle: c,
+                };
+                dbg!(a.contains(a.intersect_circle(c)[1].unwrap()));
+                if let Dipole::Real(real) = a.boundary.unwrap().unpack() {
+                    dbg!(real[1].approx_eq(
+                        &a.intersect_circle(c)[1].unwrap().unpack().unwrap(),
+                        Precision::new_simple(20)
+                    ));
+                }
+                dbg!(a.in_circle(c));
+                //dbg!(a.in_circle(c));
+                for p in [a, ca] {
+                    p.draw(
+                        ui,
+                        &rect,
+                        self.detail,
+                        self.outline_width,
+                        self.scale_factor,
+                        self.offset,
+                    );
+                }
+                // self.puzzle.pieces[0].render(
+                //     ui,
+                //     &rect,
+                //     NONE_TURN,
+                //     self.detail,
+                //     self.outline_width,
+                //     self.scale_factor,
+                //     self.offset,
+                // );
+                // self.curr_msg = self.puzzle.pieces[0].shape.border.len().to_string();
+                // self.puzzle.pieces[0].shape.border[self.debug].draw(
+                //     ui,
+                //     &rect,
+                //     self.detail,
+                //     self.outline_width,
+                //     self.scale_factor,
+                //     self.offset,
+                // );
             } else {
                 for piece in &self.puzzle.solved_state {
                     piece.render(
@@ -2174,6 +2357,12 @@ impl eframe::App for App {
             }
             if ui.add(egui::Button::new("SCRAMBLE")).clicked() && !self.preview {
                 let _ = self.puzzle.scramble(self.cut_on_turn);
+            }
+            if ui
+                .add(egui::Button::new("INCREMENT DEBUG COUNTER"))
+                .clicked()
+            {
+                self.debug += 1;
             }
             if ui.add(egui::Button::new("RESET")).clicked() && !self.preview {
                 self.puzzle.reset();
@@ -2294,7 +2483,13 @@ impl eframe::App for App {
                     self.offset,
                 );
                 if let Some(real_circle) = hovered_circle {
-                    if let LineOrCircle::Circle { cx: x, cy: y, r } = real_circle.unpack(LENIENCY) {
+                    if let Circle::Circle {
+                        cx: x,
+                        cy: y,
+                        r,
+                        ori,
+                    } = real_circle.unpack()
+                    {
                         ui.painter().circle_stroke(
                             to_egui_coords(
                                 pos2(x as f32, y as f32),
@@ -2352,6 +2547,15 @@ impl eframe::App for App {
 // When compiling natively:
 #[cfg(not(target_arch = "wasm32"))]
 fn main() -> eframe::Result {
+    let circ = circle(point(0.0, 0.0), 5.0);
+    let c2 = circle(point(7.0, 0.0), 1.0);
+    let bound = point(7.0, 1.0) ^ point(7.0, -1.0);
+    let arc = PieceArc {
+        circle: c2,
+        boundary: Some(bound),
+    };
+    dbg!(arc.in_circle(circ));
+    dbg!(arc.midpoint_euc());
     // let [i1, i2] = intersect_blade3(circ, c2)
     //     .unwrap()
     //     .unpack_point_pair()
