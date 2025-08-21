@@ -1,13 +1,11 @@
 fn get_first_puzzle() -> String {
     String::from("44squares.kdl")
 }
-use crate::PRECISION;
 use crate::data_storer::*;
 use crate::io::*;
 use crate::puzzle::*;
 use crate::puzzle_generation::*;
 use crate::render::draw_circle;
-use approx_collections::*;
 use egui::*;
 
 const SCALE_FACTOR: f32 = 200.0;
@@ -59,10 +57,6 @@ impl App {
             &(String::from("Puzzles/Definitions/") + &get_first_puzzle()),
         )
         .unwrap();
-        let rel_piece = p.0.pieces[0].clone();
-        let c1 = rel_piece.shape.border[0].circle;
-        let c2 = p.0.turns["A"].circle;
-        dbg!(dbg!(c1).approx_eq(&dbg!(c2), PRECISION));
 
         // for arc in &rel_piece.shape.border {
         //     dbg!(dbg!(arc.circle).approx_eq(dbg!(&p.0.turns["A"].circle), PRECISION));
