@@ -1,0 +1,109 @@
+use crate::piece::*;
+use crate::turn::*;
+use approx_collections::*;
+use cga2d::*;
+use rand::prelude::IteratorRandom;
+use std::collections::HashMap;
+#[derive(Debug, Clone)]
+pub struct Puzzle {
+    pub name: String,
+    pub authors: Vec<String>,
+    pub pieces: Vec<Piece>,
+    pub turns: HashMap<String, Turn>,
+    pub stack: Vec<String>,
+    pub animation_offset: Option<Turn>,
+    pub intern: FloatPool,
+    pub depth: u16,
+    pub solved_state: Vec<Piece>,
+    pub solved: bool,
+    pub anim_left: f32,
+}
+impl Puzzle {
+    // fn intern_all(&mut self) {
+    //     for piece in &mut self.pieces {
+    //         for arc in &mut piece.shape.border {
+    //             self.intern.intern_blade3(&mut arc.circle);
+    //             if let Some(bound) = arc.boundary.as_mut() {
+    //                 self.intern.intern_blade2(bound);
+    //             }
+    //         }
+    //         for circ in &mut piece.shape.bounds {
+    //             self.intern.intern_blade3(circ);
+    //         }
+    //     }
+    // }
+    //updates self.solved
+    fn check(&mut self) {
+        self.solved = false;
+        //TEMPORARY -- SOLVED CHECKING
+    }
+    //returns if the turn could be completed
+    //Err(true) means that the turn was bandaged
+    //Err(false) means that the cutting failed
+    pub fn turn(&mut self, turn: Turn, cut: bool) -> Result<(), bool> {
+        if cut {
+            if self.global_cut_by_circle(turn.circle).is_err() {
+                return Err(false);
+            }
+        }
+        let mut new_pieces = Vec::new();
+        for piece in &self.pieces {
+            new_pieces.push(piece.turn(turn).ok_or(true)?);
+        }
+        self.pieces = new_pieces;
+        self.anim_left = 1.0;
+        self.animation_offset = Some(turn.inverse());
+        //self.intern_all();
+        Ok(())
+    }
+    pub fn turn_id(&mut self, id: String, cut: bool) -> Result<(), bool> {
+        let turn = self.turns[&id];
+        self.turn(turn, cut)?;
+        self.stack.push(id);
+        self.check();
+        Ok(())
+    }
+    pub fn undo(&mut self) -> Result<(), ()> {
+        if self.stack.len() == 0 {
+            return Err(());
+        }
+        let last_turn = self.turns[&self.stack.pop().unwrap()];
+        self.turn(last_turn.inverse(), false).or(Err(())).unwrap();
+        self.check();
+        Ok(())
+    }
+    pub fn scramble(&mut self, cut: bool) -> Result<(), ()> {
+        let mut rng = rand::rng();
+        for _i in 0..self.depth {
+            let key = self.turns.keys().choose(&mut rng).unwrap().clone();
+            if self.turn(self.turns[&key], cut).is_err_and(|x| !x) {
+                return Err(());
+            }
+            self.stack.push(key);
+        }
+        self.animation_offset = None;
+        self.check();
+        Ok(())
+    }
+    pub fn reset(&mut self) {
+        loop {
+            if self.undo().is_err() {
+                self.animation_offset = None;
+                return;
+            }
+        }
+    }
+    pub fn global_cut_by_circle(&mut self, circle: Blade3) -> Result<(), ()> {
+        let mut new_pieces = Vec::new();
+        for piece in &self.pieces {
+            //dbg!(piece.shape.border.len());
+            match piece.cut_by_circle(circle) {
+                None => new_pieces.push(piece.clone()),
+                Some(x) => new_pieces.extend(x),
+            }
+        }
+        self.pieces = new_pieces;
+        //self.intern_all();
+        Ok(())
+    }
+}
