@@ -252,7 +252,7 @@ struct Turn {
 //checking if certain float-based variable types are approximately equal due to precision bs
 
 fn aeq(f1: f64, f2: f64) -> bool {
-    return f1.approx_eq(&f2, Precision::new_simple(20));
+    return f1.approx_eq(&f2, Precision::new_simple(16));
 }
 fn aleq(f1: f64, f2: f64) -> bool {
     return f1 < f2 || aeq(f1, f2);
@@ -343,18 +343,20 @@ impl Turn {
 
 impl FloatIntern {
     fn intern_blade3(&mut self, b: &mut Blade3) {
+        *b = b.rescale_oriented();
         for mut t in b.terms() {
             self.intern(&mut t.coef);
         }
     }
     fn intern_blade2(&mut self, b: &mut Blade2) {
+        *b = b.rescale_oriented();
         for mut t in b.terms() {
             self.intern(&mut t.coef);
         }
     }
     fn intern(&mut self, f: &mut f64) {
         for float in &self.floats {
-            if (*float - *f).abs() < LENIENCY {
+            if aeq(*f, *float) {
                 *f = *float;
                 return;
             }
@@ -603,6 +605,7 @@ impl PieceArc {
     //im not joking
     //will sort if passed an arc that doesnt intersect the circle
     fn cut_by_circle(&self, circle: Blade3) -> [Vec<PieceArc>; 2] {
+        //REWORK ALL
         let mut sorted_arcs = [Vec::new(), Vec::new()];
         let mut segments = Vec::new();
         let mut new_points = Vec::new();
@@ -650,7 +653,7 @@ impl PieceArc {
                     for i in 0..(new_points.len() - 1) {
                         segments.push(PieceArc {
                             circle: self.circle,
-                            boundary: Some((new_points[i] ^ new_points[i + 1])),
+                            boundary: Some((new_points[i] ^ new_points[i + 1]).rescale_oriented()),
                         })
                     }
                 }
@@ -661,7 +664,11 @@ impl PieceArc {
             //dbg!(arc.circle);
             //dbg!(circle);
             match arc.in_circle(circle) {
-                None => panic!("whats going on? who are you?"),
+                None => {
+                    dbg!(arc);
+                    dbg!(circle);
+                    panic!("whats going on? who are you?")
+                }
                 Some(Contains::Inside) => sorted_arcs[0].push(arc),
                 Some(Contains::Border) => {
                     sorted_arcs[0].push(arc);
@@ -684,6 +691,7 @@ impl PieceArc {
     }
     //helper for in_circle
     fn contains_either_properly(&self, pair: Blade2) -> bool {
+        //REWORK ALL
         let points = match pair.unpack() {
             Dipole::Real(real) => real,
             _ => panic!("492830948234"),
@@ -709,6 +717,7 @@ impl PieceArc {
     //Inside/Outside -- arc endpoints can be on the boundary
     //potential useful precondition -- the arc does not cross the boundary, only touches it. should be sufficient for cutting, however not sufficient for bandaging reasons
     fn in_circle(&self, circle: Blade3) -> Option<Contains> {
+        //REWORK ALL
         if circle
             == (Blade3 {
                 mxy: 0.0,
@@ -719,70 +728,110 @@ impl PieceArc {
         {
             return Some(Contains::Outside);
         }
-        let arc_circle = self.circle;
-        let circ = circle;
-        if (circ.approx_eq(&arc_circle, Precision::new_simple(20)))
-            || (circ.approx_eq(&-arc_circle, Precision::new_simple(20)))
+        // let arc_circle = self.circle;
+        // let circ = circle;
+        if (circle.approx_eq(&self.circle, Precision::new_simple(16)))
+            || (circle.approx_eq(&-self.circle, Precision::new_simple(16)))
         {
             return Some(Contains::Border);
         }
-        let intersect = circ & arc_circle;
+        let intersect = (circle & self.circle).rescale_oriented();
         match intersect.unpack() {
-            Dipole::Real(real) => {
+            Dipole::Real(real_intersect) => {
                 if self.contains_either_properly(intersect) {
                     return None;
                 }
-                //FLIP SIGN MAYBE
-                let bound_points = match self.boundary?.unpack() {
-                    Dipole::Real(r) => r,
+                let boundary_points = match self.boundary.unwrap().unpack() {
+                    Dipole::Real(points) => points,
                     _ => {
-                        dbg!(self.boundary.unwrap().mag2());
-                        dbg!(self.boundary);
                         dbg!(self.boundary.unwrap().unpack());
-                        panic!("schlimble")
+                        dbg!(self.boundary.unwrap().mag2());
+                        panic!("Boundary was tangent!")
                     }
                 };
                 let contains = [
-                    circle_contains(circ, bound_points[0].into()),
-                    circle_contains(circ, bound_points[1].into()),
+                    circle_contains(circle, boundary_points[0].into()),
+                    circle_contains(circle, boundary_points[1].into()),
                 ];
                 return match contains {
                     [Contains::Inside, Contains::Inside]
                     | [Contains::Inside, Contains::Border]
                     | [Contains::Border, Contains::Inside] => Some(Contains::Inside),
                     [Contains::Outside, Contains::Outside]
-                    | [Contains::Outside, Contains::Border]
-                    | [Contains::Border, Contains::Outside] => Some(Contains::Outside),
-                    [Contains::Border, Contains::Border] => Some(
-                        //SIGN NEEDS CHECKING
-                        match real[0].approx_eq(
-                            &match self.boundary?.unpack() {
-                                Dipole::Real(real_boundary) => real_boundary[0],
-                                _ => panic!("terrorism"),
-                            },
-                            Precision::new_simple(20),
-                        ) {
-                            false => Contains::Outside,
-                            true => Contains::Inside,
-                        },
-                    ),
+                    | [Contains::Border, Contains::Outside]
+                    | [Contains::Outside, Contains::Border] => Some(Contains::Outside),
+                    [Contains::Border, Contains::Border] => match real_intersect[0]
+                        .approx_eq(&boundary_points[0], Precision::new_simple(16))
+                    {
+                        true => Some(Contains::Inside),
+                        false => Some(Contains::Outside),
+                    },
                     _ => {
-                        dbg!(self);
-                        dbg!(circ);
-                        dbg!(
-                            dbg!(
-                                -(self.boundary.unwrap() ^ Into::<Blade1>::into(real[0]))
-                                    << self.circle
-                            )
-                            .approx_eq(&0.0, Precision::new_simple(20))
-                        );
-                        dbg!(3.2195042811735317e-5.approx_eq(&0.0, Precision::new_simple(20)));
-                        panic!("what have you done.")
+                        dbg!(self.contains_either_properly(circle & self.circle));
+                        dbg!(self.contains(real_intersect[0].into()));
+                        panic!("CIRCLE DID NOT INTERSECT BUT CROSSED")
                     }
                 };
             }
-            _ => Some(circ_border_inside_circ(circ, arc_circle)),
+            _ => Some(circ_border_inside_circ(circle, self.circle)),
         }
+        // let intersect = circ & arc_circle;
+        // match intersect.unpack() {
+        //     Dipole::Real(real) => {
+        //         if self.contains_either_properly(intersect) {
+        //             return None;
+        //         }
+        //         //FLIP SIGN MAYBE
+        //         let bound_points = match self.boundary?.unpack() {
+        //             Dipole::Real(r) => r,
+        //             _ => {
+        //                 dbg!(self.boundary.unwrap().mag2());
+        //                 dbg!(self.boundary);
+        //                 dbg!(self.boundary.unwrap().unpack());
+        //                 panic!("schlimble")
+        //             }
+        //         };
+        //         let contains = [
+        //             circle_contains(circ, bound_points[0].into()),
+        //             circle_contains(circ, bound_points[1].into()),
+        //         ];
+        //         return match contains {
+        //             [Contains::Inside, Contains::Inside]
+        //             | [Contains::Inside, Contains::Border]
+        //             | [Contains::Border, Contains::Inside] => Some(Contains::Inside),
+        //             [Contains::Outside, Contains::Outside]
+        //             | [Contains::Outside, Contains::Border]
+        //             | [Contains::Border, Contains::Outside] => Some(Contains::Outside),
+        //             [Contains::Border, Contains::Border] => Some(
+        //                 //SIGN NEEDS CHECKING
+        //                 match real[0].approx_eq(
+        //                     &match self.boundary?.unpack() {
+        //                         Dipole::Real(real_boundary) => real_boundary[0],
+        //                         _ => panic!("terrorism"),
+        //                     },
+        //                     Precision::new_simple(16),
+        //                 ) {
+        //                     false => Contains::Outside,
+        //                     true => Contains::Inside,
+        //                 },
+        //             ),
+        //             _ => {
+        //                 dbg!(self);
+        //                 dbg!(circ);
+        //                 dbg!(
+        //                     dbg!(
+        //                         -(self.boundary.unwrap() ^ Into::<Blade1>::into(real[0]))
+        //                             << self.circle
+        //                     )
+        //                     .approx_eq(&0.0, Precision::new_simple(16))
+        //                 );
+        //                 dbg!(3.2195042811735317e-5.approx_eq(&0.0, Precision::new_simple(16)));
+        //                 panic!("what have you done.")
+        //             }
+        //         };
+        //     }
+        //     _ => Some(circ_border_inside_circ(circ, arc_circle)),
+        // }
     }
     fn draw(
         &self,
@@ -824,7 +873,6 @@ impl PieceArc {
                 }
             }
         };
-
         let angle = self.angle_euc() as f32;
         let inc_angle = angle / (divisions as f32);
         points.push(start_point);
@@ -936,14 +984,7 @@ fn basic_turn(raw_circle: Blade3, angle: f64) -> Turn {
 fn circle_contains(circ: Blade3, point: Blade1) -> Contains {
     contains_from_metric(!(circ ^ point))
 }
-fn blade2_almost_null(blade: Blade2) -> bool {
-    for i in blade.terms() {
-        if !aeq(i.coef, 0.0) {
-            return false;
-        }
-    }
-    true
-}
+
 //NOT FINISHED
 //CHECK UP TO SCALING?
 // fn aeq_circle(c1: Blade3, c2: Blade3) -> bool {
@@ -963,14 +1004,15 @@ fn circle_orientation_euclid(circ: Blade3) -> Contains {
 
 //TO FIX: DONT PASS ARC_START OR ARC_END INTO CUT_ARC, OR MAKE CUT_ARC FIX THIS
 fn cut_boundary(bound: &BoundaryShape, circle: Blade3) -> Option<[BoundaryShape; 2]> {
+    //REWORK ALL
     let mut starts = Vec::new();
     let mut ends = Vec::new();
     let mut inside = Vec::new();
     let mut outside = Vec::new();
     for i in 0..bound.len() {
         let arc = bound[i];
-        if (arc.circle.approx_eq(&circle, Precision::new_simple(20))
-            || arc.circle.approx_eq(&-circle, Precision::new_simple(20)))
+        if (arc.circle.approx_eq(&circle, Precision::new_simple(16))
+            || arc.circle.approx_eq(&-circle, Precision::new_simple(16)))
         {
             return None;
         }
@@ -978,22 +1020,22 @@ fn cut_boundary(bound: &BoundaryShape, circle: Blade3) -> Option<[BoundaryShape;
         let int = arc.intersect_circle(circle);
         if int[0].is_some()
             && !(arc.boundary.is_some()
-                && arc
-                    .boundary
-                    .unwrap()
-                    .mag2()
-                    .approx_sign(Precision::new_simple(20))
-                    != Sign::Zero
+                // && arc
+                //     .boundary
+                //     .unwrap()
+                //     .mag2()
+                //     .approx_sign(Precision::new_simple(16))
+                //     != Sign::Zero
                 && int[0].unwrap().approx_eq(
                     &match arc.boundary.unwrap().unpack() {
-                        Dipole::Real(real) => real[0].into(),
+                        Dipole::Real(real) => real[1].into(),
                         _ => panic!("JIM???? I HAVENT SEEN YOU IN YEARS!"),
                     },
-                    Precision::new_simple(20),
+                    Precision::new_simple(16),
                 )
                 && (next_arc(&bound, arc).unwrap().circle & circle)
                     .mag2()
-                    .approx_sign(Precision::new_simple(20))
+                    .approx_sign(Precision::new_simple(16))
                     == Sign::Positive)
         {
             starts.push(int[0].unwrap());
@@ -1001,22 +1043,22 @@ fn cut_boundary(bound: &BoundaryShape, circle: Blade3) -> Option<[BoundaryShape;
         }
         if int[1].is_some()
             && !(arc.boundary.is_some()
-                && arc
-                    .boundary
-                    .unwrap()
-                    .mag2()
-                    .approx_sign(Precision::new_simple(20))
-                    != Sign::Zero
+                // && arc
+                //     .boundary
+                //     .unwrap()
+                //     .mag2()
+                //     .approx_sign(Precision::new_simple(16))
+                //     != Sign::Zero
                 && int[1].unwrap().approx_eq(
                     &match arc.boundary.unwrap().unpack() {
                         Dipole::Real(real) => real[1].into(),
                         _ => panic!("JIM???? I HAVENT SEEN YOU IN YEARS!"),
                     },
-                    Precision::new_simple(20),
+                    Precision::new_simple(16),
                 )
                 && (next_arc(&bound, arc).unwrap().circle & circle)
                     .mag2()
-                    .approx_sign(Precision::new_simple(20))
+                    .approx_sign(Precision::new_simple(16))
                     == Sign::Positive)
         {
             ends.push(int[1].unwrap());
@@ -1389,10 +1431,10 @@ impl DataStorer {
 //undefined when A aeq B
 //point aeq to base is minimal
 fn comp_points_on_circle(base: Blade1, a: Blade1, b: Blade1, circ: Blade3) -> Ordering {
-    if a.approx_eq(&base, Precision::new_simple(20)) {
+    if a.approx_eq(&base, Precision::new_simple(16)) {
         return Ordering::Less;
     }
-    if b.approx_eq(&base, Precision::new_simple(20)) {
+    if b.approx_eq(&base, Precision::new_simple(16)) {
         return Ordering::Greater;
     }
     cmp_f64(((base ^ b) ^ a) << circ, 0.0)
@@ -1423,12 +1465,12 @@ fn inner_circle_arcs(
     ends.sort_by(|a, b| comp_points_on_circle(starts[0], *a, *b, circ));
     starts.sort_by(|a, b| comp_points_on_circle(*ends.last().unwrap(), *a, *b, circ));
     for i in 0..starts.len() {
-        if starts[i].approx_eq(&ends[i], Precision::new_simple(20)) {
+        if starts[i].approx_eq(&ends[i], Precision::new_simple(16)) {
             continue;
         } else {
             arcs.push(PieceArc {
                 circle: circ,
-                boundary: Some((starts[i] ^ ends[i])),
+                boundary: Some((starts[i] ^ ends[i]).rescale_oriented()),
             });
         }
     }
@@ -1440,7 +1482,7 @@ fn next_arc(bound: &BoundaryShape, curr: PieceArc) -> Option<PieceArc> {
         if let Some(boundary) = arc.boundary
             && let Dipole::Real(real) = boundary.unpack()
             && let Dipole::Real(real_curr) = curr.boundary?.unpack()
-            && (real_curr[1].approx_eq(&real[0], Precision::new_simple(20)))
+            && (real_curr[1].approx_eq(&real[0], Precision::new_simple(16)))
         {
             return Some(*arc);
         }
@@ -2155,13 +2197,13 @@ impl App {
         let rel_piece = p.0.pieces[0].clone();
         let c1 = rel_piece.shape.border[0].circle;
         let c2 = p.0.turns["A"].circle;
-        dbg!(dbg!(c1).approx_eq(&dbg!(c2), Precision::new_simple(20)));
+        dbg!(dbg!(c1).approx_eq(&dbg!(c2), Precision::new_simple(16)));
 
         // for arc in &rel_piece.shape.border {
-        //     dbg!(dbg!(arc.circle).approx_eq(dbg!(&p.0.turns["A"].circle), Precision::new_simple(20)));
+        //     dbg!(dbg!(arc.circle).approx_eq(dbg!(&p.0.turns["A"].circle), Precision::new_simple(16)));
         //     dbg!(
         //         arc.circle
-        //             .approx_eq(&dbg!(-p.0.turns["A"].circle), Precision::new_simple(20))
+        //             .approx_eq(&dbg!(-p.0.turns["A"].circle), Precision::new_simple(16))
         //     );
         // }
         // p.0.pieces = vec![rel_piece];
@@ -2219,59 +2261,59 @@ impl eframe::App for App {
             // );
             // dbg!(self.puzzle.pieces[0].shape.bounds.len());
             if !self.preview {
-                // self.puzzle.render(
-                //     ui,
-                //     &rect,
-                //     self.detail,
-                //     self.outline_width,
-                //     self.scale_factor,
-                //     self.offset,
-                // );
-                let a = PieceArc {
-                    boundary: Some(Blade2 {
-                        mp: -0.0293736,
-                        mx: -0.03444056,
-                        px: 0.024306666,
-                        my: -0.01304419,
-                        py: 0.03105767,
-                        xy: 0.02562106,
-                    }),
-                    circle: Blade3 {
-                        mpx: 0.00000011,
-                        mpy: 0.499999863,
-                        mxy: 0.58625006,
-                        pxy: -0.41374993,
-                    },
-                };
-                let c = Blade3 {
-                    mpx: 0.0,
-                    mpy: -0.5,
-                    mxy: 0.695000,
-                    pxy: -0.304999999,
-                };
-                let ca = PieceArc {
-                    boundary: None,
-                    circle: c,
-                };
-                dbg!(a.contains(a.intersect_circle(c)[1].unwrap()));
-                if let Dipole::Real(real) = a.boundary.unwrap().unpack() {
-                    dbg!(real[1].approx_eq(
-                        &a.intersect_circle(c)[1].unwrap().unpack().unwrap(),
-                        Precision::new_simple(20)
-                    ));
-                }
-                dbg!(a.in_circle(c));
-                //dbg!(a.in_circle(c));
-                for p in [a, ca] {
-                    p.draw(
-                        ui,
-                        &rect,
-                        self.detail,
-                        self.outline_width,
-                        self.scale_factor,
-                        self.offset,
-                    );
-                }
+                self.puzzle.render(
+                    ui,
+                    &rect,
+                    self.detail,
+                    self.outline_width,
+                    self.scale_factor,
+                    self.offset,
+                );
+                // let a = PieceArc {
+                //     boundary: Some(Blade2 {
+                //         mp: -0.0293736,
+                //         mx: -0.03444056,
+                //         px: 0.024306666,
+                //         my: -0.01304419,
+                //         py: 0.03105767,
+                //         xy: 0.02562106,
+                //     }),
+                //     circle: Blade3 {
+                //         mpx: 0.00000011,
+                //         mpy: 0.499999863,
+                //         mxy: 0.58625006,
+                //         pxy: -0.41374993,
+                //     },
+                // };
+                // let c = Blade3 {
+                //     mpx: 0.0,
+                //     mpy: -0.5,
+                //     mxy: 0.695000,
+                //     pxy: -0.304999999,
+                // };
+                // let ca = PieceArc {
+                //     boundary: None,
+                //     circle: c,
+                // };
+                // dbg!(a.contains(a.intersect_circle(c)[1].unwrap()));
+                // if let Dipole::Real(real) = a.boundary.unwrap().unpack() {
+                //     dbg!(real[1].approx_eq(
+                //         &a.intersect_circle(c)[1].unwrap().unpack().unwrap(),
+                //         Precision::new_simple(16)
+                //     ));
+                // }
+                // dbg!(a.in_circle(c));
+                // //dbg!(a.in_circle(c));
+                // for p in [a, ca] {
+                //     p.draw(
+                //         ui,
+                //         &rect,
+                //         self.detail,
+                //         self.outline_width,
+                //         self.scale_factor,
+                //         self.offset,
+                //     );
+                // }
                 // self.puzzle.pieces[0].render(
                 //     ui,
                 //     &rect,
