@@ -41,25 +41,6 @@ const LENIENCY: f64 = 0.0002;
 
 const NONE_COLOR: Color32 = Color32::GRAY;
 
-const NONE_TURN: Turn = Turn {
-    circle: Blade3 {
-        mpx: 0.0,
-        mpy: 0.0,
-        mxy: 0.0,
-        pxy: 0.0,
-    },
-    rotation: Rotoflector::Rotor(Rotor {
-        s: 1.0,
-        mp: 0.0,
-        mx: 0.0,
-        px: 0.0,
-        my: 0.0,
-        py: 0.0,
-        xy: 0.0,
-        mpxy: 0.0,
-    }),
-};
-
 const DETAIL_FACTOR: f64 = 3.0; // the amount more detailed the outlines are than the interiors
 
 fn get_default_color_hash() -> HashMap<String, Color32> {
@@ -230,7 +211,7 @@ struct Puzzle {
     pieces: Vec<Piece>,
     turns: HashMap<String, Turn>,
     stack: Vec<String>,
-    animation_offset: Turn,
+    animation_offset: Option<Turn>,
     intern: FloatIntern,
     depth: u16,
     solved_state: Vec<Piece>,
@@ -398,7 +379,7 @@ impl Puzzle {
         }
         self.pieces = new_pieces;
         self.anim_left = 1.0;
-        self.animation_offset = turn.inverse();
+        self.animation_offset = Some(turn.inverse());
         //self.intern_all();
         Ok(())
     }
@@ -451,14 +432,14 @@ impl Puzzle {
             }
             self.stack.push(key);
         }
-        self.animation_offset = NONE_TURN;
+        self.animation_offset = None;
         self.check();
         Ok(())
     }
     fn reset(&mut self) {
         loop {
             if self.undo().is_err() {
-                self.animation_offset = NONE_TURN;
+                self.animation_offset = None;
                 return;
             }
         }
@@ -472,10 +453,14 @@ impl Puzzle {
         scale_factor: f32,
         offset: Vec2,
     ) {
-        let proper_offset = Turn {
-            circle: self.animation_offset.circle,
-            rotation: self.anim_left as f64 * self.animation_offset.rotation
-                + (1.0 - self.anim_left) as f64 * Rotoflector::ident(),
+        let proper_offset = if let Some(off) = self.animation_offset {
+            Some(Turn {
+                circle: off.circle,
+                rotation: self.anim_left as f64 * off.rotation
+                    + (1.0 - self.anim_left) as f64 * Rotoflector::ident(),
+            })
+        } else {
+            None
         };
         for piece in &self.pieces {
             piece.render(
@@ -539,7 +524,7 @@ impl Puzzle {
         let good_pos = from_egui_coords(&pos, rect, scale_factor, offset);
         let mut min_dist: f32 = 10000.0;
         let mut min_rad: f32 = 10000.0;
-        let mut correct_turn = NONE_TURN;
+        let mut correct_turn = None;
         for turn in self.turns.clone().values() {
             let (cent, rad) = euc_center_rad(turn.circle);
             if (alneq(good_pos.distance(cent) as f64, min_dist as f64)
@@ -549,14 +534,14 @@ impl Puzzle {
             {
                 min_dist = good_pos.distance(cent);
                 min_rad = rad;
-                correct_turn = *turn;
+                correct_turn = Some(*turn);
             }
         }
         if min_rad == 10000.0 {
             return None;
         }
         //dbg!(correct_turn.circle.center.to_pos2());
-        return Some(correct_turn.circle);
+        return Some(correct_turn?.circle);
     }
     fn global_cut_by_circle(&mut self, circle: Blade3) -> Result<(), ()> {
         let mut new_pieces = Vec::new();
@@ -717,17 +702,6 @@ impl PieceArc {
     //Inside/Outside -- arc endpoints can be on the boundary
     //potential useful precondition -- the arc does not cross the boundary, only touches it. should be sufficient for cutting, however not sufficient for bandaging reasons
     fn in_circle(&self, circle: Blade3) -> Option<Contains> {
-        //REWORK ALL
-        if circle
-            == (Blade3 {
-                mxy: 0.0,
-                mpx: 0.0,
-                mpy: 0.0,
-                pxy: 0.0,
-            })
-        {
-            return Some(Contains::Outside);
-        }
         // let arc_circle = self.circle;
         // let circ = circle;
         if (circle.approx_eq(&self.circle, Precision::new_simple(16)))
@@ -1158,24 +1132,26 @@ impl Piece {
         &self,
         ui: &mut Ui,
         rect: &Rect,
-        offset: Turn,
+        offset: Option<Turn>,
         detail: f32,
         outline_size: f32,
         scale_factor: f32,
         offset_pos: Vec2,
     ) {
-        let true_offset = if self
-            .in_circle(offset.circle)
-            .is_some_and(|x| x == Contains::Inside)
+        let true_offset = if offset.is_none()
+            || self
+                .in_circle(offset.unwrap().circle)
+                .is_some_and(|x| x == Contains::Inside)
         {
             offset
         } else {
-            Turn {
-                circle: offset.circle,
-                rotation: Rotoflector::ident(),
-            }
+            None
         };
-        let true_piece = self.turn(true_offset).unwrap_or(self.clone());
+        let true_piece = if let Some(twist) = true_offset {
+            self.turn(twist).unwrap_or(self.clone())
+        } else {
+            self.clone()
+        };
         let triangulation = true_piece.triangulate(true_piece.barycenter(), detail);
         let mut triangle_vertices: Vec<epaint::Vertex> = Vec::new();
         for triangle in triangulation {
@@ -1827,7 +1803,7 @@ fn parse_kdl(string: &str) -> Option<Puzzle> {
         pieces: Vec::new(),
         turns: HashMap::new(),
         stack: Vec::new(),
-        animation_offset: NONE_TURN,
+        animation_offset: None,
         intern: FloatIntern { floats: Vec::new() },
         depth: 500,
         solved_state: Vec::new(),
@@ -2135,7 +2111,7 @@ fn parse_kdl(string: &str) -> Option<Puzzle> {
             .insert(String::from(turn.0) + "'", turn.1.inverse());
     }
     puzzle.solved_state = puzzle.pieces.clone();
-    puzzle.animation_offset = NONE_TURN;
+    puzzle.animation_offset = None;
     puzzle.stack = Vec::new();
     return Some(puzzle);
 }
@@ -2254,7 +2230,7 @@ impl eframe::App for App {
             //     ui,
             //     &rect,
             //     good_detail,
-            //     NONE_TURN,
+            //     None,
             //     self.outline_width,
             //     self.scale_factor,
             //     self.offset,
@@ -2317,7 +2293,7 @@ impl eframe::App for App {
                 // self.puzzle.pieces[0].render(
                 //     ui,
                 //     &rect,
-                //     NONE_TURN,
+                //     None,
                 //     self.detail,
                 //     self.outline_width,
                 //     self.scale_factor,
@@ -2337,7 +2313,7 @@ impl eframe::App for App {
                     piece.render(
                         ui,
                         &rect,
-                        NONE_TURN,
+                        None,
                         self.detail,
                         self.outline_width,
                         self.scale_factor,
@@ -2354,7 +2330,7 @@ impl eframe::App for App {
             //     ui,
             //     &rect,
             //     good_detail,
-            //     NONE_TURN,
+            //     None,
             //     self.outline_width,
             //     self.scale_factor,
             //     self.offset,
@@ -2363,7 +2339,7 @@ impl eframe::App for App {
             //     ui,
             //     &rect,
             //     good_detail,
-            //     NONE_TURN,
+            //     None,
             //     self.outline_width,
             //     self.scale_factor,
             //     self.offset,
@@ -2389,7 +2365,7 @@ impl eframe::App for App {
                 );
             }
             if aleq(25.0, self.animation_speed) {
-                self.puzzle.animation_offset = NONE_TURN;
+                self.puzzle.animation_offset = None;
             }
             if (ui.add(egui::Button::new("UNDO")).clicked()
                 || ui.input(|i| i.key_pressed(egui::Key::Z)))
