@@ -57,7 +57,7 @@ impl Puzzle {
         for piece in &mut self.pieces {
             let mut color = true;
             for circle in &coloring.0 {
-                let contains = piece.in_circle(*circle);
+                let contains = piece.shape.in_circle(*circle);
                 if contains != Some(Contains::Inside) {
                     color = false;
                     break;
@@ -69,7 +69,7 @@ impl Puzzle {
         }
     }
 }
-fn basic_turn(raw_circle: Blade3, angle: f64) -> Turn {
+pub fn basic_turn(raw_circle: Blade3, angle: f64) -> Turn {
     if let Circle::Circle {
         cx,
         cy,
@@ -198,7 +198,8 @@ pub fn parse_kdl(string: &str) -> Option<Puzzle> {
         turns: HashMap::new(),
         stack: Vec::new(),
         animation_offset: None,
-        intern: approx_collections::FloatPool::new(PRECISION),
+        intern_2: approx_collections::FloatPool::new(Precision::new_simple(20)),
+        intern_3: approx_collections::FloatPool::new(Precision::new_simple(20)),
         depth: 500,
         solved_state: Vec::new(),
         solved: true,

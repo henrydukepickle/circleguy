@@ -15,19 +15,54 @@ impl Arc {
         if self.boundary == None {
             return Some(Contains::Inside);
         }
-        Some(contains_from_metric(
-            -(self.boundary.unwrap() ^ point) << self.circle,
-        ))
+        if let Dipole::Real(real) = self.boundary.unwrap().unpack() {
+            for p in real {
+                if point.unpack().unwrap().approx_eq(&p, PRECISION) {
+                    return Some(Contains::Border);
+                }
+            }
+            return Some(contains_from_metric(
+                -((self.boundary.unwrap() ^ point) << self.circle),
+            ));
+        }
+        if let Dipole::Tangent(p, d) = self.boundary.unwrap().unpack() {
+            dbg!(p);
+        }
+        panic!("NO!")
     }
+    //IF THEY ARE TANGENT, THEN return[1] is always NONE
     pub fn intersect_circle(&self, circle: Blade3) -> [Option<Blade1>; 2] {
-        let Dipole::Real(int_points) = (self.circle & circle).unpack() else {
+        if (circle & self.circle).approx_eq_zero(PRECISION) {
             return [None; 2];
-        };
-        return int_points.map(|a| match self.contains(a.into()) {
-            None => None,
-            Some(Contains::Outside) => None,
-            Some(Contains::Border) | Some(Contains::Inside) => Some(a.into()),
-        });
+        }
+        match (self.circle.rescale_oriented() & circle.rescale_oriented())
+            .rescale_oriented()
+            .unpack()
+        {
+            Dipole::Real(int_points) => int_points.map(|a| match self.contains(a.into()) {
+                None => None,
+                Some(Contains::Outside) => None,
+                Some(Contains::Border) | Some(Contains::Inside) => Some(a.into()),
+            }),
+            Dipole::Tangent(p, _) => match self.contains(p.into()) {
+                Some(Contains::Inside) | Some(Contains::Border) => [Some(p.into()), None],
+                Some(Contains::Outside) => [None; 2],
+                None => {
+                    dbg!(p);
+                    panic!("This shouldn't be possible")
+                }
+            },
+            _ => [None; 2],
+        }
+    }
+    pub fn rescale_oriented(&self) -> Self {
+        Self {
+            circle: self.circle.rescale_oriented(),
+            boundary: match self.boundary {
+                None => None,
+                Some(x) => Some(x.rescale_oriented()),
+            },
+        }
     }
 
     //result[0] inside
@@ -41,13 +76,16 @@ impl Arc {
         //REWORK ALL
         let mut sorted_arcs = [Vec::new(), Vec::new()];
         let mut segments = Vec::new();
-        let mut new_points = Vec::new();
-        match (circle & self.circle).unpack() {
+        let mut new_points: Vec<Blade1> = Vec::new();
+        match (circle & self.circle).rescale_oriented().unpack() {
             Dipole::Real(intersects) => {
                 for intersect in intersects {
                     if self.contains(intersect.into()).unwrap() == Contains::Inside {
                         new_points.push(intersect.into());
                     }
+                }
+                for point in &mut new_points {
+                    *point = point.rescale_oriented();
                 }
                 if new_points.is_empty() {
                     segments = vec![*self];
@@ -99,6 +137,24 @@ impl Arc {
             match arc.in_circle(circle) {
                 None => {
                     dbg!(arc);
+                    dbg!(match arc.boundary.unwrap().unpack() {
+                        Dipole::Real(r) => r,
+                        _ => panic!("hi"),
+                    });
+                    dbg!(match arc.circle.unpack() {
+                        Circle::Circle { cx, cy, r, ori } => (cx, cy, r, ori),
+                        _ => panic!("hi"),
+                    });
+                    dbg!(match circle.unpack() {
+                        Circle::Circle { cx, cy, r, ori } => (cx, cy, r, ori),
+                        _ => panic!("hi"),
+                    });
+                    if arc.intersect_circle(circle)[0].is_some() {
+                        dbg!(arc.intersect_circle(circle)[0].unwrap().unpack());
+                    }
+                    if arc.intersect_circle(circle)[1].is_some() {
+                        dbg!(arc.intersect_circle(circle)[0].unwrap().unpack());
+                    }
                     dbg!(circle);
                     panic!("whats going on? who are you?")
                 }
@@ -131,6 +187,7 @@ impl Arc {
         };
         for p in points {
             if self.contains(p.into()) == Some(Contains::Inside) {
+                //dbg!(p);
                 return true;
             }
         }
@@ -140,9 +197,9 @@ impl Arc {
         Arc {
             boundary: match self.boundary {
                 None => None,
-                Some(x) => Some(rot.sandwich(x)),
+                Some(x) => Some(rot.sandwich(x).rescale_oriented()),
             },
-            circle: rot.sandwich(self.circle),
+            circle: rot.sandwich(self.circle).rescale_oriented(),
         }
     }
     //None -- the arc crosses the circles boundary
@@ -152,8 +209,12 @@ impl Arc {
     pub fn in_circle(&self, circle: Blade3) -> Option<Contains> {
         // let arc_circle = self.circle;
         // let circ = circle;
-        if (circle.approx_eq(&self.circle, PRECISION))
-            || (circle.approx_eq(&-self.circle, PRECISION))
+        if (circle
+            .rescale_oriented()
+            .approx_eq(&self.circle.rescale_oriented(), PRECISION))
+            || (circle
+                .rescale_oriented()
+                .approx_eq(&-self.circle.rescale_oriented(), PRECISION))
         {
             return Some(Contains::Border);
         }
@@ -189,8 +250,22 @@ impl Arc {
                         }
                     }
                     _ => {
+                        dbg!(contains);
+                        dbg!(match self.boundary.unwrap().unpack() {
+                            Dipole::Real(real) => real,
+                            _ => panic!(""),
+                        });
                         dbg!(self.contains_either_properly(circle & self.circle));
                         dbg!(self.contains(real_intersect[0].into()));
+                        dbg!(self.contains(real_intersect[1].into()));
+                        dbg!(match self.circle.unpack() {
+                            Circle::Circle { cx, cy, r, ori } => (cx, cy, r, ori),
+                            _ => panic!("Lmao"),
+                        });
+                        dbg!(match circle.unpack() {
+                            Circle::Circle { cx, cy, r, ori } => (cx, cy, r, ori),
+                            _ => panic!("Lmao"),
+                        });
                         panic!("CIRCLE DID NOT INTERSECT BUT CROSSED")
                     }
                 };

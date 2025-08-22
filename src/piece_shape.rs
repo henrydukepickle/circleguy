@@ -4,7 +4,6 @@ use crate::circle_utils::*;
 use crate::turn::*;
 use approx_collections::*;
 use cga2d::*;
-use std::cmp::*;
 
 pub type BoundingCircles = Vec<Blade3>;
 pub type BoundaryShape = Vec<Arc>;
@@ -15,97 +14,28 @@ pub struct PieceShape {
 }
 //CGA NEEDS TESTING
 //gives the 'inside of the circle' arcs, ideally
-pub fn inner_circle_arcs(mut starts: Vec<Blade1>, mut ends: Vec<Blade1>, circ: Blade3) -> Vec<Arc> {
-    if (starts.len()) != (ends.len()) {
-        panic!("inequal number of starts and ends passed");
-    }
-    if starts.is_empty() {
-        return Vec::new();
-    }
-    let mut arcs = Vec::new();
-    ends.sort_by(|a, b| comp_points_on_circle(starts[0], *a, *b, circ));
-    starts.sort_by(|a, b| comp_points_on_circle(*ends.last().unwrap(), *a, *b, circ));
-    for i in 0..starts.len() {
-        if starts[i].approx_eq(&ends[i], PRECISION) {
-            continue;
-        } else {
-            arcs.push(Arc {
-                circle: circ,
-                boundary: Some((starts[i] ^ ends[i]).rescale_oriented()),
-            });
-        }
-    }
-    return arcs;
-}
-pub fn cut_boundary(bound: &BoundaryShape, circle: Blade3) -> Option<[BoundaryShape; 2]> {
-    //REWORK ALL
-    let mut starts = Vec::new();
-    let mut ends = Vec::new();
-    let mut inside = Vec::new();
-    let mut outside = Vec::new();
-    for i in 0..bound.len() {
-        let arc = bound[i];
-        if arc.circle.approx_eq(&circle, PRECISION) || arc.circle.approx_eq(&-circle, PRECISION) {
-            return None;
-        }
-        let mut cut_points = Vec::new();
-        let int = arc.intersect_circle(circle);
-        if int[0].is_some()
-            && !(arc.boundary.is_some()
-                // && arc
-                //     .boundary
-                //     .unwrap()
-                //     .mag2()
-                //     .approx_sign(PRECISION)
-                //     != Sign::Zero
-                && int[0].unwrap().approx_eq(
-                    &match arc.boundary.unwrap().unpack() {
-                        Dipole::Real(real) => real[1].into(),
-                        _ => panic!("JIM???? I HAVENT SEEN YOU IN YEARS!"),
-                    },
-                    PRECISION,
-                )
-                && (next_arc(&bound, arc).unwrap().circle & circle)
-                    .mag2().approx_cmp_zero(PRECISION) == Ordering::Greater)
-        {
-            starts.push(int[0].unwrap());
-            cut_points.push(int[0].unwrap());
-        }
-        if int[1].is_some()
-            && !(arc.boundary.is_some()
-                // && arc
-                //     .boundary
-                //     .unwrap()
-                //     .mag2()
-                //     .approx_sign(PRECISION)
-                //     != Sign::Zero
-                && int[1].unwrap().approx_eq(
-                    &match arc.boundary.unwrap().unpack() {
-                        Dipole::Real(real) => real[1].into(),
-                        _ => panic!("JIM???? I HAVENT SEEN YOU IN YEARS!"),
-                    },
-                    PRECISION,
-                )
-                && (next_arc(&bound, arc).unwrap().circle & circle)
-                    .mag2()
-                    .approx_cmp_zero(PRECISION) == Ordering::Greater)
-        {
-            ends.push(int[1].unwrap());
-            cut_points.push(int[1].unwrap());
-        }
-        let [add_inside, add_outside] = arc.cut_by_circle(circle);
-        inside.extend(add_inside);
-        outside.extend(add_outside);
-    }
-    if (inside.is_empty()) || (outside.is_empty()) {
-        return None;
-    }
-    for arc in inner_circle_arcs(starts, ends, circle) {
-        inside.push(arc);
-        outside.push(arc.inverse());
-    }
-    return Some([inside, outside]);
-}
+// pub fn inner_circle_arcs(mut starts: Vec<Blade1>, mut ends: Vec<Blade1>, circ: Blade3) -> Vec<Arc> {
+//     if (starts.len()) != (ends.len()) {
+//         panic!("inequal number of starts and ends passed");
+//     }
+//     if starts.is_empty() {
+//         return Vec::new();
+//     }
+//     let mut arcs = Vec::new();
+//     ends.sort_by(|a, b| comp_points_on_circle(starts[0], *a, *b, circ));
+//     starts.sort_by(|a, b| comp_points_on_circle(*ends.last().unwrap(), *a, *b, circ));
+//     for i in 0..starts.len() {
+//         if starts[i].approx_eq(&ends[i], PRECISION) {
+//             continue;
+//         } else {
+//             arcs.push(Arc {
+//                 circle: circ,
+//                 boundary: Some((starts[i] ^ ends[i]).rescale_oriented()),
+//             });
+//         }
+//     }
+//     return arcs;
+// }
 
 //return the collapsed CCP representation
 pub fn collapse_shape_and_add(
@@ -122,8 +52,100 @@ pub fn collapse_shape_and_add(
     new_bounding_circles
 }
 impl PieceShape {
+    pub fn cut_boundary(&self, circle: Blade3) -> Option<[BoundaryShape; 2]> {
+        fn get_circle_arcs(circle: Blade3, cut_points: &Vec<Point>) -> Vec<Arc> {
+            if cut_points.len() <= 1 {
+                return vec![Arc {
+                    circle,
+                    boundary: None,
+                }];
+            }
+            let mut points = cut_points.clone();
+            let base = points.pop().unwrap();
+            points.sort_by(|a, b| {
+                comp_points_on_circle(base.into(), (*a).into(), (*b).into(), circle)
+            });
+            let mut arcs = Vec::new();
+            points.insert(0, base);
+            points.push(base);
+            for i in 0..(points.len() - 1) {
+                arcs.push(Arc {
+                    circle,
+                    boundary: Some(
+                        (points[i].to_blade().rescale_unoriented()
+                            ^ points[i + 1].to_blade().rescale_unoriented())
+                        .rescale_oriented(),
+                    ),
+                });
+                if points[i].approx_eq(&points[i + 1], PRECISION) {
+                    panic!("POINTS WERE TOO CLOSE!");
+                }
+            }
+            arcs
+        }
+        let mut result = [Vec::new(), Vec::new()];
+        let mut cut_points: ApproxHashMap<Point, ()> = ApproxHashMap::new(PRECISION);
+        for arc in &self.border {
+            // dbg!(match arc.circle.unpack() {
+            //     Circle::Circle { cx, cy, r, ori } => (cx, cy, r, ori),
+            //     _ => panic!("hi"),
+            // });
+            // dbg!(match circle.unpack() {
+            //     Circle::Circle { cx, cy, r, ori } => (cx, cy, r, ori),
+            //     _ => panic!("hi"),
+            // });
+            if arc
+                .circle
+                .rescale_oriented()
+                .approx_eq(&circle.rescale_oriented(), PRECISION)
+                || arc
+                    .circle
+                    .rescale_oriented()
+                    .approx_eq(&-circle.rescale_oriented(), PRECISION)
+            {
+                return None;
+            }
+            if arc
+                .circle
+                .rescale_oriented()
+                .approx_eq(&circle.rescale_oriented(), Precision::new_simple(14))
+                || arc
+                    .circle
+                    .rescale_oriented()
+                    .approx_eq(&-circle.rescale_oriented(), Precision::new_simple(14))
+            {
+                dbg!(match circle.unpack() {
+                    Circle::Circle { cx, cy, r, ori } => (cx, cy, r, ori),
+                    _ => panic!("HAHA"),
+                });
+                dbg!(match arc.circle.unpack() {
+                    Circle::Circle { cx, cy, r, ori } => (cx, cy, r, ori),
+                    _ => panic!("HAHA"),
+                });
+            }
+            for int in arc.intersect_circle(circle) {
+                if let Some(point) = int {
+                    cut_points.insert(point.rescale_unoriented().unpack().unwrap(), ());
+                }
+            }
+            for i in [0, 1] {
+                result[i].extend(arc.cut_by_circle(circle)[i].clone());
+            }
+        }
+        if result[0].is_empty() || result[1].is_empty() {
+            return None;
+        }
+        let circle_arcs = get_circle_arcs(circle, &cut_points.into_keys().collect());
+        for arc in &circle_arcs {
+            if self.contains_arc(arc.rescale_oriented()) == Contains::Inside {
+                result[0].push(arc.rescale_oriented());
+                result[1].push(arc.rescale_oriented().inverse());
+            }
+        }
+        Some(result)
+    }
     pub fn cut_by_circle(&self, circle: Blade3) -> Option<[PieceShape; 2]> {
-        let shapes = cut_boundary(&self.border, circle)?;
+        let shapes = self.cut_boundary(circle)?;
         let bounding_circles = [
             collapse_shape_and_add(&self.bounds, circle),
             collapse_shape_and_add(&self.bounds, -circle),
@@ -141,7 +163,19 @@ impl PieceShape {
     pub fn in_circle(&self, circle: Blade3) -> Option<Contains> {
         let mut inside = None;
         for arc in &self.border {
-            let contained = arc.in_circle(circle)?;
+            if arc.in_circle(circle).is_none() {
+                // dbg!((arc.circle & circle).mag2());
+                // if let Dipole::Real(real) = arc.boundary.unwrap().unpack() {
+                //     dbg!(real);
+                // }
+                // if let Circle::Circle { cx, cy, r, ori } = arc.circle.unpack() {
+                //     dbg!((cx, cy, r, ori));
+                // }
+                // if let Circle::Circle { cx, cy, r, ori } = circle.unpack() {
+                //     dbg!((cx, cy, r, ori));
+                // }
+            }
+            let contained = (arc.in_circle(circle))?;
             if let Some(real_inside) = inside {
                 if contained != Contains::Border && real_inside != contained {
                     return None;
@@ -172,6 +206,15 @@ impl PieceShape {
             bounds: new_bounds,
             border: new_border,
         })
+    }
+    fn contains_arc(&self, arc: Arc) -> Contains {
+        for circle in &self.bounds {
+            let cont = arc.in_circle(*circle);
+            if cont == None || cont == Some(Contains::Outside) {
+                return Contains::Outside;
+            }
+        }
+        Contains::Inside
     }
 }
 pub fn next_arc(bound: &BoundaryShape, curr: Arc) -> Option<Arc> {

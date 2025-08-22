@@ -6,6 +6,10 @@ use crate::io::*;
 use crate::puzzle::*;
 use crate::puzzle_generation::*;
 use crate::render::draw_circle;
+use crate::render::*;
+use cga2d::Multivector;
+use cga2d::circle;
+use cga2d::point;
 use egui::*;
 
 const SCALE_FACTOR: f32 = 200.0;
@@ -53,10 +57,24 @@ impl App {
     pub fn new(_cc: &eframe::CreationContext<'_>) -> Self {
         let mut data_storer = DataStorer { data: Vec::new() };
         let _ = data_storer.load_puzzles(&String::from("Puzzles/Definitions/"));
-        let p = load_puzzle_and_def_from_file(
+        let mut p = load_puzzle_and_def_from_file(
             &(String::from("Puzzles/Definitions/") + &get_first_puzzle()),
         )
         .unwrap();
+        // for i in 0..20 {
+        //     p.0.turn_id("B".to_string(), true);
+        //     p.0.turn_id("A".to_string(), true);
+        // }
+        let circ = circle(point(0.0, 0.0), 1.0);
+        let t = crate::puzzle_generation::basic_turn(circ, std::f64::consts::PI / 3.5);
+        let mut c2 = 1e-6 * circle(point(0.0, 1.0), 1.0);
+        for i in 0..7000 {
+            c2 = cga2d::Rotoflector::sandwich(t.rotation, c2);
+        }
+        dbg!(match c2.unpack() {
+            cga2d::Circle::Circle { cx, cy, r, ori } => (cx, cy, r, ori),
+            _ => panic!("HI"),
+        });
 
         // for arc in &rel_piece.shape.border {
         //     dbg!(dbg!(arc.circle).approx_eq(dbg!(&p.0.turns["A"].circle), PRECISION));
@@ -118,7 +136,10 @@ impl eframe::App for App {
             //     self.scale_factor,
             //     self.offset,
             // );
-            // dbg!(self.puzzle.pieces[0].shape.bounds.len());
+            // dbg!(self.puzzle.pieces[34].shape.border.len());
+            // for arc in &self.puzzle.pieces[34].shape.border {
+            //     dbg!(arc.angle_euc());
+            // }
             if !self.preview {
                 self.puzzle.render(
                     ui,
@@ -173,7 +194,16 @@ impl eframe::App for App {
                 //         self.offset,
                 //     );
                 // }
-                // self.puzzle.pieces[0].render(
+                // self.puzzle.pieces[34].render(
+                //     ui,
+                //     &rect,
+                //     None,
+                //     self.detail,
+                //     self.outline_width,
+                //     self.scale_factor,
+                //     self.offset,
+                // );
+                // self.puzzle.pieces[self.debug].render(
                 //     ui,
                 //     &rect,
                 //     None,

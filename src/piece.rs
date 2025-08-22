@@ -1,4 +1,3 @@
-use crate::circle_utils::*;
 use crate::piece_shape::*;
 use crate::turn::*;
 use cga2d::*;
@@ -16,23 +15,6 @@ impl Piece {
         });
     }
     //None: the piece is inside and outside -- blocking
-    pub fn in_circle(&self, circle: Blade3) -> Option<Contains> {
-        let mut inside = None;
-        for arc in &self.shape.border {
-            let contained = arc.in_circle(circle)?;
-            if let Some(real_inside) = inside {
-                if contained != Contains::Border && real_inside != contained {
-                    return None;
-                }
-            } else if contained != Contains::Border {
-                inside = Some(contained);
-            }
-        }
-        if inside.is_none_or(|x| x == Contains::Border) {
-            return Some(Contains::Inside);
-        }
-        return inside;
-    }
     //return if the shape contains the point properly -- not on the border
     //should return false if the point is properly outside the piece and true if it is properly inside the piece -- behavior on border points is undefined, may panic or return either option.
     //essentially, check how many 'valid' points that are on the border of self and directly left (within leniency) of point, and then take that mod 2 to get the answer

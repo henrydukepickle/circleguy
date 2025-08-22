@@ -18,7 +18,10 @@ pub fn circ_border_inside_circ(c1: Blade3, c2: Blade3) -> Contains {
     return Contains::Border;
 }
 pub fn circle_contains(circ: Blade3, point: Blade1) -> Contains {
-    contains_from_metric(!(circ ^ point))
+    contains_from_metric_prec(
+        !(circ.rescale_oriented() ^ point.rescale_oriented()),
+        Precision::new_simple(16),
+    )
 }
 pub fn circle_orientation_euclid(circ: Blade3) -> Contains {
     circle_contains(-circ, NI)
@@ -46,6 +49,14 @@ pub fn circle_excludes(c1: Blade3, c2: Blade3) -> bool {
 //arbitrary that > 0.0 is inside
 pub fn contains_from_metric(metric: f64) -> Contains {
     match metric.approx_cmp_zero(PRECISION) {
+        Ordering::Greater => Contains::Inside,
+        Ordering::Less => Contains::Outside,
+        Ordering::Equal => Contains::Border,
+    }
+}
+
+pub fn contains_from_metric_prec(metric: f64, prec: Precision) -> Contains {
+    match metric.approx_cmp_zero(prec) {
         Ordering::Greater => Contains::Inside,
         Ordering::Less => Contains::Outside,
         Ordering::Equal => Contains::Border,

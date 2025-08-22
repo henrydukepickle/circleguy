@@ -206,7 +206,7 @@ impl Arc {
     //what it does: 'angle' returns the angle 'between' the lines going through the euclidian center of self.circle and the points of the boundary. this angle is between
     //-PI and PI and the sign is inverted based on the orientation of both self.circle and self.boundary. this answer is then taken mod 2PI, yielding a positive answer between
     //0 and 2PI. if the circle is clockwise (negative orientation), then the sign of the final answer is inverted and then returned
-    fn angle_euc(&self) -> f32 {
+    pub fn angle_euc(&self) -> f32 {
         let orientation = circle_orientation_euclid(self.circle) == Contains::Inside;
         if self.boundary == None {
             return if orientation { 2.0 * PI } else { -2.0 * PI };
@@ -271,6 +271,7 @@ impl Piece {
     ) {
         let true_offset = if offset.is_none()
             || self
+                .shape
                 .in_circle(offset.unwrap().circle)
                 .is_some_and(|x| x == Contains::Inside)
         {

@@ -12,7 +12,8 @@ pub struct Puzzle {
     pub turns: HashMap<String, Turn>,
     pub stack: Vec<String>,
     pub animation_offset: Option<Turn>,
-    pub intern: FloatPool,
+    pub intern_2: FloatPool,
+    pub intern_3: FloatPool,
     pub depth: u16,
     pub solved_state: Vec<Piece>,
     pub solved: bool,
@@ -48,12 +49,17 @@ impl Puzzle {
         }
         let mut new_pieces = Vec::new();
         for piece in &self.pieces {
+            if piece.turn(turn).is_none() {
+                dbg!(piece.color);
+                dbg!(piece.shape.border.len());
+                panic!("HI");
+            }
             new_pieces.push(piece.turn(turn).ok_or(true)?);
         }
         self.pieces = new_pieces;
         self.anim_left = 1.0;
         self.animation_offset = Some(turn.inverse());
-        //self.intern_all();
+        self.intern_all();
         Ok(())
     }
     pub fn turn_id(&mut self, id: String, cut: bool) -> Result<(), bool> {
@@ -76,6 +82,7 @@ impl Puzzle {
         let mut rng = rand::rng();
         for _i in 0..self.depth {
             let key = self.turns.keys().choose(&mut rng).unwrap().clone();
+            dbg!(&key);
             if self.turn(self.turns[&key], cut).is_err_and(|x| !x) {
                 return Err(());
             }
