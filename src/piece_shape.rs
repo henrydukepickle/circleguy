@@ -46,6 +46,15 @@ pub fn collapse_shape_and_add(
     for circ in bounding_circles {
         if !circle_excludes(*circ, new_circle) {
             new_bounding_circles.push(*circ);
+        } else {
+            dbg!(match circ.unpack() {
+                Circle::Circle { cx, cy, r, ori } => (cx, cy, r, ori),
+                _ => panic!("hi"),
+            });
+            dbg!(match new_circle.unpack() {
+                Circle::Circle { cx, cy, r, ori } => (cx, cy, r, ori),
+                _ => panic!("hi"),
+            });
         }
     }
     new_bounding_circles.push(new_circle);
@@ -129,6 +138,13 @@ impl PieceShape {
                 }
             }
             for i in [0, 1] {
+                for arc in arc.cut_by_circle(circle)[i].clone() {
+                    if let Some(x) = arc.boundary
+                        && let Dipole::Tangent(_, _) = x.unpack()
+                    {
+                        panic!("TANGENT LENGTH 0 ARC ETC");
+                    }
+                }
                 result[i].extend(arc.cut_by_circle(circle)[i].clone());
             }
         }
@@ -137,11 +153,17 @@ impl PieceShape {
         }
         let circle_arcs = get_circle_arcs(circle, &cut_points.into_keys().collect());
         for arc in &circle_arcs {
+            if let Some(x) = arc.boundary
+                && let Dipole::Tangent(_, _) = x.unpack()
+            {
+                panic!("TANGENT LENGTH 0 ARC ETC");
+            }
             if self.contains_arc(arc.rescale_oriented()) == Contains::Inside {
                 result[0].push(arc.rescale_oriented());
                 result[1].push(arc.rescale_oriented().inverse());
             }
         }
+
         Some(result)
     }
     pub fn cut_by_circle(&self, circle: Blade3) -> Option<[PieceShape; 2]> {
@@ -209,7 +231,7 @@ impl PieceShape {
     }
     fn contains_arc(&self, arc: Arc) -> Contains {
         for circle in &self.bounds {
-            let cont = arc.in_circle(*circle);
+            let cont = (arc.in_circle(*circle));
             if cont == None || cont == Some(Contains::Outside) {
                 return Contains::Outside;
             }

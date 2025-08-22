@@ -1,5 +1,5 @@
 fn get_first_puzzle() -> String {
-    String::from("44squares.kdl")
+    String::from("2222sadness.kdl")
 }
 use crate::data_storer::*;
 use crate::io::*;
@@ -52,6 +52,7 @@ pub struct App {
     cut_on_turn: bool,
     preview: bool,
     debug: usize,
+    debug2: usize,
 }
 impl App {
     pub fn new(_cc: &eframe::CreationContext<'_>) -> Self {
@@ -75,7 +76,6 @@ impl App {
             cga2d::Circle::Circle { cx, cy, r, ori } => (cx, cy, r, ori),
             _ => panic!("HI"),
         });
-
         // for arc in &rel_piece.shape.border {
         //     dbg!(dbg!(arc.circle).approx_eq(dbg!(&p.0.turns["A"].circle), PRECISION));
         //     dbg!(
@@ -99,6 +99,7 @@ impl App {
             cut_on_turn: true,
             preview: false,
             debug: 0,
+            debug2: 0,
         };
     }
 }
@@ -136,8 +137,8 @@ impl eframe::App for App {
             //     self.scale_factor,
             //     self.offset,
             // );
-            // dbg!(self.puzzle.pieces[34].shape.border.len());
-            // for arc in &self.puzzle.pieces[34].shape.border {
+            // dbg!(self.puzzle.pieces[self.debug].shape.border.len());
+            // for arc in &self.puzzle.pieces[self.debug].shape.border {
             //     dbg!(arc.angle_euc());
             // }
             if !self.preview {
@@ -194,7 +195,7 @@ impl eframe::App for App {
                 //         self.offset,
                 //     );
                 // }
-                // self.puzzle.pieces[34].render(
+                // self.puzzle.pieces[self.debug].render(
                 //     ui,
                 //     &rect,
                 //     None,
@@ -203,7 +204,10 @@ impl eframe::App for App {
                 //     self.scale_factor,
                 //     self.offset,
                 // );
-                // self.puzzle.pieces[self.debug].render(
+                // for circ in &self.puzzle.pieces[self.debug].shape.bounds {
+                //     draw_circle(*circ, ui, &rect, self.scale_factor, self.offset);
+                // }
+                // self.puzzle.pieces[15].render(
                 //     ui,
                 //     &rect,
                 //     None,

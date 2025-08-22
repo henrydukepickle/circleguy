@@ -36,8 +36,7 @@ impl Arc {
             return [None; 2];
         }
         match (self.circle.rescale_oriented() & circle.rescale_oriented())
-            .rescale_oriented()
-            .unpack()
+            .unpack_with_prec(PRECISION)
         {
             Dipole::Real(int_points) => int_points.map(|a| match self.contains(a.into()) {
                 None => None,
@@ -77,7 +76,13 @@ impl Arc {
         let mut sorted_arcs = [Vec::new(), Vec::new()];
         let mut segments = Vec::new();
         let mut new_points: Vec<Blade1> = Vec::new();
-        match (circle & self.circle).rescale_oriented().unpack() {
+        // if let Circle::Circle { cx, cy, r, ori } = circle.unpack() {
+        //     dbg!((cx, cy, r, ori));
+        // }
+        // if let Circle::Circle { cx, cy, r, ori } = self.circle.unpack() {
+        //     dbg!((cx, cy, r, ori));
+        // }
+        match (circle & self.circle).unpack_with_prec(PRECISION) {
             Dipole::Real(intersects) => {
                 for intersect in intersects {
                     if self.contains(intersect.into()).unwrap() == Contains::Inside {
@@ -122,16 +127,33 @@ impl Arc {
                     }
                     //(&new_points);
                     for i in 0..(new_points.len() - 1) {
-                        segments.push(Arc {
+                        let arc = Arc {
                             circle: self.circle,
-                            boundary: Some((new_points[i] ^ new_points[i + 1]).rescale_oriented()),
-                        })
+                            boundary: Some(
+                                (new_points[i].rescale_unoriented()
+                                    ^ new_points[i + 1].rescale_unoriented())
+                                .rescale_oriented(),
+                            ),
+                        };
+                        if let Some(x) = arc.boundary
+                            && let Dipole::Tangent(_, _) = x.unpack()
+                        {
+                            dbg!(new_points[i].unpack().unwrap());
+                            dbg!(new_points[i + 1].unpack().unwrap());
+                            panic!("TANGENT LENGTH 0 ARC ETC");
+                        }
+                        segments.push(arc);
                     }
                 }
             }
             _ => segments = vec![*self],
         }
         for arc in segments {
+            if let Some(x) = arc.boundary
+                && let Dipole::Tangent(_, _) = x.unpack()
+            {
+                panic!("TANGENT LENGTH 0 ARC ETC");
+            }
             //dbg!(arc.circle);
             //dbg!(circle);
             match arc.in_circle(circle) {
@@ -218,8 +240,8 @@ impl Arc {
         {
             return Some(Contains::Border);
         }
-        let intersect = (circle & self.circle).rescale_oriented();
-        match intersect.unpack() {
+        let intersect = (circle & self.circle);
+        match intersect.unpack_with_prec(PRECISION) {
             Dipole::Real(real_intersect) => {
                 if self.contains_either_properly(intersect) {
                     return None;

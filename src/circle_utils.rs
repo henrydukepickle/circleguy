@@ -9,6 +9,9 @@ pub enum Contains {
     Border,
 }
 pub fn circ_border_inside_circ(c1: Blade3, c2: Blade3) -> Contains {
+    if let Dipole::Real(real) = (c1 & c2).unpack_with_prec(PRECISION) {
+        return Contains::Border;
+    }
     for point in [NI, NO] {
         let val = !(point ^ (c1 & c2) ^ !c2);
         if contains_from_metric(val) != Contains::Border {
@@ -43,7 +46,7 @@ pub fn comp_points_on_circle(base: Blade1, a: Blade1, b: Blade1, circ: Blade3) -
 //WRONG!!! straight up doesnt work lol the math is bad
 //SHOULD BE WORKING BUT NOT SURE
 pub fn circle_excludes(c1: Blade3, c2: Blade3) -> bool {
-    circ_border_inside_circ(c1, c2) == Contains::Inside
+    circ_border_inside_circ(c1, c2) == Contains::Outside
         && circle_orientation_euclid(c1) == circle_orientation_euclid(c2)
 }
 //arbitrary that > 0.0 is inside

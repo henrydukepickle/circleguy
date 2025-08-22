@@ -82,7 +82,7 @@ impl Puzzle {
         let mut rng = rand::rng();
         for _i in 0..self.depth {
             let key = self.turns.keys().choose(&mut rng).unwrap().clone();
-            dbg!(&key);
+            // dbg!(&key);
             if self.turn(self.turns[&key], cut).is_err_and(|x| !x) {
                 return Err(());
             }
