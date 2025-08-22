@@ -1,4 +1,3 @@
-use crate::PRECISION;
 use crate::arc::*;
 use crate::circle_utils::*;
 use crate::io::*;

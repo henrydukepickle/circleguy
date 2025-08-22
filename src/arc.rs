@@ -25,9 +25,9 @@ impl Arc {
                 -((self.boundary.unwrap() ^ point) << self.circle),
             ));
         }
-        if let Dipole::Tangent(p, d) = self.boundary.unwrap().unpack() {
-            dbg!(p);
-        }
+        // if let Dipole::Tangent(p, d) = self.boundary.unwrap().unpack() {
+        //     dbg!(p);
+        // }
         panic!("NO!")
     }
     //IF THEY ARE TANGENT, THEN return[1] is always NONE
@@ -240,7 +240,7 @@ impl Arc {
         {
             return Some(Contains::Border);
         }
-        let intersect = (circle & self.circle);
+        let intersect = circle & self.circle;
         match intersect.unpack_with_prec(PRECISION) {
             Dipole::Real(real_intersect) => {
                 if self.contains_either_properly(intersect) {

@@ -1,15 +1,11 @@
 fn get_first_puzzle() -> String {
-    String::from("2222sadness.kdl")
+    String::from("1010101010geranium.kdl")
 }
 use crate::data_storer::*;
 use crate::io::*;
 use crate::puzzle::*;
 use crate::puzzle_generation::*;
 use crate::render::draw_circle;
-use crate::render::*;
-use cga2d::Multivector;
-use cga2d::circle;
-use cga2d::point;
 use egui::*;
 
 const SCALE_FACTOR: f32 = 200.0;
@@ -51,14 +47,14 @@ pub struct App {
     offset: Vec2,
     cut_on_turn: bool,
     preview: bool,
-    debug: usize,
-    debug2: usize,
+    //debug: usize,
+    //debug2: usize,
 }
 impl App {
     pub fn new(_cc: &eframe::CreationContext<'_>) -> Self {
         let mut data_storer = DataStorer { data: Vec::new() };
         let _ = data_storer.load_puzzles(&String::from("Puzzles/Definitions/"));
-        let mut p = load_puzzle_and_def_from_file(
+        let p = load_puzzle_and_def_from_file(
             &(String::from("Puzzles/Definitions/") + &get_first_puzzle()),
         )
         .unwrap();
@@ -66,16 +62,16 @@ impl App {
         //     p.0.turn_id("B".to_string(), true);
         //     p.0.turn_id("A".to_string(), true);
         // }
-        let circ = circle(point(0.0, 0.0), 1.0);
-        let t = crate::puzzle_generation::basic_turn(circ, std::f64::consts::PI / 3.5);
-        let mut c2 = 1e-6 * circle(point(0.0, 1.0), 1.0);
-        for i in 0..7000 {
-            c2 = cga2d::Rotoflector::sandwich(t.rotation, c2);
-        }
-        dbg!(match c2.unpack() {
-            cga2d::Circle::Circle { cx, cy, r, ori } => (cx, cy, r, ori),
-            _ => panic!("HI"),
-        });
+        // let circ = circle(point(0.0, 0.0), 1.0);
+        // let t = crate::puzzle_generation::basic_turn(circ, std::f64::consts::PI / 3.5);
+        // let mut c2 = 1e-6 * circle(point(0.0, 1.0), 1.0);
+        // for i in 0..7000 {
+        //     c2 = cga2d::Rotoflector::sandwich(t.rotation, c2);
+        // }
+        // dbg!(match c2.unpack() {
+        //     cga2d::Circle::Circle { cx, cy, r, ori } => (cx, cy, r, ori),
+        //     _ => panic!("HI"),
+        // });
         // for arc in &rel_piece.shape.border {
         //     dbg!(dbg!(arc.circle).approx_eq(dbg!(&p.0.turns["A"].circle), PRECISION));
         //     dbg!(
@@ -98,8 +94,6 @@ impl App {
             offset: vec2(0.0, 0.0),
             cut_on_turn: true,
             preview: false,
-            debug: 0,
-            debug2: 0,
         };
     }
 }
@@ -293,12 +287,12 @@ impl eframe::App for App {
             if ui.add(egui::Button::new("SCRAMBLE")).clicked() && !self.preview {
                 let _ = self.puzzle.scramble(self.cut_on_turn);
             }
-            if ui
-                .add(egui::Button::new("INCREMENT DEBUG COUNTER"))
-                .clicked()
-            {
-                self.debug += 1;
-            }
+            // if ui
+            //     .add(egui::Button::new("INCREMENT DEBUG COUNTER"))
+            //     .clicked()
+            // {
+            //     self.debug += 1;
+            // }
             if ui.add(egui::Button::new("RESET")).clicked() && !self.preview {
                 self.puzzle.reset();
             }

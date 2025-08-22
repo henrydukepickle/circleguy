@@ -1,0 +1,31 @@
+name "Ring"
+author "Henry Pickle"
+vars {
+	R 0.8
+}
+circles {
+	A x=1 y=0 r=R
+	B x=0.5 y="sqrt(3.)/2." r=R
+	C x=-0.5 y="sqrt(3.)/2." r=R
+	D x=-1 y=0 r=R
+	E x=-0.5 y="-sqrt(3.)/2." r=R
+	F x=0.5 y="-sqrt(3.)/2." r=R
+	SYM x=0 y=0 r=10
+}
+base A B C D E F
+twists {
+	A A 6
+	B B 6
+	C C 6
+	D D 6
+	E E 6
+	F F 6
+	SYM SYM 6 !
+}
+cut SYM* A* B
+color RED A !B
+color ORANGE B !C
+color YELLOW C !D
+color GREEN D !E
+color BLUE E !F
+color MAGENTA F !A

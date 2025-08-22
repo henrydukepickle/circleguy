@@ -1,15 +1,22 @@
 name "Squares"
 author "Henry Pickle"
+vars {
+	d "-0.5"
+}
 circles {
-	A x=-0.5 y=0.0 r=0.8
-	B x=0.5 y=0.0 r=0.8
+	A x="d" y=0.0 r=0.8
+	B x="-1.0 * d" y=0.0 r=0.8
 }
 base A B
 twists {
 	A A 4
 	B B 4
 }
-cut A* B* A* B
+compounds {
+	AB A B
+}
+cut A* AB20
 color GREEN A !B
 color BLUE A B
 color RED B !A
+//twist A' B B B A A' B' A A' //A' B' A A B' B'

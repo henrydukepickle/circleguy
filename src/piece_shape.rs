@@ -231,7 +231,7 @@ impl PieceShape {
     }
     fn contains_arc(&self, arc: Arc) -> Contains {
         for circle in &self.bounds {
-            let cont = (arc.in_circle(*circle));
+            let cont = arc.in_circle(*circle);
             if cont == None || cont == Some(Contains::Outside) {
                 return Contains::Outside;
             }

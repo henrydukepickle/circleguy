@@ -1,0 +1,18 @@
+name "Ten Ten"
+author "Henry Pickle"
+circles {
+	A x=-0.5 y=0.0 r=0.57
+	B x=0.5 y=0.0 r=0.70
+}
+base A B
+twists {
+	A A 10
+	B B 10
+}
+compounds {
+	AB A B
+}
+cut AB100
+color BLUE A B
+color GREEN !A B
+color RED !B A

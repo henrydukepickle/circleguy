@@ -9,7 +9,7 @@ pub enum Contains {
     Border,
 }
 pub fn circ_border_inside_circ(c1: Blade3, c2: Blade3) -> Contains {
-    if let Dipole::Real(real) = (c1 & c2).unpack_with_prec(PRECISION) {
+    if let Dipole::Real(_) = (c1 & c2).unpack_with_prec(PRECISION) {
         return Contains::Border;
     }
     for point in [NI, NO] {
