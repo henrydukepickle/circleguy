@@ -93,7 +93,7 @@ impl App {
             detail: 50.0,
             scale_factor: SCALE_FACTOR,
             offset: vec2(0.0, 0.0),
-            cut_on_turn: true,
+            cut_on_turn: false,
             preview: false,
             rend_correct: false,
         };

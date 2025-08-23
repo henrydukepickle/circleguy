@@ -205,7 +205,7 @@ pub fn parse_kdl(string: &str) -> Option<Puzzle> {
         intern_3: approx_collections::FloatPool::new(Precision::new_simple(20)),
         depth: 500,
         solved_state: Vec::new(),
-        solved: true,
+        solved: false,
         anim_left: 0.0,
     };
     let mut def_stack = Vec::new();

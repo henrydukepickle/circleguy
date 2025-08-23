@@ -33,10 +33,10 @@ impl Puzzle {
     //     }
     // }
     //updates self.solved
-    fn check(&mut self) {
-        self.solved = false;
-        //TEMPORARY -- SOLVED CHECKING
-    }
+    // fn check(&mut self) {
+    //     self.solved = false;
+    //     //TEMPORARY -- SOLVED CHECKING
+    // }
     //returns if the turn could be completed
     //Err(true) means that the turn was bandaged
     //Err(false) means that the cutting failed
@@ -70,7 +70,7 @@ impl Puzzle {
             return Ok(Err(x));
         }
         self.stack.push(id);
-        self.check();
+        //self.check();
         Ok(Ok(()))
     }
     pub fn undo(&mut self) -> Result<Result<(), bool>, String> {
@@ -81,7 +81,7 @@ impl Puzzle {
         if let Err(x) = self.turn(last_turn.inverse(), false)? {
             return Ok(Err(x));
         };
-        self.check();
+        //self.check();
         Ok(Ok(()))
     }
     pub fn scramble(&mut self, cut: bool) -> Result<(), String> {
@@ -100,7 +100,7 @@ impl Puzzle {
             self.stack.push(key);
         }
         self.animation_offset = None;
-        self.check();
+        //self.check();
         Ok(())
     }
     pub fn reset(&mut self) {
