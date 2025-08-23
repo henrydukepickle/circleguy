@@ -49,11 +49,6 @@ impl Puzzle {
         }
         let mut new_pieces = Vec::new();
         for piece in &self.pieces {
-            if piece.turn(turn).is_none() {
-                dbg!(piece.color);
-                dbg!(piece.shape.border.len());
-                panic!("HI");
-            }
             new_pieces.push(piece.turn(turn).ok_or(true)?);
         }
         self.pieces = new_pieces;
