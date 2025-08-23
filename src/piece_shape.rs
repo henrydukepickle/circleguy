@@ -138,13 +138,6 @@ impl PieceShape {
                 }
             }
             for i in [0, 1] {
-                for arc in arc.cut_by_circle(circle)[i].clone() {
-                    if let Some(x) = arc.boundary
-                        && let Dipole::Tangent(_, _) = x.unpack()
-                    {
-                        panic!("TANGENT LENGTH 0 ARC ETC");
-                    }
-                }
                 result[i].extend(arc.cut_by_circle(circle)[i].clone());
             }
         }
