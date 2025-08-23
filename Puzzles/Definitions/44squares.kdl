@@ -15,7 +15,7 @@ twists {
 compounds {
 	AB A B
 }
-cut A* AB20
+cut AB8
 color GREEN A !B
 color BLUE A B
 color RED B !A

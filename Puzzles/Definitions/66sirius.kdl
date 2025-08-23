@@ -13,7 +13,8 @@ twists {
 }
 compounds {
     AB A B
+    BA B A
 }
-cut SYM* A* AB20
+cut AB18 A2 BA15 B2 AB AB15 A2 BA3
 color RED A
 color BLUE B !A
