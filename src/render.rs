@@ -307,7 +307,23 @@ impl Piece {
         } else {
             self.clone()
         };
-        let triangulation = true_piece.triangulate(true_piece.barycenter()?, detail)?;
+        for comp in true_piece.get_components()? {
+            comp.render(ui, rect, detail, outline_size, scale_factor, offset_pos)?;
+        }
+        Ok(())
+    }
+}
+impl Component {
+    pub fn render(
+        &self,
+        ui: &mut Ui,
+        rect: &Rect,
+        detail: f32,
+        outline_size: f32,
+        scale_factor: f32,
+        offset_pos: Vec2,
+    ) -> Result<(), String> {
+        let triangulation = self.triangulate(self.barycenter()?, detail)?;
         let mut triangle_vertices: Vec<epaint::Vertex> = Vec::new();
         for triangle in triangulation {
             if !almost_degenerate(&triangle, 0.0) {
@@ -325,7 +341,7 @@ impl Piece {
         mesh.indices = (0..(triangle_vertices.len() as u32)).collect();
         mesh.vertices = triangle_vertices;
         ui.painter().add(egui::Shape::Mesh(mesh.into()));
-        true_piece.draw_outline(ui, rect, detail, outline_size, scale_factor, offset_pos)?;
+        self.draw_outline(ui, rect, detail, outline_size, scale_factor, offset_pos)?;
         Ok(())
     }
     // returns a list of triangles for rendering

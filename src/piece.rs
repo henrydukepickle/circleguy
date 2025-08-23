@@ -7,6 +7,10 @@ pub struct Piece {
     pub shape: PieceShape,
     pub color: Color32,
 }
+pub struct Component {
+    pub shape: ComponentShape,
+    pub color: Color32,
+}
 
 impl Piece {
     pub fn turn(&self, turn: Turn) -> Result<Option<Piece>, String> {
@@ -143,4 +147,15 @@ impl Piece {
     //     }
     //     return points;
     // }
+    pub fn get_components(&self) -> Result<Vec<Component>, String> {
+        Ok(self
+            .shape
+            .get_components()?
+            .iter()
+            .map(|shape| Component {
+                shape: shape.clone(),
+                color: self.color,
+            })
+            .collect())
+    }
 }

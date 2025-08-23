@@ -12,6 +12,10 @@ pub struct PieceShape {
     pub bounds: BoundingCircles,
     pub border: BoundaryShape,
 }
+#[derive(Debug, Clone)]
+pub struct ComponentShape {
+    pub border: BoundaryShape,
+}
 
 //CGA NEEDS TESTING
 //gives the 'inside of the circle' arcs, ideally
@@ -280,6 +284,38 @@ impl PieceShape {
             }
         }
         Ok(Contains::Inside)
+    }
+    pub fn get_components(&self) -> Result<Vec<ComponentShape>, String> {
+        let mut comps = Vec::new();
+        let mut remaining_arcs = self.border.clone();
+        loop {
+            if remaining_arcs.is_empty() {
+                break;
+            }
+            let mut curr_arc = remaining_arcs.pop().unwrap();
+            let mut curr_comp = vec![curr_arc];
+            loop {
+                if curr_arc.boundary.is_none() {
+                    break;
+                }
+                if let Some(next) = next_arc(&self.border, curr_arc) {
+                    curr_arc = next;
+                    curr_comp.push(curr_arc);
+                } else {
+                    return Err("PieceShape.get_components failed: No next arc found!".to_string());
+                }
+                if let Some(x) = curr_arc.boundary
+                    && let Dipole::Real(pair) = x.unpack()
+                    && let Some(y) = curr_comp[0].boundary
+                    && let Dipole::Real(base_pair) = y.unpack()
+                    && pair[1].approx_eq(&base_pair[0], PRECISION)
+                {
+                    break;
+                }
+            }
+            comps.push(ComponentShape { border: curr_comp });
+        }
+        Ok(comps)
     }
 }
 pub fn next_arc(bound: &BoundaryShape, curr: Arc) -> Option<Arc> {
