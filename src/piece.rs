@@ -9,20 +9,23 @@ pub struct Piece {
 }
 
 impl Piece {
-    pub fn turn(&self, turn: Turn) -> Option<Piece> {
-        return Some(Piece {
-            shape: self.shape.turn(turn)?,
+    pub fn turn(&self, turn: Turn) -> Result<Option<Piece>, String> {
+        return Ok(Some(Piece {
+            shape: match self.shape.turn(turn)? {
+                None => return Ok(None),
+                Some(x) => x,
+            },
             color: self.color,
-        });
+        }));
     }
-    pub fn turn_cut(&self, turn: Turn) -> [Option<Piece>; 2] {
-        return self.shape.turn_cut(turn).map(|x| match x {
+    pub fn turn_cut(&self, turn: Turn) -> Result<[Option<Piece>; 2], String> {
+        return Ok(self.shape.turn_cut(turn)?.map(|x| match x {
             None => None,
             Some(x) => Some(Piece {
                 shape: x,
                 color: self.color,
             }),
-        });
+        }));
     }
     //None: the piece is inside and outside -- blocking
     //return if the shape contains the point properly -- not on the border
@@ -70,15 +73,15 @@ impl Piece {
     // cut a piece by a circle and return the resulting pieces as a Vec
     //the color is maintained
     //[inside, outside]
-    pub fn cut_by_circle(&self, circle: Blade3) -> [Option<Piece>; 2] {
-        let shapes = self.shape.cut_by_circle(circle);
-        shapes.map(|x| match x {
+    pub fn cut_by_circle(&self, circle: Blade3) -> Result<[Option<Piece>; 2], String> {
+        let shapes = self.shape.cut_by_circle(circle)?;
+        Ok(shapes.map(|x| match x {
             None => None,
             Some(x) => Some(Piece {
                 shape: x,
                 color: self.color,
             }),
-        })
+        }))
     }
     //determine which piece occurs earlier on the piece
     //self.shape[0].start is the minimum

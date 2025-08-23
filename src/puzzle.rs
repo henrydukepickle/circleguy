@@ -40,11 +40,11 @@ impl Puzzle {
     //returns if the turn could be completed
     //Err(true) means that the turn was bandaged
     //Err(false) means that the cutting failed
-    pub fn turn(&mut self, turn: Turn, cut: bool) -> Result<(), bool> {
+    pub fn turn(&mut self, turn: Turn, cut: bool) -> Result<Result<(), bool>, String> {
         let mut new_pieces = Vec::new();
         if cut {
             for piece in &self.pieces {
-                for possible in piece.turn_cut(turn) {
+                for possible in piece.turn_cut(turn)? {
                     if let Some(x) = possible {
                         new_pieces.push(x);
                     }
@@ -52,38 +52,50 @@ impl Puzzle {
             }
         } else {
             for piece in &self.pieces {
-                new_pieces.push(piece.turn(turn).ok_or(true)?);
+                new_pieces.push(match piece.turn(turn)? {
+                    None => return Ok(Err(true)),
+                    Some(x) => x,
+                });
             }
         }
         self.pieces = new_pieces;
         self.anim_left = 1.0;
         self.animation_offset = Some(turn.inverse());
         self.intern_all();
-        Ok(())
+        Ok(Ok(()))
     }
-    pub fn turn_id(&mut self, id: String, cut: bool) -> Result<(), bool> {
+    pub fn turn_id(&mut self, id: String, cut: bool) -> Result<Result<(), bool>, String> {
         let turn = self.turns[&id];
-        self.turn(turn, cut)?;
+        if let Err(x) = self.turn(turn, cut)? {
+            return Ok(Err(x));
+        }
         self.stack.push(id);
         self.check();
-        Ok(())
+        Ok(Ok(()))
     }
-    pub fn undo(&mut self) -> Result<(), ()> {
+    pub fn undo(&mut self) -> Result<Result<(), bool>, String> {
         if self.stack.len() == 0 {
-            return Err(());
+            return Ok(Err(true));
         }
         let last_turn = self.turns[&self.stack.pop().unwrap()];
-        self.turn(last_turn.inverse(), false).or(Err(())).unwrap();
+        if let Err(x) = self.turn(last_turn.inverse(), false)? {
+            return Ok(Err(x));
+        };
         self.check();
-        Ok(())
+        Ok(Ok(()))
     }
-    pub fn scramble(&mut self, cut: bool) -> Result<(), ()> {
+    pub fn scramble(&mut self, cut: bool) -> Result<(), String> {
         let mut rng = rand::rng();
         for _i in 0..self.depth {
-            let key = self.turns.keys().choose(&mut rng).unwrap().clone();
+            let key = self
+                .turns
+                .keys()
+                .choose(&mut rng)
+                .ok_or("Puzzle.scramble failed: rng choosing a turn failed!".to_string())?
+                .clone();
             // dbg!(&key);
-            if self.turn(self.turns[&key], cut).is_err_and(|x| !x) {
-                return Err(());
+            if self.turn(self.turns[&key], cut)?.is_err_and(|x| !x) {
+                return Err("Puzzle.scramble failed: cutting failed while scrambling!".to_string());
             }
             self.stack.push(key);
         }

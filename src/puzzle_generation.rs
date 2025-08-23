@@ -43,20 +43,24 @@ fn get_default_color_hash() -> HashMap<String, Color32> {
     hash
 }
 impl Puzzle {
-    fn cut(&mut self, cut: &Cut) -> Result<(), ()> {
+    fn cut(&mut self, cut: &Cut) -> Result<Result<(), bool>, String> {
         for turn in cut {
-            self.turn(*turn, true).or(Err(()))?;
+            if let Err(x) = self.turn(*turn, true)? {
+                return Ok(Err(x));
+            };
         }
         for turn in cut.clone().into_iter().rev() {
-            self.turn(turn.inverse(), false).or(Err(()))?;
+            if let Err(x) = self.turn(turn.inverse(), false)? {
+                return Ok(Err(x));
+            };
         }
-        Ok(())
+        Ok(Ok(()))
     }
-    fn color(&mut self, coloring: &Coloring) {
+    fn color(&mut self, coloring: &Coloring) -> Result<(), String> {
         for piece in &mut self.pieces {
             let mut color = true;
             for circle in &coloring.0 {
-                let contains = piece.shape.in_circle(*circle);
+                let contains = piece.shape.in_circle(*circle)?;
                 if contains != Some(Contains::Inside) {
                     color = false;
                     break;
@@ -66,9 +70,10 @@ impl Puzzle {
                 piece.color = coloring.1;
             }
         }
+        Ok(())
     }
 }
-pub fn basic_turn(raw_circle: Blade3, angle: f64) -> Turn {
+pub fn basic_turn(raw_circle: Blade3, angle: f64) -> Result<Turn, String> {
     if let Circle::Circle {
         cx,
         cy,
@@ -79,12 +84,12 @@ pub fn basic_turn(raw_circle: Blade3, angle: f64) -> Turn {
         let p1 = point(cx, cy);
         let p2 = point(cx + 1.0, cy);
         let p3 = point(cx + (angle / 2.0).cos(), cy + (angle / 2.0).sin());
-        return Turn {
+        return Ok(Turn {
             circle: raw_circle,
             rotation: Rotoflector::Rotor((p1 ^ p3 ^ NI) * (p1 ^ p2 ^ NI)),
-        };
+        });
     } else {
-        panic!("you passed a line!");
+        return Err("basic_turn failed: A line was passed!".to_string());
     }
 }
 fn multiply_turns(a: isize, compound: &Vec<Turn>) -> Vec<Turn> {
@@ -106,7 +111,7 @@ fn invert_compound_turn(compound: &Vec<Turn>) -> Vec<Turn> {
     }
     return turns;
 }
-fn make_basic_puzzle(disks: Vec<Blade3>) -> Result<Vec<Piece>, ()> {
+fn make_basic_puzzle(disks: Vec<Blade3>) -> Result<Result<Vec<Piece>, ()>, String> {
     let mut pieces = Vec::new();
     let mut old_disks = Vec::new();
     for disk in &disks {
@@ -121,14 +126,14 @@ fn make_basic_puzzle(disks: Vec<Blade3>) -> Result<Vec<Piece>, ()> {
             color: NONE_COLOR,
         };
         for old_disk in &old_disks {
-            if let Some(x) = &disk_piece.cut_by_circle(*old_disk)[1] {
+            if let Some(x) = &disk_piece.cut_by_circle(*old_disk)?[1] {
                 disk_piece = x.clone();
             }
         }
         old_disks.push(*disk);
         pieces.push(disk_piece);
     }
-    return Ok(pieces);
+    return Ok(Ok(pieces));
 }
 
 fn puzzle_from_string(string: String) -> Option<Puzzle> {
@@ -140,7 +145,7 @@ fn puzzle_from_string(string: String) -> Option<Puzzle> {
     if components.len() > 1 {
         let turns = components.get(1)?.split(",");
         for turn in turns {
-            puzzle.turn_id(String::from(turn), false).ok()?;
+            puzzle.turn_id(String::from(turn), false).ok()?.ok()?;
         }
     }
     return Some(puzzle);
@@ -284,7 +289,7 @@ pub fn parse_kdl(string: &str) -> Option<Puzzle> {
                 for disk in node.entries().into_iter() {
                     disks.push(*circles.get(disk.value().as_string()?)?);
                 }
-                puzzle.pieces = make_basic_puzzle(disks).ok()?;
+                puzzle.pieces = make_basic_puzzle(disks).ok()?.ok()?;
             }
             "twists" => {
                 for turn in node.children()?.nodes() {
@@ -294,7 +299,8 @@ pub fn parse_kdl(string: &str) -> Option<Puzzle> {
                             *circles.get(turn.entries().get(0)?.value().as_string()?)?,
                             -2.0 * PI as f64
                                 / (turn.entries().get(1)?.value().as_integer()? as f64),
-                        ),
+                        )
+                        .ok()?,
                     );
                     twist_orders.insert(
                         turn.name().value(),
@@ -307,16 +313,20 @@ pub fn parse_kdl(string: &str) -> Option<Puzzle> {
                                 *circles.get(turn.entries().get(0)?.value().as_string()?)?,
                                 -2.0 * PI as f64
                                     / (turn.entries().get(1)?.value().as_integer()? as f64),
-                            ),
+                            )
+                            .ok()?,
                         );
                     }
                     compounds.insert(
                         turn.name().value(),
-                        vec![basic_turn(
-                            *circles.get(turn.entries().get(0)?.value().as_string()?)?,
-                            -2.0 * PI as f64
-                                / (turn.entries().get(1)?.value().as_integer()? as f64),
-                        )],
+                        vec![
+                            basic_turn(
+                                *circles.get(turn.entries().get(0)?.value().as_string()?)?,
+                                -2.0 * PI as f64
+                                    / (turn.entries().get(1)?.value().as_integer()? as f64),
+                            )
+                            .ok()?,
+                        ],
                     );
                 }
             }
@@ -330,7 +340,7 @@ pub fn parse_kdl(string: &str) -> Option<Puzzle> {
                                 None => extend = compounds.get(val.value().as_string()?)?.clone(),
                                 Some(real) => {
                                     extend = multiply_turns(
-                                        real.1.parse::<isize>().unwrap(),
+                                        real.1.parse::<isize>().ok()?,
                                         compounds.get(real.0.as_str())?,
                                     );
                                 }
@@ -341,7 +351,7 @@ pub fn parse_kdl(string: &str) -> Option<Puzzle> {
                                 }
                                 Some(inside) => {
                                     extend = invert_compound_turn(&multiply_turns(
-                                        inside.1.parse::<isize>().unwrap(),
+                                        inside.1.parse::<isize>().ok()?,
                                         compounds.get(inside.0.as_str())?,
                                     ));
                                 }
@@ -381,7 +391,7 @@ pub fn parse_kdl(string: &str) -> Option<Puzzle> {
                             },
                             Some(real) => {
                                 extend = multiply_turns(
-                                    real.1.parse::<isize>().unwrap(),
+                                    real.1.parse::<isize>().ok()?,
                                     compounds.get(real.0.as_str())?,
                                 );
                             }
@@ -392,7 +402,7 @@ pub fn parse_kdl(string: &str) -> Option<Puzzle> {
                             }
                             Some(inside) => {
                                 extend = invert_compound_turn(&multiply_turns(
-                                    inside.1.parse::<isize>().unwrap(),
+                                    inside.1.parse::<isize>().ok()?,
                                     compounds.get(inside.0.as_str())?,
                                 ))
                             }
@@ -403,7 +413,7 @@ pub fn parse_kdl(string: &str) -> Option<Puzzle> {
                     }
                 }
                 for turns in &turn_seqs {
-                    puzzle.cut(turns).ok()?;
+                    puzzle.cut(turns).ok()?.ok()?;
                     puzzle.pieces.len();
                 }
             }
@@ -429,7 +439,7 @@ pub fn parse_kdl(string: &str) -> Option<Puzzle> {
                         Some(real) => -*circles.get(real)?,
                     });
                 }
-                puzzle.color(&(coloring_circles, color));
+                puzzle.color(&(coloring_circles, color)).ok()?;
             }
             "twist" => {
                 let mut sequence = Vec::new();
@@ -442,7 +452,7 @@ pub fn parse_kdl(string: &str) -> Option<Puzzle> {
                             }
                             Some(real) => {
                                 extend = multiply_turns(
-                                    real.1.parse::<isize>().unwrap(),
+                                    real.1.parse::<isize>().ok()?,
                                     compounds.get(real.0.as_str())?,
                                 );
                             }
@@ -453,7 +463,7 @@ pub fn parse_kdl(string: &str) -> Option<Puzzle> {
                             }
                             Some(inside) => {
                                 extend = invert_compound_turn(&multiply_turns(
-                                    inside.1.parse::<isize>().unwrap(),
+                                    inside.1.parse::<isize>().ok()?,
                                     compounds.get(inside.0.as_str())?,
                                 ))
                             }
@@ -463,7 +473,7 @@ pub fn parse_kdl(string: &str) -> Option<Puzzle> {
                 }
                 let mut add_seq = Vec::new();
                 for turn in &sequence {
-                    puzzle.turn(*turn, false).ok()?;
+                    puzzle.turn(*turn, false).ok()?.ok()?;
                     add_seq.push(turn.clone());
                 }
                 def_stack.push(add_seq);
@@ -487,7 +497,7 @@ pub fn parse_kdl(string: &str) -> Option<Puzzle> {
                     number -= 1;
                     if let Some(turns) = def_stack.pop() {
                         for turn in invert_compound_turn(&turns) {
-                            puzzle.turn(turn, false).ok()?;
+                            puzzle.turn(turn, false).ok()?.ok()?;
                         }
                     } else {
                         break;

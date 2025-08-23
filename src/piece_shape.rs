@@ -42,7 +42,7 @@ pub struct PieceShape {
 pub fn collapse_shape_and_add(
     bounding_circles: &BoundingCircles,
     new_circle: Blade3,
-) -> BoundingCircles {
+) -> Result<BoundingCircles, String> {
     let mut new_bounding_circles = Vec::new();
     for circ in bounding_circles {
         if !circle_excludes(*circ, new_circle) {
@@ -50,25 +50,33 @@ pub fn collapse_shape_and_add(
         } else {
             dbg!(match circ.unpack() {
                 Circle::Circle { cx, cy, r, ori } => (cx, cy, r, ori),
-                _ => panic!("hi"),
+                _ =>
+                    return Err(
+                        "collapse_shape_and_add failed: Circle was a line or imaginary! (1)"
+                            .to_string()
+                    ),
             });
             dbg!(match new_circle.unpack() {
                 Circle::Circle { cx, cy, r, ori } => (cx, cy, r, ori),
-                _ => panic!("hi"),
+                _ =>
+                    return Err(
+                        "collapse_shape_and_add failed: Circle was a line or imaginary! (2)"
+                            .to_string()
+                    ),
             });
         }
     }
     new_bounding_circles.push(new_circle);
-    new_bounding_circles
+    Ok(new_bounding_circles)
 }
 impl PieceShape {
-    pub fn cut_boundary(&self, circle: Blade3) -> Option<[BoundaryShape; 2]> {
-        fn get_circle_arcs(circle: Blade3, cut_points: &Vec<Point>) -> Vec<Arc> {
+    pub fn cut_boundary(&self, circle: Blade3) -> Result<Option<[BoundaryShape; 2]>, String> {
+        fn get_circle_arcs(circle: Blade3, cut_points: &Vec<Point>) -> Result<Vec<Arc>, String> {
             if cut_points.len() <= 1 {
-                return vec![Arc {
+                return Ok(vec![Arc {
                     circle,
                     boundary: None,
-                }];
+                }]);
             }
             let mut points = cut_points.clone();
             let base = points.pop().unwrap();
@@ -88,10 +96,12 @@ impl PieceShape {
                     ),
                 });
                 if points[i].approx_eq(&points[i + 1], PRECISION) {
-                    panic!("POINTS WERE TOO CLOSE!");
+                    return Err(
+                        "PieceShape.cut_boundary failed: cut points were too close!".to_string()
+                    );
                 }
             }
-            arcs
+            Ok(arcs)
         }
         let mut result = [Vec::new(), Vec::new()];
         let mut cut_points: ApproxHashMap<Point, ()> = ApproxHashMap::new(PRECISION);
@@ -113,71 +123,69 @@ impl PieceShape {
                     .rescale_oriented()
                     .approx_eq(&-circle.rescale_oriented(), PRECISION)
             {
-                return None;
+                return Ok(None);
             }
-            if arc
-                .circle
-                .rescale_oriented()
-                .approx_eq(&circle.rescale_oriented(), Precision::new_simple(14))
-                || arc
-                    .circle
-                    .rescale_oriented()
-                    .approx_eq(&-circle.rescale_oriented(), Precision::new_simple(14))
-            {
-                dbg!(match circle.unpack() {
-                    Circle::Circle { cx, cy, r, ori } => (cx, cy, r, ori),
-                    _ => panic!("HAHA"),
-                });
-                dbg!(match arc.circle.unpack() {
-                    Circle::Circle { cx, cy, r, ori } => (cx, cy, r, ori),
-                    _ => panic!("HAHA"),
-                });
-            }
-            for int in arc.intersect_circle(circle) {
+            // if arc
+            //     .circle
+            //     .rescale_oriented()
+            //     .approx_eq(&circle.rescale_oriented(), Precision::new_simple(14))
+            //     || arc
+            //         .circle
+            //         .rescale_oriented()
+            //         .approx_eq(&-circle.rescale_oriented(), Precision::new_simple(14))
+            // {
+            //     dbg!(match circle.unpack() {
+            //         Circle::Circle { cx, cy, r, ori } => (cx, cy, r, ori),
+            //         _ => panic!("HAHA"),
+            //     });
+            //     dbg!(match arc.circle.unpack() {
+            //         Circle::Circle { cx, cy, r, ori } => (cx, cy, r, ori),
+            //         _ => panic!("HAHA"),
+            //     });
+            // }
+            for int in arc.intersect_circle(circle)? {
                 if let Some(point) = int {
                     cut_points.insert(point.rescale_unoriented().unpack().unwrap(), ());
                 }
             }
             for i in [0, 1] {
-                result[i].extend(arc.cut_by_circle(circle)[i].clone());
+                result[i].extend(arc.cut_by_circle(circle)?[i].clone());
             }
         }
         if result[0].is_empty() || result[1].is_empty() {
-            return None;
+            return Ok(None);
         }
-        let circle_arcs = get_circle_arcs(circle, &cut_points.into_keys().collect());
+        let circle_arcs = get_circle_arcs(circle, &cut_points.into_keys().collect())?;
         for arc in &circle_arcs {
             if let Some(x) = arc.boundary
                 && let Dipole::Tangent(_, _) = x.unpack()
             {
-                panic!("TANGENT LENGTH 0 ARC ETC");
+                return Err("PieceShape.cut_boundary failed: arc boundary was tangent!".to_string());
             }
-            if self.contains_arc(arc.rescale_oriented()) == Contains::Inside {
+            if self.contains_arc(arc.rescale_oriented())? == Contains::Inside {
                 result[0].push(arc.rescale_oriented());
                 result[1].push(arc.rescale_oriented().inverse());
             }
         }
 
-        Some(result)
+        Ok(Some(result))
     }
-    pub fn cut_by_circle(&self, circle: Blade3) -> [Option<PieceShape>; 2] {
-        let shapes_raw = self.cut_boundary(circle);
+    pub fn cut_by_circle(&self, circle: Blade3) -> Result<[Option<PieceShape>; 2], String> {
+        let shapes_raw = self.cut_boundary(circle)?;
         let shapes = match shapes_raw {
             Some(x) => x,
             None => {
-                return match self.in_circle(circle) {
-                    None => panic!(
-                        "CUT HAPPENED AND WAS NOTHING BUT ALSO THE PIECE IS BANDAGING?? WHAT A WORLD WE LIVE IN!"
-                    ),
-                    Some(Contains::Inside) => [Some(self.clone()), None],
-                    Some(Contains::Outside) => [None, Some(self.clone())],
-                    Some(Contains::Border) => panic!("LOL"),
+                return match self.in_circle(circle)? {
+                    None => Err("PieceShape.cut_by_circle failed: piece_shape was cut, but still blocked the turn!".to_string()),
+                    Some(Contains::Inside) => Ok([Some(self.clone()), None]),
+                    Some(Contains::Outside) => Ok([None, Some(self.clone())]),
+                    Some(Contains::Border) => Err("PieceShape.cut_by_circle failed: piece_shape is on border of circle!".to_string()),
                 };
             }
         };
         let bounding_circles = [
-            collapse_shape_and_add(&self.bounds, circle),
-            collapse_shape_and_add(&self.bounds, -circle),
+            collapse_shape_and_add(&self.bounds, circle)?,
+            collapse_shape_and_add(&self.bounds, -circle)?,
         ];
         let inside = PieceShape {
             border: shapes[0].clone(),
@@ -187,41 +195,48 @@ impl PieceShape {
             border: shapes[1].clone(),
             bounds: bounding_circles[1].clone(),
         };
-        return [Some(inside), Some(outside)];
+        return Ok([Some(inside), Some(outside)]);
     }
-    pub fn in_circle(&self, circle: Blade3) -> Option<Contains> {
+    pub fn in_circle(&self, circle: Blade3) -> Result<Option<Contains>, String> {
         let mut inside = None;
         for arc in &self.border {
-            if arc.in_circle(circle).is_none() {
-                // dbg!((arc.circle & circle).mag2());
-                // if let Dipole::Real(real) = arc.boundary.unwrap().unpack() {
-                //     dbg!(real);
-                // }
-                // if let Circle::Circle { cx, cy, r, ori } = arc.circle.unpack() {
-                //     dbg!((cx, cy, r, ori));
-                // }
-                // if let Circle::Circle { cx, cy, r, ori } = circle.unpack() {
-                //     dbg!((cx, cy, r, ori));
-                // }
-            }
-            let contained = (arc.in_circle(circle))?;
+            // if arc.in_circle(circle).is_none() {
+            //     // dbg!((arc.circle & circle).mag2());
+            //     // if let Dipole::Real(real) = arc.boundary.unwrap().unpack() {
+            //     //     dbg!(real);
+            //     // }
+            //     // if let Circle::Circle { cx, cy, r, ori } = arc.circle.unpack() {
+            //     //     dbg!((cx, cy, r, ori));
+            //     // }
+            //     // if let Circle::Circle { cx, cy, r, ori } = circle.unpack() {
+            //     //     dbg!((cx, cy, r, ori));
+            //     // }
+            // }
+            let contained = match arc.in_circle(circle)? {
+                None => return Ok(None),
+                Some(x) => x,
+            };
             if let Some(real_inside) = inside {
                 if contained != Contains::Border && real_inside != contained {
-                    return None;
+                    return Ok(None);
                 }
             } else if contained != Contains::Border {
                 inside = Some(contained);
             }
         }
         if inside.is_none_or(|x| x == Contains::Border) {
-            return Some(Contains::Inside);
+            return Ok(Some(Contains::Inside));
         }
-        return inside;
+        return Ok(inside);
     }
-    pub fn turn(&self, turn: Turn) -> Option<PieceShape> {
+    pub fn turn(&self, turn: Turn) -> Result<Option<PieceShape>, String> {
         //dbg!(self.in_circle(turn.circle));
-        if self.in_circle(turn.circle)? == Contains::Outside {
-            return Some(self.clone());
+        if match self.in_circle(turn.circle)? {
+            None => return Ok(None),
+            Some(x) => x,
+        } == Contains::Outside
+        {
+            return Ok(Some(self.clone()));
         }
         let mut new_border = Vec::new();
         for arc in &self.border {
@@ -231,10 +246,10 @@ impl PieceShape {
         for bound in &self.bounds {
             new_bounds.push(turn.rotation.sandwich(*bound));
         }
-        Some(PieceShape {
+        Ok(Some(PieceShape {
             bounds: new_bounds,
             border: new_border,
-        })
+        }))
     }
     pub fn rotate(&self, rotation: Rotoflector) -> Self {
         let mut new_border = Vec::new();
@@ -250,21 +265,21 @@ impl PieceShape {
             border: new_border,
         }
     }
-    pub fn turn_cut(&self, turn: Turn) -> [Option<PieceShape>; 2] {
-        let mut cut_bits = self.cut_by_circle(turn.circle);
+    pub fn turn_cut(&self, turn: Turn) -> Result<[Option<PieceShape>; 2], String> {
+        let mut cut_bits = self.cut_by_circle(turn.circle)?;
         if let Some(x) = &cut_bits[0] {
             cut_bits[0] = Some(x.rotate(turn.rotation));
         }
-        cut_bits
+        Ok(cut_bits)
     }
-    fn contains_arc(&self, arc: Arc) -> Contains {
+    fn contains_arc(&self, arc: Arc) -> Result<Contains, String> {
         for circle in &self.bounds {
-            let cont = arc.in_circle(*circle);
+            let cont = arc.in_circle(*circle)?;
             if cont == None || cont == Some(Contains::Outside) {
-                return Contains::Outside;
+                return Ok(Contains::Outside);
             }
         }
-        Contains::Inside
+        Ok(Contains::Inside)
     }
 }
 pub fn next_arc(bound: &BoundaryShape, curr: Arc) -> Option<Arc> {

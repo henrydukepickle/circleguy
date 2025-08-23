@@ -128,12 +128,12 @@ fn rotate_about(center: Pos2, point: Pos2, angle: f32) -> Pos2 {
         center.y + (dist * end_angle.sin()),
     );
 }
-fn euc_center_rad(circ: Blade3) -> (Pos2, f32) {
+fn euc_center_rad(circ: Blade3) -> Result<(Pos2, f32), String> {
     return match circ.unpack() {
-        Circle::Circle { cx, cy, r, ori: _ } => (pos2(cx as f32, cy as f32), r as f32),
+        Circle::Circle { cx, cy, r, ori: _ } => Ok((pos2(cx as f32, cy as f32), r as f32)),
         _ => {
             dbg!(circ);
-            panic!("you passed a line!")
+            Err("euc_center_rad failed: A line or imaginary circle was passed!".to_string())
         }
     };
 }
@@ -146,12 +146,12 @@ impl Arc {
         width: f32,
         scale_factor: f32,
         offset_pos: Vec2,
-    ) {
+    ) -> Result<(), String> {
         let size =
-            self.angle_euc().abs() as f32 * euc_center_rad(self.circle).1 * DETAIL_FACTOR as f32;
+            self.angle_euc()?.abs() as f32 * euc_center_rad(self.circle)?.1 * DETAIL_FACTOR as f32;
         let divisions = (size * detail * DETAIL as f32).max(2.0) as u16;
         let mut coords = Vec::new();
-        for pos in self.get_polygon(divisions) {
+        for pos in self.get_polygon(divisions)? {
             coords.push(to_egui_coords(
                 //&rotate_about(offset.circle.center, pos, offset.angle),
                 pos,
@@ -162,70 +162,84 @@ impl Arc {
         }
         ui.painter()
             .add(PathShape::line(coords, Stroke::new(width, OUTLINE_COLOR)));
+        Ok(())
     }
     //precondition: the boundary is not a tangent
-    fn get_polygon(&self, divisions: u16) -> Vec<Pos2> {
+    fn get_polygon(&self, divisions: u16) -> Result<Vec<Pos2>, String> {
         let mut points: Vec<Pos2> = Vec::new();
         let start_point = match self.boundary {
-            None => euc_center_rad(self.circle).0 + vec2(0.0, euc_center_rad(self.circle).1),
+            None => euc_center_rad(self.circle)?.0 + vec2(0.0, euc_center_rad(self.circle)?.1),
             Some(b2) => {
                 if let Dipole::Real(real) = b2.unpack()
                     && let Point::Finite([x, y]) = real[0]
                 {
                     pos2(x as f32, y as f32)
                 } else {
-                    panic!("doorbell")
+                    return Err(
+                        "Arc.get_polygon failed: Arc boundary was infinite or not real!"
+                            .to_string(),
+                    );
                 }
             }
         };
-        let angle = self.angle_euc() as f32;
+        let angle = self.angle_euc()? as f32;
         let inc_angle = angle / (divisions as f32);
         points.push(start_point);
         for i in 1..=divisions {
             points.push(rotate_about(
-                euc_center_rad(self.circle).0,
+                euc_center_rad(self.circle)?.0,
                 start_point,
                 inc_angle * (i as f32),
             ));
         }
-        return points;
+        return Ok(points);
     }
-    fn triangulate(&self, center: Pos2, detail: f32) -> Vec<Vec<Pos2>> {
-        let size = self.angle_euc().abs() as f32 * euc_center_rad(self.circle).1;
+    fn triangulate(&self, center: Pos2, detail: f32) -> Result<Vec<Vec<Pos2>>, String> {
+        let size = self.angle_euc()?.abs() as f32 * euc_center_rad(self.circle)?.1;
         // if aeq(self.angle_euc() as f64, 0.0) {
         //     dbg!(self.angle_euc());
         // }
         let div = (detail * size * DETAIL as f32).max(2.0) as u16;
-        let polygon = self.get_polygon(div);
+        let polygon = self.get_polygon(div)?;
         let mut triangles = Vec::new();
         for i in 0..(polygon.len() - 1) {
             triangles.push(vec![center, polygon[i], polygon[i + 1]]);
         }
-        triangles
+        Ok(triangles)
     }
     //what it does: 'angle' returns the angle 'between' the lines going through the euclidian center of self.circle and the points of the boundary. this angle is between
     //-PI and PI and the sign is inverted based on the orientation of both self.circle and self.boundary. this answer is then taken mod 2PI, yielding a positive answer between
     //0 and 2PI. if the circle is clockwise (negative orientation), then the sign of the final answer is inverted and then returned
-    fn angle_euc(&self) -> f32 {
+    fn angle_euc(&self) -> Result<f32, String> {
         let orientation = circle_orientation_euclid(self.circle) == Contains::Inside;
         if self.boundary == None {
-            return if orientation { 2.0 * PI } else { -2.0 * PI };
+            return if orientation {
+                Ok(2.0 * PI)
+            } else {
+                Ok(-2.0 * PI)
+            };
         } else {
             let Dipole::Real([p1, p2]) = self.boundary.unwrap().unpack() else {
-                return 0.0;
+                return Err(
+                    "Arc.angle_euc failed: arc.boundary was tangent or imaginary!".to_string(),
+                );
             };
             let (pos1, pos2) = match (p1, p2) {
                 (Point::Finite([x1, y1]), Point::Finite([x2, y2])) => {
                     (pos2(x1 as f32, y1 as f32), pos2(x2 as f32, y2 as f32))
                 }
-                _ => panic!("the boundary isnt real"),
+                _ => {
+                    return Err(
+                        "Arc.angle_euc failed: arc.boundary had infinite endpoint(s)!".to_string(),
+                    );
+                }
             };
-            let center = euc_center_rad(self.circle).0;
+            let center = euc_center_rad(self.circle)?.0;
             let angle = ((pos2 - center).angle() - (pos1 - center).angle()).rem_euclid(2.0 * PI);
             if orientation {
-                angle
+                Ok(angle)
             } else {
-                angle - (2.0 * PI)
+                Ok(angle - (2.0 * PI))
             }
         }
         // } else {
@@ -243,19 +257,28 @@ impl Arc {
         //     return if !orientation { -pos_angle } else { pos_angle };
         // }
     }
-    fn midpoint_euc(&self) -> Option<Pos2> {
-        let p = match self.boundary?.unpack() {
+    fn midpoint_euc(&self) -> Result<Option<Pos2>, String> {
+        let p = match (match self.boundary {
+            None => return Ok(None),
+            Some(x) => x,
+        })
+        .unpack()
+        {
             Dipole::Real(real) => match real[0] {
                 Point::Finite([x, y]) => pos2(x as f32, y as f32),
-                _ => panic!("point is infinite!"),
+                _ => {
+                    return Err(
+                        "Arc.midpoint_euc failed: Arc has an infinite endpoint!".to_string()
+                    );
+                }
             },
-            _ => panic!("ABSOLUTELY NOT!"),
+            _ => return Err("Arc.midpoint_euc failed: arc.boundary was not real!".to_string()),
         };
-        Some(rotate_about(
-            euc_center_rad(self.circle).0,
+        Ok(Some(rotate_about(
+            euc_center_rad(self.circle)?.0,
             p,
-            self.angle_euc() as f32 / 2.0,
-        ))
+            self.angle_euc()? as f32 / 2.0,
+        )))
     }
 }
 impl Piece {
@@ -268,11 +291,11 @@ impl Piece {
         outline_size: f32,
         scale_factor: f32,
         offset_pos: Vec2,
-    ) {
+    ) -> Result<(), String> {
         let true_offset = if offset.is_none()
             || self
                 .shape
-                .in_circle(offset.unwrap().circle)
+                .in_circle(offset.unwrap().circle)?
                 .is_some_and(|x| x == Contains::Inside)
         {
             offset
@@ -280,11 +303,11 @@ impl Piece {
             None
         };
         let true_piece = if let Some(twist) = true_offset {
-            self.turn(twist).unwrap_or(self.clone())
+            self.turn(twist)?.unwrap_or(self.clone())
         } else {
             self.clone()
         };
-        let triangulation = true_piece.triangulate(true_piece.barycenter(), detail);
+        let triangulation = true_piece.triangulate(true_piece.barycenter()?, detail)?;
         let mut triangle_vertices: Vec<epaint::Vertex> = Vec::new();
         for triangle in triangulation {
             if !almost_degenerate(&triangle, 0.0) {
@@ -302,27 +325,28 @@ impl Piece {
         mesh.indices = (0..(triangle_vertices.len() as u32)).collect();
         mesh.vertices = triangle_vertices;
         ui.painter().add(egui::Shape::Mesh(mesh.into()));
-        true_piece.draw_outline(ui, rect, detail, outline_size, scale_factor, offset_pos);
+        true_piece.draw_outline(ui, rect, detail, outline_size, scale_factor, offset_pos)?;
+        Ok(())
     }
     // returns a list of triangles for rendering
-    fn triangulate(&self, center: Pos2, detail: f32) -> Vec<Vec<Pos2>> {
+    fn triangulate(&self, center: Pos2, detail: f32) -> Result<Vec<Vec<Pos2>>, String> {
         let mut triangles = Vec::new();
         for arc in &self.shape.border {
-            triangles.extend(arc.triangulate(center, detail));
+            triangles.extend(arc.triangulate(center, detail)?);
         }
-        return triangles;
+        return Ok(triangles);
     }
-    fn barycenter(&self) -> Pos2 {
+    fn barycenter(&self) -> Result<Pos2, String> {
         let mut points = Vec::new();
         for arc in &self.shape.border {
-            if let Some(x) = arc.midpoint_euc() {
+            if let Some(x) = arc.midpoint_euc()? {
                 points.push(x);
             };
         }
         if points.is_empty() {
-            return euc_center_rad(self.shape.border[0].circle).0;
+            return Ok(euc_center_rad(self.shape.border[0].circle)?.0);
         }
-        return avg_points(&points);
+        return Ok(avg_points(&points));
     }
     fn draw_outline(
         &self,
@@ -332,10 +356,11 @@ impl Piece {
         outline_size: f32,
         scale_factor: f32,
         offset_pos: Vec2,
-    ) {
+    ) -> Result<(), String> {
         for arc in &self.shape.border {
-            arc.draw(ui, rect, detail, outline_size, scale_factor, offset_pos);
+            arc.draw(ui, rect, detail, outline_size, scale_factor, offset_pos)?;
         }
+        Ok(())
     }
 }
 impl Puzzle {
@@ -347,7 +372,7 @@ impl Puzzle {
         outline_width: f32,
         scale_factor: f32,
         offset: Vec2,
-    ) {
+    ) -> Result<(), String> {
         let proper_offset = if let Some(off) = self.animation_offset {
             Some(Turn {
                 circle: off.circle,
@@ -366,8 +391,9 @@ impl Puzzle {
                 outline_width,
                 scale_factor,
                 offset,
-            );
+            )?;
         }
+        Ok(())
     }
     pub fn process_click(
         &mut self,
@@ -377,7 +403,7 @@ impl Puzzle {
         scale_factor: f32,
         offset: Vec2,
         cut: bool,
-    ) -> Result<(), bool> {
+    ) -> Result<Result<(), bool>, String> {
         let good_pos = from_egui_coords(&pos, rect, scale_factor, offset);
         let mut min_dist: f32 = 10000.0;
         let mut min_rad: f32 = 10000.0;
@@ -385,7 +411,11 @@ impl Puzzle {
         for turn in &self.turns {
             let (center, radius) = match turn.1.circle.unpack() {
                 Circle::Circle { cx, cy, r, ori: _ } => (pos2(cx as f32, cy as f32), r as f32),
-                _ => panic!("not a circle lol!"),
+                _ => {
+                    return Err(
+                        "Puzzle.process_click failed: Circle was a line or imaginary!".to_string(),
+                    );
+                }
             };
             if ((good_pos.distance(center).approx_cmp(&min_dist, PRECISION) == Ordering::Less)
                 || ((good_pos.distance(center).approx_eq(&min_dist, PRECISION))
@@ -400,14 +430,18 @@ impl Puzzle {
             }
         }
         if correct_id.is_empty() {
-            return Ok(());
+            return Ok(Ok(()));
         }
         if !left {
-            self.turn_id(correct_id, cut)?;
+            if let Err(x) = self.turn_id(correct_id, cut)? {
+                return Ok(Err(x));
+            };
         } else {
-            self.turn_id(correct_id + "'", cut)?;
+            if let Err(x) = self.turn_id(correct_id + "'", cut)? {
+                return Ok(Err(x));
+            };
         }
-        Ok(())
+        Ok(Ok(()))
     }
     pub fn get_hovered(
         &self,
@@ -415,13 +449,13 @@ impl Puzzle {
         pos: Pos2,
         scale_factor: f32,
         offset: Vec2,
-    ) -> Option<Blade3> {
+    ) -> Result<Option<Blade3>, String> {
         let good_pos = from_egui_coords(&pos, rect, scale_factor, offset);
         let mut min_dist: f32 = 10000.0;
         let mut min_rad: f32 = 10000.0;
         let mut correct_turn = None;
         for turn in self.turns.clone().values() {
-            let (cent, rad) = euc_center_rad(turn.circle);
+            let (cent, rad) = euc_center_rad(turn.circle)?;
             if ((good_pos.distance(cent).approx_cmp(&min_dist, PRECISION) == Ordering::Less)
                 || ((good_pos.distance(cent).approx_eq(&min_dist, PRECISION))
                     && (rad.approx_cmp(&min_rad, PRECISION)) == Ordering::Less))
@@ -433,9 +467,15 @@ impl Puzzle {
             }
         }
         if min_rad == 10000.0 {
-            return None;
+            return Ok(None);
         }
         //dbg!(correct_turn.circle.center.to_pos2());
-        return Some(correct_turn?.circle);
+        return Ok(Some(
+            match correct_turn {
+                None => return Ok(None),
+                Some(x) => x,
+            }
+            .circle,
+        ));
     }
 }

@@ -136,14 +136,16 @@ impl eframe::App for App {
             //     dbg!(arc.angle_euc());
             // }
             if !self.preview {
-                self.puzzle.render(
+                if let Err(x) = self.puzzle.render(
                     ui,
                     &rect,
                     self.detail,
                     self.outline_width,
                     self.scale_factor,
                     self.offset,
-                );
+                ) {
+                    self.curr_msg = x;
+                }
                 // let a = PieceArc {
                 //     boundary: Some(Blade2 {
                 //         mp: -0.0293736,
@@ -221,7 +223,7 @@ impl eframe::App for App {
                 // );
             } else {
                 for piece in &self.puzzle.solved_state {
-                    piece.render(
+                    if let Err(x) = piece.render(
                         ui,
                         &rect,
                         None,
@@ -229,7 +231,9 @@ impl eframe::App for App {
                         self.outline_width,
                         self.scale_factor,
                         self.offset,
-                    );
+                    ) {
+                        self.curr_msg = x;
+                    }
                 }
             }
             // let arc = self.puzzle.pieces[1].shape.border[1];
@@ -384,49 +388,65 @@ impl eframe::App for App {
                     })
                     .sum::<i32>()
             });
-            if r.clicked() && !self.preview {
-                let _ = self.puzzle.process_click(
+            if r.clicked()
+                && !self.preview
+                && let Some(pointer) = r.interact_pointer_pos()
+            {
+                if let Err(x) = self.puzzle.process_click(
                     &rect,
-                    r.interact_pointer_pos().unwrap(),
+                    pointer,
                     true,
                     self.scale_factor,
                     self.offset,
                     self.cut_on_turn,
-                );
+                ) {
+                    self.curr_msg = x;
+                }
             }
-            if r.clicked_by(egui::PointerButton::Secondary) && !self.preview {
-                let _ = self.puzzle.process_click(
+            if r.clicked_by(egui::PointerButton::Secondary)
+                && !self.preview
+                && let Some(pointer) = r.interact_pointer_pos()
+            {
+                if let Err(x) = self.puzzle.process_click(
                     &rect,
-                    r.interact_pointer_pos().unwrap(),
+                    pointer,
                     false,
                     self.scale_factor,
                     self.offset,
                     self.cut_on_turn,
-                );
+                ) {
+                    self.curr_msg = x;
+                }
             }
-            if r.hover_pos().is_some() && !self.preview {
-                let hovered_circle = self.puzzle.get_hovered(
-                    &rect,
-                    r.hover_pos().unwrap(),
-                    self.scale_factor,
-                    self.offset,
-                );
-                if let Some(real_circle) = hovered_circle {
+            if r.hover_pos().is_some()
+                && !self.preview
+                && let Some(pointer) = r.hover_pos()
+            {
+                let hovered_circle =
+                    self.puzzle
+                        .get_hovered(&rect, pointer, self.scale_factor, self.offset);
+                if let Err(x) = &hovered_circle {
+                    self.curr_msg = x.clone();
+                }
+                if let Ok(Some(real_circle)) = hovered_circle {
                     draw_circle(real_circle, ui, &rect, self.scale_factor, self.offset);
                 }
                 if scroll != 0
                     && !r.dragged_by(egui::PointerButton::Middle)
                     && !ui.input(|i| i.modifiers.command_only())
                     && !self.preview
+                    && let Some(pointer) = r.hover_pos()
                 {
-                    let _ = self.puzzle.process_click(
+                    if let Err(x) = self.puzzle.process_click(
                         &rect,
-                        r.hover_pos().unwrap(),
+                        pointer,
                         scroll > 0,
                         self.scale_factor,
                         self.offset,
                         self.cut_on_turn,
-                    );
+                    ) {
+                        self.curr_msg = x;
+                    }
                 }
             }
             if r.dragged_by(egui::PointerButton::Middle) {
