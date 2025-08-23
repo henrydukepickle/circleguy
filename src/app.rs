@@ -47,6 +47,7 @@ pub struct App {
     offset: Vec2,
     cut_on_turn: bool,
     preview: bool,
+    rend_correct: bool,
     //debug: usize,
     //debug2: usize,
 }
@@ -94,6 +95,7 @@ impl App {
             offset: vec2(0.0, 0.0),
             cut_on_turn: true,
             preview: false,
+            rend_correct: false,
         };
     }
 }
@@ -143,6 +145,7 @@ impl eframe::App for App {
                     self.outline_width,
                     self.scale_factor,
                     self.offset,
+                    self.rend_correct,
                 ) {
                     self.curr_msg = x;
                 }
@@ -231,6 +234,7 @@ impl eframe::App for App {
                         self.outline_width,
                         self.scale_factor,
                         self.offset,
+                        self.rend_correct,
                     ) {
                         self.curr_msg = x;
                     }
@@ -355,6 +359,8 @@ impl eframe::App for App {
             // }
             ui.checkbox(&mut self.cut_on_turn, "Cut on turn?");
             ui.checkbox(&mut self.preview, "Preview solved state?");
+            ui.checkbox(&mut self.rend_correct, "Render in Fine Mode?");
+            //ui.label("Fine mode fixes some rendering errors regarding disconnected pieces, but is significantly less performant.");
             ui.label(String::from("Name: ") + &self.puzzle.name.clone());
             ui.label(String::from("Authors: ") + &self.puzzle.authors.join(","));
             ui.label(self.puzzle.pieces.len().to_string() + " pieces");

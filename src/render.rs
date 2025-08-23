@@ -291,6 +291,7 @@ impl Piece {
         outline_size: f32,
         scale_factor: f32,
         offset_pos: Vec2,
+        correct: bool,
     ) -> Result<(), String> {
         let true_offset = if offset.is_none()
             || self
@@ -307,7 +308,7 @@ impl Piece {
         } else {
             self.clone()
         };
-        for comp in true_piece.get_components()? {
+        for comp in true_piece.get_components(correct)? {
             comp.render(ui, rect, detail, outline_size, scale_factor, offset_pos)?;
         }
         Ok(())
@@ -388,6 +389,7 @@ impl Puzzle {
         outline_width: f32,
         scale_factor: f32,
         offset: Vec2,
+        correct: bool,
     ) -> Result<(), String> {
         let proper_offset = if let Some(off) = self.animation_offset {
             Some(Turn {
@@ -407,6 +409,7 @@ impl Puzzle {
                 outline_width,
                 scale_factor,
                 offset,
+                correct,
             )?;
         }
         Ok(())

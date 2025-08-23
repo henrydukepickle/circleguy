@@ -147,10 +147,10 @@ impl Piece {
     //     }
     //     return points;
     // }
-    pub fn get_components(&self) -> Result<Vec<Component>, String> {
+    pub fn get_components(&self, correct: bool) -> Result<Vec<Component>, String> {
         Ok(self
             .shape
-            .get_components()?
+            .get_components(correct)?
             .iter()
             .map(|shape| Component {
                 shape: shape.clone(),

@@ -285,7 +285,12 @@ impl PieceShape {
         }
         Ok(Contains::Inside)
     }
-    pub fn get_components(&self) -> Result<Vec<ComponentShape>, String> {
+    pub fn get_components(&self, correct: bool) -> Result<Vec<ComponentShape>, String> {
+        if !correct {
+            return Ok(vec![ComponentShape {
+                border: self.border.clone(),
+            }]);
+        }
         let mut comps = Vec::new();
         let mut remaining_arcs = self.border.clone();
         loop {
