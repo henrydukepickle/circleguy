@@ -1,7 +1,6 @@
 use crate::piece::*;
 use crate::turn::*;
 use approx_collections::*;
-use cga2d::*;
 use rand::prelude::IteratorRandom;
 use std::collections::HashMap;
 #[derive(Debug, Clone)]
@@ -42,14 +41,19 @@ impl Puzzle {
     //Err(true) means that the turn was bandaged
     //Err(false) means that the cutting failed
     pub fn turn(&mut self, turn: Turn, cut: bool) -> Result<(), bool> {
-        if cut {
-            if self.global_cut_by_circle(turn.circle).is_err() {
-                return Err(false);
-            }
-        }
         let mut new_pieces = Vec::new();
-        for piece in &self.pieces {
-            new_pieces.push(piece.turn(turn).ok_or(true)?);
+        if cut {
+            for piece in &self.pieces {
+                for possible in piece.turn_cut(turn) {
+                    if let Some(x) = possible {
+                        new_pieces.push(x);
+                    }
+                }
+            }
+        } else {
+            for piece in &self.pieces {
+                new_pieces.push(piece.turn(turn).ok_or(true)?);
+            }
         }
         self.pieces = new_pieces;
         self.anim_left = 1.0;
@@ -95,17 +99,17 @@ impl Puzzle {
             }
         }
     }
-    pub fn global_cut_by_circle(&mut self, circle: Blade3) -> Result<(), ()> {
-        let mut new_pieces = Vec::new();
-        for piece in &self.pieces {
-            //dbg!(piece.shape.border.len());
-            match piece.cut_by_circle(circle) {
-                None => new_pieces.push(piece.clone()),
-                Some(x) => new_pieces.extend(x),
-            }
-        }
-        self.pieces = new_pieces;
-        //self.intern_all();
-        Ok(())
-    }
+    // pub fn global_cut_by_circle(&mut self, circle: Blade3) -> Result<(), ()> {
+    //     let mut new_pieces = Vec::new();
+    //     for piece in &self.pieces {
+    //         //dbg!(piece.shape.border.len());
+    //         match piece.cut_by_circle(circle) {
+    //             None => new_pieces.push(piece.clone()),
+    //             Some(x) => new_pieces.extend(x),
+    //         }
+    //     }
+    //     self.pieces = new_pieces;
+    //     //self.intern_all();
+    //     Ok(())
+    // }
 }

@@ -324,7 +324,7 @@ impl eframe::App for App {
                 self.curr_msg = match write_to_file(
                     &self.def_string,
                     &self.puzzle.stack,
-                    &(String::from("Puzzles/Logs/") + &self.log_path + ".kdl"),
+                    &(String::from("Puzzles/Logs/") + &self.log_path + ".txt"),
                 ) {
                     Ok(()) => String::new(),
                     Err(err) => err.to_string(),
@@ -333,7 +333,7 @@ impl eframe::App for App {
             #[cfg(not(target_arch = "wasm32"))]
             if ui.add(egui::Button::new("LOAD LOG")).clicked() {
                 (self.puzzle, self.def_string) = load_puzzle_and_def_from_file(
-                    &(String::from("Puzzles/Logs/") + &self.log_path + ".kdl"),
+                    &(String::from("Puzzles/Logs/") + &self.log_path + ".txt"),
                 )
                 .unwrap_or((self.puzzle.clone(), self.def_string.clone()));
             }

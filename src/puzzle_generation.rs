@@ -121,10 +121,9 @@ fn make_basic_puzzle(disks: Vec<Blade3>) -> Result<Vec<Piece>, ()> {
             color: NONE_COLOR,
         };
         for old_disk in &old_disks {
-            disk_piece = match disk_piece.cut_by_circle(*old_disk) {
-                None => disk_piece.clone(),
-                Some(x) => x[1].clone(),
-            };
+            if let Some(x) = &disk_piece.cut_by_circle(*old_disk)[1] {
+                disk_piece = x.clone();
+            }
         }
         old_disks.push(*disk);
         pieces.push(disk_piece);

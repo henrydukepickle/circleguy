@@ -201,13 +201,9 @@ impl Arc {
         };
     }
     //helper for in_circle
-    pub fn contains_either_properly(&self, pair: Blade2) -> bool {
+    pub fn contains_either_properly(&self, pair: [Point; 2]) -> bool {
         //REWORK ALL
-        let points = match pair.unpack() {
-            Dipole::Real(real) => real,
-            _ => panic!("492830948234"),
-        };
-        for p in points {
+        for p in pair {
             if self.contains(p.into()) == Some(Contains::Inside) {
                 //dbg!(p);
                 return true;
@@ -243,7 +239,7 @@ impl Arc {
         let intersect = circle & self.circle;
         match intersect.unpack_with_prec(PRECISION) {
             Dipole::Real(real_intersect) => {
-                if self.contains_either_properly(intersect) {
+                if self.contains_either_properly(real_intersect) {
                     return None;
                 }
                 let boundary_points = match self.boundary.unwrap().unpack() {
@@ -277,7 +273,7 @@ impl Arc {
                             Dipole::Real(real) => real,
                             _ => panic!(""),
                         });
-                        dbg!(self.contains_either_properly(circle & self.circle));
+                        //dbg!(self.contains_either_properly(circle & self.circle));
                         dbg!(self.contains(real_intersect[0].into()));
                         dbg!(self.contains(real_intersect[1].into()));
                         dbg!(match self.circle.unpack() {

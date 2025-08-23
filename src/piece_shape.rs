@@ -12,6 +12,7 @@ pub struct PieceShape {
     pub bounds: BoundingCircles,
     pub border: BoundaryShape,
 }
+
 //CGA NEEDS TESTING
 //gives the 'inside of the circle' arcs, ideally
 // pub fn inner_circle_arcs(mut starts: Vec<Blade1>, mut ends: Vec<Blade1>, circ: Blade3) -> Vec<Arc> {
@@ -159,8 +160,21 @@ impl PieceShape {
 
         Some(result)
     }
-    pub fn cut_by_circle(&self, circle: Blade3) -> Option<[PieceShape; 2]> {
-        let shapes = self.cut_boundary(circle)?;
+    pub fn cut_by_circle(&self, circle: Blade3) -> [Option<PieceShape>; 2] {
+        let shapes_raw = self.cut_boundary(circle);
+        let shapes = match shapes_raw {
+            Some(x) => x,
+            None => {
+                return match self.in_circle(circle) {
+                    None => panic!(
+                        "CUT HAPPENED AND WAS NOTHING BUT ALSO THE PIECE IS BANDAGING?? WHAT A WORLD WE LIVE IN!"
+                    ),
+                    Some(Contains::Inside) => [Some(self.clone()), None],
+                    Some(Contains::Outside) => [None, Some(self.clone())],
+                    Some(Contains::Border) => panic!("LOL"),
+                };
+            }
+        };
         let bounding_circles = [
             collapse_shape_and_add(&self.bounds, circle),
             collapse_shape_and_add(&self.bounds, -circle),
@@ -173,7 +187,7 @@ impl PieceShape {
             border: shapes[1].clone(),
             bounds: bounding_circles[1].clone(),
         };
-        return Some([inside, outside]);
+        return [Some(inside), Some(outside)];
     }
     pub fn in_circle(&self, circle: Blade3) -> Option<Contains> {
         let mut inside = None;
@@ -221,6 +235,27 @@ impl PieceShape {
             bounds: new_bounds,
             border: new_border,
         })
+    }
+    pub fn rotate(&self, rotation: Rotoflector) -> Self {
+        let mut new_border = Vec::new();
+        for arc in &self.border {
+            new_border.push(arc.rotate(rotation));
+        }
+        let mut new_bounds = Vec::new();
+        for bound in &self.bounds {
+            new_bounds.push(rotation.sandwich(*bound));
+        }
+        Self {
+            bounds: new_bounds,
+            border: new_border,
+        }
+    }
+    pub fn turn_cut(&self, turn: Turn) -> [Option<PieceShape>; 2] {
+        let mut cut_bits = self.cut_by_circle(turn.circle);
+        if let Some(x) = &cut_bits[0] {
+            cut_bits[0] = Some(x.rotate(turn.rotation));
+        }
+        cut_bits
     }
     fn contains_arc(&self, arc: Arc) -> Contains {
         for circle in &self.bounds {

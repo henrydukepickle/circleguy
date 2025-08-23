@@ -7,11 +7,21 @@ pub struct Piece {
     pub shape: PieceShape,
     pub color: Color32,
 }
+
 impl Piece {
     pub fn turn(&self, turn: Turn) -> Option<Piece> {
         return Some(Piece {
             shape: self.shape.turn(turn)?,
             color: self.color,
+        });
+    }
+    pub fn turn_cut(&self, turn: Turn) -> [Option<Piece>; 2] {
+        return self.shape.turn_cut(turn).map(|x| match x {
+            None => None,
+            Some(x) => Some(Piece {
+                shape: x,
+                color: self.color,
+            }),
         });
     }
     //None: the piece is inside and outside -- blocking
@@ -60,18 +70,15 @@ impl Piece {
     // cut a piece by a circle and return the resulting pieces as a Vec
     //the color is maintained
     //[inside, outside]
-    pub fn cut_by_circle(&self, circle: Blade3) -> Option<[Piece; 2]> {
-        let shapes = self.shape.cut_by_circle(circle)?;
-        Some([
-            Piece {
-                shape: shapes[0].clone(),
+    pub fn cut_by_circle(&self, circle: Blade3) -> [Option<Piece>; 2] {
+        let shapes = self.shape.cut_by_circle(circle);
+        shapes.map(|x| match x {
+            None => None,
+            Some(x) => Some(Piece {
+                shape: x,
                 color: self.color,
-            },
-            Piece {
-                shape: shapes[1].clone(),
-                color: self.color,
-            },
-        ])
+            }),
+        })
     }
     //determine which piece occurs earlier on the piece
     //self.shape[0].start is the minimum
