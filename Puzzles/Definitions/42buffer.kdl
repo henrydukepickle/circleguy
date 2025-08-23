@@ -20,7 +20,7 @@ colors {
     pinkish 255 102 255
 }
 //cut SYM* A* B* A
-cut AB100
+cut AB5
 color RED Ac !Bc
 color YELLOW Bc !Ac
 color ORANGE Bc Ac
