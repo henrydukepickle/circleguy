@@ -10,6 +10,7 @@ cga2d = "2.0.0"
 eframe = "0.32.1"
 egui = "0.32.1"
 kdl = "6.3.4"
+log = "0.4.27"
 meval = "0.2.0"
 rand = "0.9.2"
 web-time = "1.1.0"
@@ -18,7 +19,8 @@ web-time = "1.1.0"
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 include_dir = "0.7.4"
 wasm-bindgen-futures = "0.4"
-web-sys = "0.3.70"           # to access the DOM (to hide the loading text)
+web-sys = "0.3.70"                                    # to access the DOM (to hide the loading text)
+getrandom = { version = "*", features = ["wasm_js"] }
 
 [profile.release]
 opt-level = 2 # fast and small wasm
