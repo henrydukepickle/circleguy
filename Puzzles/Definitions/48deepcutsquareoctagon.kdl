@@ -1,0 +1,23 @@
+name "Square Octagon"
+author "cryofractal"
+circles {
+	A x=-0.5 y=0.0 r=0.48
+	B x=0.5 y=0.0 r=1.05
+}
+base A B
+twists {
+	A A 4
+	B B 8
+}
+compounds {
+	AB A B
+}
+colors {
+	WHITE 245 245 245
+	PINK 248 200 220
+	GREEN 128 239 128
+}
+cut AB70
+color WHITE A B
+color PINK A !B
+color GREEN B !A

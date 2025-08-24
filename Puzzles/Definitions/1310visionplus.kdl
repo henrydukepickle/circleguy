@@ -1,0 +1,23 @@
+name "Vision Plus"
+author "cryofractal"
+circles {
+	A x=-0.5 y=0.0 r=0.52
+	B x=0.5 y=0.0 r=0.64
+}
+base A B
+twists {
+	A A 13
+	B B 10
+}
+compounds {
+	AB A B
+}
+colors {
+	RED 255 116 108
+	PURPLE 179 158 181
+	BLUE 179 235 242
+}
+cut AB52
+color PURPLE A B
+color RED A !B
+color BLUE B !A
