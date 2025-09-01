@@ -28,7 +28,6 @@ fn main() -> eframe::Result {
         Box::new(|cc| Ok(Box::new(App::new(cc)))),
     )
 }
-
 // When compiling to web using trunk:
 #[cfg(target_arch = "wasm32")]
 fn main() {

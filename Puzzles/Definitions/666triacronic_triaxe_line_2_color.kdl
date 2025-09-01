@@ -16,18 +16,13 @@ twists {
     R R 6
     M M 6
 }
+list MBIG {
+    - 6 M
+}
 cut L* M
 cut M* L
 cut R* M
 cut M* R
-color BLUE L M DL
-color BLUE L M UL
-twist M2
-color BLUE L M DL
-color BLUE L M UL
-twist M2
-color BLUE L M DL
-color BLUE L M UL
-twist M2
-twist L2
-undo *
+along MBIG {
+    color BLUE L M DL
+}

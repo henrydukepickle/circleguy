@@ -1,0 +1,18 @@
+name "Cross"
+author "Henry Pickle"
+circles {
+    A x=-0.5 y=0.0 r=0.5
+    B x=0.5 y=0.0 r=0.73
+}
+base A B
+twists {
+    A A 6
+    B B 12
+}
+compounds {
+    AB A B
+}
+cut AB50
+color RED A !B
+color GREEN B !A
+color BLUE A B

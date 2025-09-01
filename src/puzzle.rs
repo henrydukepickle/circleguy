@@ -1,8 +1,13 @@
 use crate::piece::*;
 use crate::turn::*;
 use approx_collections::*;
+use rand::SeedableRng;
 use rand::prelude::IteratorRandom;
 use std::collections::HashMap;
+use std::hash::DefaultHasher;
+use std::hash::Hash;
+use std::hash::Hasher;
+use std::time::Instant;
 #[derive(Debug, Clone)]
 pub struct Puzzle {
     pub name: String,
@@ -85,7 +90,15 @@ impl Puzzle {
         Ok(Ok(()))
     }
     pub fn scramble(&mut self, cut: bool) -> Result<(), String> {
-        let mut rng = rand::rng();
+        let mut h = DefaultHasher::new();
+        Instant::now().hash(&mut h);
+        let bytes = h.finish().to_ne_bytes();
+        let mut rng = rand::rngs::StdRng::from_seed(
+            [bytes; 4]
+                .as_flattened()
+                .try_into()
+                .expect("error casting [[u8; 8]; 4] to [u8; 32]"),
+        );
         for _i in 0..self.depth {
             let key = self
                 .turns
