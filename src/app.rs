@@ -1,5 +1,5 @@
 fn get_first_puzzle() -> String {
-    String::from("55stars.kdl")
+    String::from("1010101010geranium.kdl")
 }
 use crate::data_storer::*;
 use crate::io::*;
