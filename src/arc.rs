@@ -1,4 +1,5 @@
 use crate::PRECISION;
+use crate::SQRT_PRECISION;
 use crate::circle_utils::*;
 use cga2d::*;
 //if boundary is None, then the arc is the whole circle
@@ -8,17 +9,24 @@ pub struct Arc {
     pub boundary: Option<Blade2>,
 }
 impl Arc {
+    ///check if an arc contains a point, None means that the point is not even on the circle of the arc
     pub fn contains(&self, point: Blade1) -> Result<Option<Contains>, String> {
         if circle_contains(self.circle, point) != Contains::Border {
+            //if the point does not lie on the circle, return None
             return Ok(None);
         }
         if self.boundary == None {
+            //if the boundary doesnt exist, the arc is a circle and the point is in the circle
             return Ok(Some(Contains::Inside));
         }
         if let Dipole::Real(real) = self.boundary.unwrap().unpack() {
+            //if the boundary is real, unpack it
             for p in real {
+                //for each point in the dipole
                 if let Some(x) = point.unpack() {
+                    //unpack it
                     if x.approx_eq(&p, PRECISION) {
+                        //if the point is approximately equal to the boundary, return border
                         return Ok(Some(Contains::Border));
                     }
                 } else {
@@ -26,7 +34,7 @@ impl Arc {
                 }
             }
             return Ok(Some(contains_from_metric(
-                -((self.boundary.unwrap() ^ point) << self.circle),
+                -((self.boundary.unwrap() ^ point) << self.circle), //decide in/out
             )));
         }
         // if let Dipole::Tangent(p, d) = self.boundary.unwrap().unpack() {
@@ -34,19 +42,25 @@ impl Arc {
         // }
         Err("Arc.contains failed: Arc boundary was tangent or imaginary.".to_string())
     }
+
     //IF THEY ARE TANGENT, THEN return[1] is always NONE
+    ///intersect the arc with a circle. the two points will be in a CGA-fixed order. if the circle and the arc are tangent, the first index is used.
     pub fn intersect_circle(&self, circle: Blade3) -> Result<[Option<Blade1>; 2], String> {
-        if (circle & self.circle).approx_eq_zero(PRECISION) {
+        if (circle & self.circle).approx_eq_zero(SQRT_PRECISION) {
+            //if the circle and arc.circle do not touch, return nothing
             return Ok([None; 2]);
         }
         match (self.circle.rescale_oriented() & circle.rescale_oriented())
             .unpack_with_prec(PRECISION)
         {
             Dipole::Real(int_points) => {
-                let mut new_points = [None; 2];
+                //if there are two intersection points
+                let mut new_points = [None; 2]; //instantiate new points
                 for i in [0, 1] {
-                    let cont = self.contains(int_points[i].into())?;
+                    //for each of the intersect points
+                    let cont = self.contains(int_points[i].into())?; //if the arc contains the point
                     if cont == Some(Contains::Border) || cont == Some(Contains::Inside) {
+                        //if the point is on the arc or the border of the arc, it counts as an intersection point
                         new_points[i] = Some(int_points[i].into());
                     };
                 }
@@ -62,6 +76,18 @@ impl Arc {
                 Some(Contains::Outside) => Ok([None; 2]),
                 None => {
                     dbg!(p);
+                    match self.circle.unpack() {
+                        Circle::Circle { cx, cy, r, ori } => {
+                            dbg!((cx, cy, r, ori));
+                        }
+                        _ => panic!("L"),
+                    }
+                    match circle.unpack() {
+                        Circle::Circle { cx, cy, r, ori } => {
+                            dbg!((cx, cy, r, ori));
+                        }
+                        _ => panic!("L"),
+                    }
                     Err(
                         "Arc.intersect_circle failed: intersection point is not on arc.circle!"
                             .to_string(),
@@ -99,7 +125,7 @@ impl Arc {
         // if let Circle::Circle { cx, cy, r, ori } = self.circle.unpack() {
         //     dbg!((cx, cy, r, ori));
         // }
-        match (circle & self.circle).unpack_with_prec(PRECISION) {
+        match (circle & self.circle).unpack_with_prec(SQRT_PRECISION) {
             Dipole::Real(intersects) => {
                 for intersect in intersects {
                     if self.contains(intersect.into())?.ok_or(
@@ -207,7 +233,8 @@ impl Arc {
                 Some(Contains::Inside) => sorted_arcs[0].push(arc),
                 Some(Contains::Border) => {
                     sorted_arcs[0].push(arc);
-                    sorted_arcs[1].push(arc)
+                    sorted_arcs[1].push(arc);
+                    panic!("AAAA");
                 } //in this case the arc is tangent to the circle and on the circle
                 Some(Contains::Outside) => sorted_arcs[1].push(arc),
             }
@@ -257,6 +284,7 @@ impl Arc {
             || (circle
                 .rescale_oriented()
                 .approx_eq(&-self.circle.rescale_oriented(), PRECISION))
+            || (circle & self.circle).approx_eq_zero(SQRT_PRECISION)
         {
             return Ok(Some(Contains::Border));
         }
@@ -289,7 +317,9 @@ impl Arc {
                     | [Contains::Border, Contains::Outside]
                     | [Contains::Outside, Contains::Border] => Ok(Some(Contains::Outside)),
                     [Contains::Border, Contains::Border] => {
-                        match real_intersect[0].approx_eq(&boundary_points[0], PRECISION) {
+                        match real_intersect[0]
+                            .approx_eq(&boundary_points[0], Precision::new_simple(8))
+                        {
                             true => Ok(Some(Contains::Inside)),
                             false => Ok(Some(Contains::Outside)),
                         }

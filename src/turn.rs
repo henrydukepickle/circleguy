@@ -6,12 +6,11 @@ pub struct Turn {
 }
 fn rotor_pow(i: isize, rot: Rotoflector) -> Rotoflector {
     if i == 0 {
-        return Rotoflector::ident();
-    }
-    if i > 0 {
-        return rotor_pow(i - 1, rot) * rot;
+        Rotoflector::ident()
+    } else if i > 0 {
+        rotor_pow(i - 1, rot) * rot
     } else {
-        return rotor_pow(-i, rot).rev();
+        rotor_pow(-i, rot).rev()
     }
 }
 auto_ops::impl_op!(*|a: isize, b: Turn| -> Turn {
@@ -27,4 +26,10 @@ impl Turn {
             rotation: self.rotation.rev(),
         }
     }
+    // pub fn none() -> Turn {
+    //     Turn {
+    //         circle: Blade3::zero(),
+    //         rotation: Rotoflector::ident(),
+    //     }
+    // }
 }

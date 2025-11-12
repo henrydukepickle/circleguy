@@ -170,6 +170,7 @@ impl Puzzle {
         Ok(Ok(()))
     }
     fn color(&mut self, coloring: &Coloring) -> Result<(), String> {
+        //dbg!("HI");
         for piece in &mut self.pieces {
             let mut color = true;
             for circle in coloring.0.clone().into_iter() {
@@ -546,7 +547,7 @@ fn parse_node(
                 }
             }
             for turns in &turn_seqs {
-                puzzle.cut(turns, &region).ok()?.ok()?;
+                (puzzle.cut(turns, &region)).ok()?.ok()?;
                 // puzzle.pieces.len();
             }
         }
@@ -576,6 +577,7 @@ fn parse_node(
             }
         }
         Commands::Color => {
+            //dbg!("TEST?");
             let color = *data.colors.get(node.entries()[0].value().as_string()?)?;
             let mut coloring_circles = Region::new();
             for i in 1..node.entries().len() {
@@ -701,6 +703,7 @@ pub fn parse_kdl(string: &str) -> Option<Puzzle> {
         solved_state: Vec::new(),
         solved: false,
         anim_left: 0.0,
+        def: string.to_string(),
     };
     let doc: KdlDocument = match string.parse() {
         Ok(real) => real,
@@ -734,7 +737,7 @@ pub fn parse_kdl(string: &str) -> Option<Puzzle> {
         Commands::Foreach,
     ];
     // let mut twist_orders: HashMap<String, isize> = HashMap::new();
-    parse_nodes(doc.nodes(), &mut data, &mut puzzle, &mut ctx, &all_commands);
+    parse_nodes(doc.nodes(), &mut data, &mut puzzle, &mut ctx, &all_commands)?;
     for turn in data.real_twists {
         puzzle.turns.insert(turn.0.clone(), turn.1);
         puzzle.turns.insert(turn.0.clone() + "'", turn.1.inverse());

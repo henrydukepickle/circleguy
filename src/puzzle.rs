@@ -1,4 +1,5 @@
 use crate::piece::*;
+use crate::puzzle_generation::parse_kdl;
 use crate::turn::*;
 use approx_collections::*;
 use rand::SeedableRng;
@@ -22,6 +23,7 @@ pub struct Puzzle {
     pub solved_state: Vec<Piece>,
     pub solved: bool,
     pub anim_left: f32,
+    pub def: String,
 }
 impl Puzzle {
     // fn intern_all(&mut self) {
@@ -116,13 +118,9 @@ impl Puzzle {
         //self.check();
         Ok(())
     }
-    pub fn reset(&mut self) {
-        loop {
-            if self.undo().is_err() {
-                self.animation_offset = None;
-                return;
-            }
-        }
+    pub fn reset(&mut self) -> Result<(), ()> {
+        *self = parse_kdl(&self.def).ok_or(())?;
+        Ok(())
     }
     // pub fn global_cut_by_circle(&mut self, circle: Blade3) -> Result<(), ()> {
     //     let mut new_pieces = Vec::new();
