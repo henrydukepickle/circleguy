@@ -1,5 +1,5 @@
+use crate::LOW_PRECISION;
 use crate::PRECISION;
-use crate::SQRT_PRECISION;
 use crate::circle_utils::*;
 use cga2d::*;
 //if boundary is None, then the arc is the whole circle
@@ -25,7 +25,7 @@ impl Arc {
                 //for each point in the dipole
                 if let Some(x) = point.unpack() {
                     //unpack it
-                    if x.approx_eq(&p, SQRT_PRECISION) {
+                    if x.approx_eq(&p, LOW_PRECISION) {
                         //if the point is approximately equal to the boundary, return border
                         return Ok(Some(Contains::Border));
                     }
@@ -46,7 +46,7 @@ impl Arc {
     //IF THEY ARE TANGENT, THEN return[1] is always NONE
     ///intersect the arc with a circle. the two points will be in a CGA-fixed order. if the circle and the arc are tangent, the first index is used.
     pub fn intersect_circle(&self, circle: Blade3) -> Result<[Option<Blade1>; 2], String> {
-        if (circle & self.circle).approx_eq_zero(SQRT_PRECISION) {
+        if (circle & self.circle).approx_eq_zero(LOW_PRECISION) {
             //if the circle and arc.circle do not touch, return nothing
             return Ok([None; 2]);
         }
@@ -125,7 +125,7 @@ impl Arc {
         // if let Circle::Circle { cx, cy, r, ori } = self.circle.unpack() {
         //     dbg!((cx, cy, r, ori));
         // }
-        match (circle & self.circle).unpack_with_prec(SQRT_PRECISION) {
+        match (circle & self.circle).unpack_with_prec(LOW_PRECISION) {
             Dipole::Real(intersects) => {
                 for intersect in intersects {
                     if self.contains(intersect.into())?.ok_or(
@@ -286,7 +286,7 @@ impl Arc {
         //     .rescale_oriented()
         //     .approx_eq(&-self.circle.rescale_oriented(), PRECISION))
         //||
-        (circle & self.circle).approx_eq_zero(SQRT_PRECISION) {
+        (circle & self.circle).approx_eq_zero(LOW_PRECISION) {
             return Ok(Some(Contains::Border));
         }
         let intersect = circle & self.circle;
@@ -318,7 +318,7 @@ impl Arc {
                     | [Contains::Border, Contains::Outside]
                     | [Contains::Outside, Contains::Border] => Ok(Some(Contains::Outside)),
                     [Contains::Border, Contains::Border] => {
-                        match real_intersect[0].approx_eq(&boundary_points[0], SQRT_PRECISION) {
+                        match real_intersect[0].approx_eq(&boundary_points[0], LOW_PRECISION) {
                             true => Ok(Some(Contains::Inside)),
                             false => Ok(Some(Contains::Outside)),
                         }

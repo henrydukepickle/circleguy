@@ -3,12 +3,46 @@ const DEV: bool = true;
 
 use std::fs::*;
 use std::io::Write;
-pub fn get_puzzle_string(def: String, stack: &Vec<String>) -> String {
-    if stack.is_empty() {
-        return def;
-    };
-    return def + "\n --LOG FILE \n" + &stack.join(",");
+
+use crate::puzzle::Puzzle;
+impl Puzzle {
+    pub fn get_puzzle_string(&self) -> String {
+        format!(
+            "{}\nscramble \"{}\"\nsolve \"{}\"",
+            self.def,
+            if let Some(x) = &self.scramble {
+                x.join(",")
+            } else {
+                "".to_string()
+            },
+            self.stack.join(",")
+        )
+    }
+    #[cfg(not(target_arch = "wasm32"))]
+    pub fn write_to_file(&self, path: &str) -> Result<(), std::io::Error> {
+        let curr_path = match DEV {
+            false => String::from(
+                std::env::current_exe()
+                    .unwrap()
+                    .into_os_string()
+                    .into_string()
+                    .unwrap()
+                    .split("circleguy.exe")
+                    .into_iter()
+                    .collect::<Vec<&str>>()[0],
+            ),
+            true => String::new(),
+        };
+        let real_path = curr_path + path;
+        let mut buffer = OpenOptions::new()
+            .write(true)
+            .create(true)
+            .open(real_path)?;
+        buffer.write_all(self.get_puzzle_string().as_bytes())?;
+        Ok(())
+    }
 }
+
 #[cfg(not(target_arch = "wasm32"))]
 pub fn read_file_to_string(path: &String) -> std::io::Result<String> {
     let curr_path = match DEV {
@@ -38,27 +72,4 @@ pub fn read_file_to_string(path: &str) -> Result<String, &'static str> {
         .contents_utf8()
         .ok_or("invalid UTF-8")?
         .to_string())
-}
-#[cfg(not(target_arch = "wasm32"))]
-pub fn write_to_file(def: &String, stack: &Vec<String>, path: &str) -> Result<(), std::io::Error> {
-    let curr_path = match DEV {
-        false => String::from(
-            std::env::current_exe()
-                .unwrap()
-                .into_os_string()
-                .into_string()
-                .unwrap()
-                .split("circleguy.exe")
-                .into_iter()
-                .collect::<Vec<&str>>()[0],
-        ),
-        true => String::new(),
-    };
-    let real_path = curr_path + path;
-    let mut buffer = OpenOptions::new()
-        .write(true)
-        .create(true)
-        .open(real_path)?;
-    buffer.write_all(get_puzzle_string(def.clone(), stack).as_str().as_bytes())?;
-    Ok(())
 }

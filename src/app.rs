@@ -2,7 +2,6 @@ fn get_first_puzzle() -> String {
     String::from("1010101010geranium.kdl")
 }
 use crate::data_storer::*;
-use crate::io::*;
 use crate::puzzle::*;
 use crate::puzzle_generation::*;
 use crate::render::draw_circle;
@@ -13,7 +12,7 @@ const SCALE_FACTOR: f32 = 200.0;
 const ANIMATION_SPEED: f64 = 5.0;
 
 impl DataStorer {
-    fn render_panel(&self, ctx: &egui::Context) -> Result<Option<(Puzzle, String)>, ()> {
+    fn render_panel(&self, ctx: &egui::Context) -> Result<Option<Puzzle>, ()> {
         let panel = egui::SidePanel::new(egui::panel::Side::Right, "data_panel").resizable(false);
         let mut puzzle = None;
         panel.show(ctx, |ui| {
@@ -21,7 +20,7 @@ impl DataStorer {
                 for puz in &self.data {
                     if ui.add(egui::Button::new(&puz.0)).clicked() {
                         puzzle = match parse_kdl(&puz.1) {
-                            Some(inside) => Some((inside, puz.1.clone())),
+                            Some(inside) => Some(inside),
                             None => None,
                         }
                     }
@@ -36,7 +35,6 @@ impl DataStorer {
 pub struct App {
     data_storer: DataStorer,
     puzzle: Puzzle,
-    def_string: String,
     log_path: String,
     curr_msg: String,
     animation_speed: f64,
@@ -83,8 +81,7 @@ impl App {
         // p.0.pieces = vec![rel_piece];
         return Self {
             data_storer,
-            puzzle: p.0,
-            def_string: p.1,
+            puzzle: p,
             log_path: String::from("logfile"),
             curr_msg: String::new(),
             animation_speed: ANIMATION_SPEED,
@@ -289,7 +286,7 @@ impl eframe::App for App {
                         String::from("Failed to render side panel or failed to create puzzle!")
                 }
                 Ok(Some(puz)) => {
-                    (self.puzzle, self.def_string) = puz;
+                    self.puzzle = puz;
                 }
                 _ => {}
             }
@@ -350,21 +347,20 @@ impl eframe::App for App {
             ui.add(egui::TextEdit::singleline(&mut self.log_path));
             #[cfg(not(target_arch = "wasm32"))]
             if ui.add(egui::Button::new("SAVE")).clicked() {
-                self.curr_msg = match write_to_file(
-                    &self.def_string,
-                    &self.puzzle.stack,
-                    &(String::from("Puzzles/Logs/") + &self.log_path + ".txt"),
-                ) {
+                self.curr_msg = match self
+                    .puzzle
+                    .write_to_file(&(String::from("Puzzles/Logs/") + &self.log_path + ".kdl"))
+                {
                     Ok(()) => String::new(),
                     Err(err) => err.to_string(),
                 }
             }
             #[cfg(not(target_arch = "wasm32"))]
             if ui.add(egui::Button::new("LOAD LOG")).clicked() {
-                (self.puzzle, self.def_string) = load_puzzle_and_def_from_file(
-                    &(String::from("Puzzles/Logs/") + &self.log_path + ".txt"),
+                self.puzzle = load_puzzle_and_def_from_file(
+                    &(String::from("Puzzles/Logs/") + &self.log_path + ".kdl"),
                 )
-                .unwrap_or((self.puzzle.clone(), self.def_string.clone()));
+                .unwrap_or(self.puzzle.clone());
             }
             if ui.add(egui::Button::new("RELOAD PUZZLES")).clicked() {
                 let _ = self.data_storer.load_puzzles("Puzzles/Definitions/");

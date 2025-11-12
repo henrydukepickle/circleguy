@@ -9,6 +9,7 @@ use crate::turn::*;
 use cga2d::*;
 use egui::*;
 use kdl::*;
+use std::array;
 use std::collections::HashMap;
 use std::f32::consts::PI;
 
@@ -65,6 +66,8 @@ enum Commands {
     Undo,
     Along,
     Foreach,
+    Scramble,
+    Solve,
 }
 
 impl Commands {
@@ -86,6 +89,8 @@ impl Commands {
             Commands::Undo => "undo".to_string(),
             Commands::Along => "along".to_string(),
             Commands::Foreach => "foreach".to_string(),
+            Commands::Scramble => "scramble".to_string(),
+            Commands::Solve => "solve".to_string(),
         }
     }
 }
@@ -100,6 +105,8 @@ struct DefData {
     lists: HashMap<String, List>,
     twist_orders: HashMap<String, isize>,
     def_stack: List,
+    stack: Vec<String>,
+    scramble: Option<[String; 500]>,
 }
 impl Default for DefData {
     fn default() -> Self {
@@ -113,6 +120,8 @@ impl Default for DefData {
             lists: HashMap::new(),
             twist_orders: HashMap::new(),
             def_stack: Vec::new(),
+            stack: Vec::new(),
+            scramble: None,
         }
     }
 }
@@ -278,17 +287,9 @@ fn puzzle_from_string(string: String) -> Option<Puzzle> {
     return Some(puzzle);
 }
 
-pub fn load_puzzle_and_def_from_file(path: &String) -> Option<(Puzzle, String)> {
+pub fn load_puzzle_and_def_from_file(path: &String) -> Option<Puzzle> {
     let contents = read_file_to_string(path).ok()?;
-    return Some((
-        puzzle_from_string(contents.clone())?,
-        String::from(
-            contents
-                .split("--LOG FILE")
-                .into_iter()
-                .collect::<Vec<&str>>()[0],
-        ),
-    ));
+    return Some(puzzle_from_string(contents.clone())?);
 }
 // fn load(to_load: PuzzleDef, to_set: &mut PuzzleDef) -> Puzzle {
 //     *to_set = to_load;
@@ -319,10 +320,10 @@ fn oriented_circle(cent: Blade1, rad: f64, inside: bool) -> Blade3 {
     };
 }
 
-fn parse_compound(val: &KdlEntry, compounds: &HashMap<String, Compound>) -> Option<Compound> {
-    Some(match val.value().as_string()?.strip_suffix("'") {
-        None => match strip_number_end(val.value().as_string()?) {
-            None => compounds.get(val.value().as_string()?)?.clone(),
+fn parse_compound(val: &str, compounds: &HashMap<String, Compound>) -> Option<Compound> {
+    Some(match val.strip_suffix("'") {
+        None => match strip_number_end(val) {
+            None => compounds.get(val)?.clone(),
             Some(real) => multiply_turns(
                 real.1.parse::<isize>().ok()?,
                 compounds.get(real.0.as_str())?,
@@ -453,7 +454,8 @@ fn parse_node(
             for compound in node.children()?.nodes() {
                 for val in compound.entries() {
                     for compound_add in &mut compound_adds {
-                        compound_add.extend(parse_compound(val, &data.compounds)?);
+                        compound_add
+                            .extend(parse_compound(val.value().as_string()?, &data.compounds)?);
                     }
                 }
                 for compound_add in &compound_adds {
@@ -472,7 +474,7 @@ fn parse_node(
                 let num = element.entries().get(0)?.value().as_integer()?;
                 let mut compound = Compound::new();
                 for val in element.entries().into_iter().skip(1) {
-                    compound.extend(parse_compound(val, &data.compounds)?);
+                    compound.extend(parse_compound(val.value().as_string()?, &data.compounds)?);
                 }
                 for _ in 0..num {
                     list.push(compound.clone());
@@ -492,7 +494,7 @@ fn parse_node(
                     continue;
                 }
                 match val.value().as_string()?.strip_suffix("*") {
-                    None => extend = parse_compound(val, &data.compounds)?,
+                    None => extend = parse_compound(val.value().as_string()?, &data.compounds)?,
                     Some(real) => {
                         let turn = *data.twists.get(real)?;
                         let number = *data.twist_orders.get(real)?;
@@ -556,7 +558,7 @@ fn parse_node(
         Commands::Twist => {
             let mut sequence = Vec::new();
             for val in node.entries() {
-                let extend = parse_compound(val, &data.compounds)?;
+                let extend = parse_compound(val.value().as_string()?, &data.compounds)?;
                 sequence.extend(extend);
             }
             let mut add_seq = Vec::new();
@@ -670,6 +672,44 @@ fn parse_node(
                     .ok()?;
             }
         }
+        Commands::Solve => {
+            let mut sequence = Vec::new();
+            for val in node.entries().get(0)?.value().as_string()?.split(",") {
+                let extend = parse_compound(val, &data.compounds)?;
+                sequence.extend(extend);
+                data.stack.push(val.to_string());
+            }
+            let mut add_seq = Vec::new();
+            for turn in &sequence {
+                puzzle.turn(*turn, false).ok()?.ok()?;
+                add_seq.push(turn.clone());
+            }
+        }
+        Commands::Scramble => {
+            let mut scramb = array::from_fn(|_| "".to_string());
+            let vals = node
+                .entries()
+                .get(0)?
+                .value()
+                .as_string()?
+                .split(",")
+                .map(|x| x.to_string())
+                .collect::<Vec<String>>();
+            if vals.is_empty() {
+                return Some(());
+            }
+            let mut sequence = Vec::new();
+            for i in 0..500 {
+                let val = vals.get(i)?;
+                let extend = parse_compound(val, &data.compounds)?;
+                sequence.extend(extend);
+                scramb[i] = val.clone();
+            }
+            for turn in &sequence {
+                puzzle.turn(*turn, false).ok()?.ok()?;
+            }
+            data.scramble = Some(scramb);
+        }
     }
     Some(())
 }
@@ -698,6 +738,7 @@ pub fn parse_kdl(string: &str) -> Option<Puzzle> {
         pieces: Vec::new(),
         turns: HashMap::new(),
         stack: Vec::new(),
+        scramble: None,
         animation_offset: None,
         intern_2: approx_collections::FloatPool::new(POOL_PRECISION),
         intern_3: approx_collections::FloatPool::new(POOL_PRECISION),
@@ -737,6 +778,8 @@ pub fn parse_kdl(string: &str) -> Option<Puzzle> {
         Commands::Undo,
         Commands::Along,
         Commands::Foreach,
+        Commands::Scramble,
+        Commands::Solve,
     ];
     // let mut twist_orders: HashMap<String, isize> = HashMap::new();
     parse_nodes(doc.nodes(), &mut data, &mut puzzle, &mut ctx, &all_commands)?;
@@ -746,6 +789,7 @@ pub fn parse_kdl(string: &str) -> Option<Puzzle> {
     }
     puzzle.solved_state = puzzle.pieces.clone();
     puzzle.animation_offset = None;
-    puzzle.stack = Vec::new();
+    puzzle.stack = data.stack;
+    puzzle.scramble = data.scramble;
     return Some(puzzle);
 }

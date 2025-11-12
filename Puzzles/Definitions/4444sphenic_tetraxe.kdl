@@ -1,0 +1,25 @@
+name "Sphenic Tetraxe"
+author "Henry Pickle"
+vars {
+    R 1.25
+}
+circles {
+    A x=1.0 y=1.0 r=R
+    B x=-1.0 y=1.0 r=R
+    C x=-1.0 y=-1.0 r=R
+    D x=1.0 y=-1.0 r=R
+    SYM x=0.0 y=0.0 r=10.0
+}
+base A B C D
+twists {
+    A A 4
+    B B 4
+    C C 4
+    D D 4
+    SYM SYM 4 !
+}
+cut SYM* A* B
+color BLUE A !B
+color RED B !C
+color GREEN C !D
+color YELLOW D !A

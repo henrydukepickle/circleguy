@@ -4,6 +4,7 @@ use crate::turn::*;
 use approx_collections::*;
 use rand::SeedableRng;
 use rand::prelude::IteratorRandom;
+use std::array;
 use std::collections::HashMap;
 use std::hash::DefaultHasher;
 use std::hash::Hash;
@@ -16,6 +17,7 @@ pub struct Puzzle {
     pub pieces: Vec<Piece>,
     pub turns: HashMap<String, Turn>,
     pub stack: Vec<String>,
+    pub scramble: Option<[String; 500]>,
     pub animation_offset: Option<Turn>,
     pub intern_2: FloatPool,
     pub intern_3: FloatPool,
@@ -92,6 +94,8 @@ impl Puzzle {
         Ok(Ok(()))
     }
     pub fn scramble(&mut self, cut: bool) -> Result<(), String> {
+        self.reset()?;
+        let mut scramble = array::from_fn(|_| "".to_string());
         let mut h = DefaultHasher::new();
         Instant::now().hash(&mut h);
         let bytes = h.finish().to_ne_bytes();
@@ -101,7 +105,7 @@ impl Puzzle {
                 .try_into()
                 .expect("error casting [[u8; 8]; 4] to [u8; 32]"),
         );
-        for _i in 0..self.depth {
+        for i in 0..self.depth {
             let key = self
                 .turns
                 .keys()
@@ -112,14 +116,16 @@ impl Puzzle {
             if self.turn(self.turns[&key], cut)?.is_err_and(|x| !x) {
                 return Err("Puzzle.scramble failed: cutting failed while scrambling!".to_string());
             }
-            self.stack.push(key);
+            scramble[i as usize] = key;
         }
         self.animation_offset = None;
+        self.scramble = Some(scramble);
         //self.check();
         Ok(())
     }
-    pub fn reset(&mut self) -> Result<(), ()> {
-        *self = parse_kdl(&self.def).ok_or(())?;
+    pub fn reset(&mut self) -> Result<(), String> {
+        *self =
+            parse_kdl(&self.def).ok_or("Puzzle.reset failed: parsing kdl failed!".to_string())?;
         Ok(())
     }
     // pub fn global_cut_by_circle(&mut self, circle: Blade3) -> Result<(), ()> {

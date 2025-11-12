@@ -15,9 +15,9 @@ use crate::app::*;
 
 use cga2d::*;
 
-pub const PRECISION: approx_collections::Precision = Precision::new_simple(18);
+pub const PRECISION: approx_collections::Precision = Precision::new_simple(20);
 
-pub const SQRT_PRECISION: approx_collections::Precision = Precision::new_simple(16);
+pub const LOW_PRECISION: approx_collections::Precision = Precision::new_simple(16);
 pub const POOL_PRECISION: approx_collections::Precision = Precision::new_simple(26);
 
 // When compiling natively:

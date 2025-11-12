@@ -1,4 +1,4 @@
-use crate::{PRECISION, SQRT_PRECISION};
+use crate::{LOW_PRECISION, PRECISION};
 use approx_collections::*;
 use cga2d::*;
 use std::cmp::Ordering;
@@ -33,10 +33,10 @@ pub fn circle_orientation_euclid(circ: Blade3) -> Contains {
 //undefined when A aeq B
 //point aeq to base is minimal
 pub fn comp_points_on_circle(base: Blade1, a: Blade1, b: Blade1, circ: Blade3) -> Ordering {
-    if a.approx_eq(&base, SQRT_PRECISION) {
+    if a.approx_eq(&base, LOW_PRECISION) {
         return Ordering::Less;
     }
-    if b.approx_eq(&base, SQRT_PRECISION) {
+    if b.approx_eq(&base, LOW_PRECISION) {
         return Ordering::Greater;
     }
     (((base ^ b) ^ a) << circ).approx_cmp_zero(PRECISION)
