@@ -16,7 +16,9 @@ pub struct Puzzle {
     pub authors: Vec<String>,
     pub pieces: Vec<Piece>,
     pub turns: HashMap<String, Turn>,
+    //pub turn_orders: HashMap<String, usize>,
     pub stack: Vec<String>,
+    //pub moves: usize,
     pub scramble: Option<[String; 500]>,
     pub animation_offset: Option<Turn>,
     pub intern_2: FloatPool,
@@ -46,6 +48,10 @@ impl Puzzle {
     //     self.solved = false;
     //     //TEMPORARY -- SOLVED CHECKING
     // }
+    // pub fn calc_moves(&self) -> usize {
+
+    // }
+
     //returns if the turn could be completed
     //Err(true) means that the turn was bandaged
     //Err(false) means that the cutting failed

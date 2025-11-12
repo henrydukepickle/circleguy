@@ -1,8 +1,10 @@
 use crate::PRECISION;
 use crate::arc::*;
 use crate::circle_utils::*;
+use crate::data_storer::DataStorer;
 use crate::piece::*;
 use crate::puzzle::*;
+use crate::puzzle_generation::parse_kdl;
 use crate::turn::*;
 use approx_collections::*;
 use cga2d::*;
@@ -496,5 +498,34 @@ impl Puzzle {
             }
             .circle,
         ));
+    }
+}
+
+impl DataStorer {
+    pub fn render_panel(&self, ctx: &egui::Context) -> Result<Option<Puzzle>, ()> {
+        let panel = egui::SidePanel::new(egui::panel::Side::Right, "data_panel").resizable(false);
+        let mut puzzle = None;
+        panel.show(ctx, |ui| {
+            egui::ScrollArea::vertical().show(ui, |ui| {
+                for puz in &self.data {
+                    if ui.add(egui::Button::new(&puz.0)).clicked() {
+                        puzzle = match parse_kdl(&puz.1) {
+                            Some(inside) => Some(inside),
+                            None => None,
+                        }
+                    }
+                }
+                ui.label("Top puzzle contributors:");
+                match self.get_top_authors::<{ crate::data_storer::TOP }>() {
+                    Ok(top) => {
+                        for t in top {
+                            ui.label(format!("{}: {}", t.0, t.1));
+                        }
+                    }
+                    Err(_) => {}
+                }
+            })
+        });
+        Ok(puzzle)
     }
 }

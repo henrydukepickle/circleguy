@@ -1,5 +1,5 @@
 name "test"
-author "Luna"
+author "Test"
 circles {
     A x=-0.5 y=0.0 r=0.61
     B x=0.5 y=0.0 r=0.6286

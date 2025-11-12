@@ -1,6 +1,3 @@
-fn get_first_puzzle() -> String {
-    String::from("1010101010geranium.kdl")
-}
 use crate::data_storer::*;
 use crate::puzzle::*;
 use crate::puzzle_generation::*;
@@ -11,25 +8,13 @@ const SCALE_FACTOR: f32 = 200.0;
 
 const ANIMATION_SPEED: f64 = 5.0;
 
-impl DataStorer {
-    fn render_panel(&self, ctx: &egui::Context) -> Result<Option<Puzzle>, ()> {
-        let panel = egui::SidePanel::new(egui::panel::Side::Right, "data_panel").resizable(false);
-        let mut puzzle = None;
-        panel.show(ctx, |ui| {
-            ScrollArea::vertical().show(ui, |ui| {
-                for puz in &self.data {
-                    if ui.add(egui::Button::new(&puz.0)).clicked() {
-                        puzzle = match parse_kdl(&puz.1) {
-                            Some(inside) => Some(inside),
-                            None => None,
-                        }
-                    }
-                }
-            })
-        });
-        Ok(puzzle)
-    }
-}
+const CREDITS: &str = "Created by Henry Pickle,
+with major help from:
+Luna Harran (sonicpineapple)
+Andrew Farkas (HactarCE)
+";
+
+const DEFAULT_PUZZLE: &str = "1010101010geranium.kdl";
 
 #[derive(Debug, Clone)]
 pub struct App {
@@ -51,12 +36,15 @@ pub struct App {
 }
 impl App {
     pub fn new(_cc: &eframe::CreationContext<'_>) -> Self {
-        let mut data_storer = DataStorer { data: Vec::new() };
+        let mut data_storer = DataStorer {
+            data: Vec::new(),
+            prev_data: Vec::new(),
+            top: Vec::new(),
+        };
         let _ = data_storer.load_puzzles(&String::from("Puzzles/Definitions/"));
-        let p = load_puzzle_and_def_from_file(
-            &(String::from("Puzzles/Definitions/") + &get_first_puzzle()),
-        )
-        .unwrap();
+        let p =
+            load_puzzle_and_def_from_file(&(String::from("Puzzles/Definitions/") + DEFAULT_PUZZLE))
+                .unwrap();
         // for i in 0..20 {
         //     p.0.turn_id("B".to_string(), true);
         //     p.0.turn_id("A".to_string(), true);
@@ -100,6 +88,11 @@ impl App {
 }
 impl eframe::App for App {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+        // fn show_popup(ui: &mut Ui, ctx: &Context) {
+        //     if ui.button("Open Popup").clicked() {
+        //         egui::Popup::new(0, egui::Context::, anchor, layer_id)
+        //     }
+        // }
         egui::CentralPanel::default().show(ctx, |ui| {
             // dbg!(self.puzzle.pieces.len());
             // dbg!(circle_orienation_euclid(
@@ -382,12 +375,14 @@ impl eframe::App for App {
             ui.label(String::from("Name: ") + &self.puzzle.name.clone());
             ui.label(String::from("Authors: ") + &self.puzzle.authors.join(","));
             ui.label(self.puzzle.pieces.len().to_string() + " pieces");
+            ui.label(self.puzzle.stack.len().to_string() + " turns (QTM uncollapsed)");
             if !self.curr_msg.is_empty() {
                 ui.label(&self.curr_msg);
             }
             if self.puzzle.solved {
                 ui.label("Solved!");
             }
+            ui.label(CREDITS);
             let cor_rect = Rect {
                 min: pos2(180.0, 0.0),
                 max: pos2(rect.width() - 180.0, rect.height()),
