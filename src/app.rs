@@ -3,12 +3,9 @@ fn get_first_puzzle() -> String {
 }
 use crate::data_storer::*;
 use crate::io::*;
-use crate::puzzle;
 use crate::puzzle::*;
 use crate::puzzle_generation::*;
 use crate::render::draw_circle;
-use crate::turn::Turn;
-use cga2d::Rotoflector;
 use egui::*;
 
 const SCALE_FACTOR: f32 = 200.0;
@@ -51,8 +48,8 @@ pub struct App {
     cut_on_turn: bool,
     preview: bool,
     rend_correct: bool,
-    debug: usize,
-    debug2: bool,
+    //debug: usize,
+    //debug2: bool,
 }
 impl App {
     pub fn new(_cc: &eframe::CreationContext<'_>) -> Self {
@@ -99,8 +96,8 @@ impl App {
             cut_on_turn: false,
             preview: false,
             rend_correct: false,
-            debug: 0,
-            debug2: false,
+            //debug: 0,
+            //debug2: false,
         };
     }
 }
@@ -143,36 +140,34 @@ impl eframe::App for App {
             //     dbg!(arc.angle_euc());
             // }
             if !self.preview {
-                if !self.debug2 {
-                    if let Err(x) = self.puzzle.render(
-                        ui,
-                        &rect,
-                        self.detail,
-                        self.outline_width,
-                        self.scale_factor,
-                        self.offset,
-                        self.rend_correct,
-                    ) {
-                        self.curr_msg = x;
-                    }
+                if let Err(x) = self.puzzle.render(
+                    ui,
+                    &rect,
+                    self.detail,
+                    self.outline_width,
+                    self.scale_factor,
+                    self.offset,
+                    self.rend_correct,
+                ) {
+                    self.curr_msg = x;
                 }
-                if self.debug2 {
-                    self.puzzle.pieces[self.debug].render(
-                        ui,
-                        &rect,
-                        None,
-                        self.detail,
-                        self.outline_width,
-                        self.scale_factor,
-                        self.offset,
-                        false,
-                    );
-                    self.curr_msg = self.puzzle.pieces[self.debug]
-                        .shape
-                        .border
-                        .len()
-                        .to_string();
-                }
+                // if self.debug2 {
+                //     self.puzzle.pieces[self.debug].render(
+                //         ui,
+                //         &rect,
+                //         None,
+                //         self.detail,
+                //         self.outline_width,
+                //         self.scale_factor,
+                //         self.offset,
+                //         false,
+                //     );
+                //     self.curr_msg = self.puzzle.pieces[self.debug]
+                //         .shape
+                //         .border
+                //         .len()
+                //         .to_string();
+                // }
                 // let a = PieceArc {
                 //     boundary: Some(Blade2 {
                 //         mp: -0.0293736,
@@ -386,7 +381,7 @@ impl eframe::App for App {
             ui.checkbox(&mut self.cut_on_turn, "Cut on turn?");
             ui.checkbox(&mut self.preview, "Preview solved state?");
             ui.checkbox(&mut self.rend_correct, "Render in Fine Mode?");
-            ui.checkbox(&mut self.debug2, "debug");
+            //ui.checkbox(&mut self.debug2, "debug");
             //ui.label("Fine mode fixes some rendering errors regarding disconnected pieces, but is significantly less performant.");
             ui.label(String::from("Name: ") + &self.puzzle.name.clone());
             ui.label(String::from("Authors: ") + &self.puzzle.authors.join(","));
@@ -451,27 +446,27 @@ impl eframe::App for App {
                     self.curr_msg = x;
                 }
             }
-            if ctx.input(|i| i.key_pressed(Key::D)) {
-                self.puzzle.turn_id(String::from("A'"), false);
-            }
-            if ctx.input(|i| i.key_pressed(Key::F)) {
-                self.puzzle.turn_id(String::from("A"), false);
-            }
-            if ctx.input(|i| i.key_pressed(Key::J)) {
-                self.puzzle.turn_id(String::from("B'"), false);
-            }
-            if ctx.input(|i| i.key_pressed(Key::K)) {
-                self.puzzle.turn_id(String::from("B"), false);
-            }
-            if ctx.input(|i| i.key_pressed(Key::Q)) {
-                self.puzzle.scramble(false);
-            }
-            if ctx.input(|i| i.key_pressed(Key::Num1)) {
-                self.debug += 1;
-            }
-            if ctx.input(|i| i.key_pressed(Key::Num2)) {
-                self.debug -= 1;
-            }
+            // if ctx.input(|i| i.key_pressed(Key::D)) {
+            //     self.puzzle.turn_id(String::from("A'"), false);
+            // }
+            // if ctx.input(|i| i.key_pressed(Key::F)) {
+            //     self.puzzle.turn_id(String::from("A"), false);
+            // }
+            // if ctx.input(|i| i.key_pressed(Key::J)) {
+            //     self.puzzle.turn_id(String::from("B'"), false);
+            // }
+            // if ctx.input(|i| i.key_pressed(Key::K)) {
+            //     self.puzzle.turn_id(String::from("B"), false);
+            // }
+            // if ctx.input(|i| i.key_pressed(Key::Q)) {
+            //     self.puzzle.scramble(false);
+            // }
+            // if ctx.input(|i| i.key_pressed(Key::Num1)) {
+            //     self.debug += 1;
+            // }
+            // if ctx.input(|i| i.key_pressed(Key::Num2)) {
+            //     self.debug -= 1;
+            // }
             if r.hover_pos().is_some()
                 && !self.preview
                 && let Some(pointer) = r.hover_pos()

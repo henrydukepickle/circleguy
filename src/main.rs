@@ -15,9 +15,10 @@ use crate::app::*;
 
 use cga2d::*;
 
-pub const PRECISION: approx_collections::Precision = Precision::new_simple(16);
+pub const PRECISION: approx_collections::Precision = Precision::new_simple(18);
 
-pub const SQRT_PRECISION: approx_collections::Precision = Precision::new_simple(8);
+pub const SQRT_PRECISION: approx_collections::Precision = Precision::new_simple(16);
+pub const POOL_PRECISION: approx_collections::Precision = Precision::new_simple(26);
 
 // When compiling natively:
 #[cfg(not(target_arch = "wasm32"))]

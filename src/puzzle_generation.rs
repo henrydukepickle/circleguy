@@ -1,3 +1,4 @@
+use crate::POOL_PRECISION;
 use crate::arc::*;
 use crate::circle_utils::*;
 use crate::io::*;
@@ -211,8 +212,8 @@ pub fn basic_turn(raw_circle: Blade3, angle: f64) -> Result<Turn, String> {
         let p2 = point(cx + 1.0, cy);
         let p3 = point(cx + (angle / 2.0).cos(), cy + (angle / 2.0).sin());
         return Ok(Turn {
-            circle: raw_circle,
-            rotation: Rotoflector::Rotor((p1 ^ p3 ^ NI) * (p1 ^ p2 ^ NI)),
+            circle: raw_circle.rescale_oriented(),
+            rotation: Rotoflector::Rotor(((p1 ^ p3 ^ NI) * (p1 ^ p2 ^ NI)).rescale_oriented()),
         });
     } else {
         return Err("basic_turn failed: A line was passed!".to_string());
@@ -378,7 +379,8 @@ fn parse_node(
                     ),
                     parse_value_as_float(created_circle.get("r")?, &ctx).ok()?,
                     true,
-                );
+                )
+                .rescale_oriented();
                 let name2 = "!".to_string() + name;
                 data.circles.insert(name.to_string(), circ);
                 data.regions.insert(name.to_string(), vec![circ]);
@@ -697,8 +699,8 @@ pub fn parse_kdl(string: &str) -> Option<Puzzle> {
         turns: HashMap::new(),
         stack: Vec::new(),
         animation_offset: None,
-        intern_2: approx_collections::FloatPool::new(Precision::new_simple(20)),
-        intern_3: approx_collections::FloatPool::new(Precision::new_simple(20)),
+        intern_2: approx_collections::FloatPool::new(POOL_PRECISION),
+        intern_3: approx_collections::FloatPool::new(POOL_PRECISION),
         depth: 500,
         solved_state: Vec::new(),
         solved: false,

@@ -1,4 +1,3 @@
-use crate::PRECISION;
 use crate::SQRT_PRECISION;
 use crate::arc::*;
 use crate::circle_utils::*;
@@ -108,7 +107,7 @@ impl PieceShape {
                         .rescale_oriented(), //the point pair representing points[i] to points[i + 1]
                     ),
                 });
-                if points[i].approx_eq(&points[i + 1], PRECISION) {
+                if points[i].approx_eq(&points[i + 1], SQRT_PRECISION) {
                     //if the two points are two close, then return an error
                     return Err(
                         "PieceShape.cut_boundary failed: cut points were too close!".to_string()
@@ -118,7 +117,7 @@ impl PieceShape {
             Ok(arcs) //return the arcs
         }
         let mut result = [Vec::new(), Vec::new()]; //initialize a result. the 0 index will be inside, and the 1 index will be outside
-        let mut cut_points: ApproxHashMap<Point, ()> = ApproxHashMap::new(PRECISION); //initialize the cut points
+        let mut cut_points: ApproxHashMap<Point, ()> = ApproxHashMap::new(SQRT_PRECISION); //initialize the cut points
         for arc in &self.border {
             //iterate over the border
             // dbg!(match arc.circle.unpack() {
@@ -129,18 +128,18 @@ impl PieceShape {
             //     Circle::Circle { cx, cy, r, ori } => (cx, cy, r, ori),
             //     _ => panic!("hi"),
             // });
-            if arc //if the circle the arc is around is approximately equal to the circle you're cutting by (or negative), return None since we can't cut
-                .circle
-                .rescale_oriented()
-                .approx_eq(&circle.rescale_oriented(), PRECISION)
-                || arc
-                    .circle
-                    .rescale_oriented()
-                    .approx_eq(&-circle.rescale_oriented(), PRECISION)
-                || (circle & arc.circle).approx_eq_zero(SQRT_PRECISION)
-            {
-                (self.border.len());
-                return (Ok(None));
+            if
+            //arc //if the circle the arc is around is approximately equal to the circle you're cutting by (or negative), return None since we can't cut
+            // .circle
+            // .rescale_oriented()
+            // .approx_eq(&circle.rescale_oriented(), PRECISION)
+            // || arc
+            //     .circle
+            //     .rescale_oriented()
+            //     .approx_eq(&-circle.rescale_oriented(), PRECISION)
+            //||
+            (circle & arc.circle).approx_eq_zero(SQRT_PRECISION) {
+                return Ok(None);
             }
             // if arc
             //     .circle
@@ -202,7 +201,7 @@ impl PieceShape {
                     None => {
                         dbg!(self.border.len());
                         for arc in &self.border {
-                            dbg!(arc.in_circle(circle));
+                            // dbg!(arc.in_circle(circle));
                             match arc.circle.unpack() {
                                 Circle::Circle { cx, cy, r, ori } => {
                                     dbg!((cx, cy, r, ori));
@@ -361,7 +360,7 @@ impl PieceShape {
                     && let Dipole::Real(pair) = x.unpack()
                     && let Some(y) = curr_comp[0].boundary
                     && let Dipole::Real(base_pair) = y.unpack()
-                    && pair[1].approx_eq(&base_pair[0], PRECISION)
+                    && pair[1].approx_eq(&base_pair[0], SQRT_PRECISION)
                 {
                     break;
                 }
@@ -376,7 +375,7 @@ pub fn next_arc(bound: &BoundaryShape, curr: Arc) -> Option<Arc> {
         if let Some(boundary) = arc.boundary
             && let Dipole::Real(real) = boundary.unpack()
             && let Dipole::Real(real_curr) = curr.boundary?.unpack()
-            && (real_curr[1].approx_eq(&real[0], PRECISION))
+            && (real_curr[1].approx_eq(&real[0], SQRT_PRECISION))
         {
             return Some(*arc);
         }

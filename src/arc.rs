@@ -25,7 +25,7 @@ impl Arc {
                 //for each point in the dipole
                 if let Some(x) = point.unpack() {
                     //unpack it
-                    if x.approx_eq(&p, PRECISION) {
+                    if x.approx_eq(&p, SQRT_PRECISION) {
                         //if the point is approximately equal to the boundary, return border
                         return Ok(Some(Contains::Border));
                     }
@@ -278,14 +278,15 @@ impl Arc {
     pub fn in_circle(&self, circle: Blade3) -> Result<Option<Contains>, String> {
         // let arc_circle = self.circle;
         // let circ = circle;
-        if (circle
-            .rescale_oriented()
-            .approx_eq(&self.circle.rescale_oriented(), PRECISION))
-            || (circle
-                .rescale_oriented()
-                .approx_eq(&-self.circle.rescale_oriented(), PRECISION))
-            || (circle & self.circle).approx_eq_zero(SQRT_PRECISION)
-        {
+        if
+        //(circle
+        // .rescale_oriented()
+        // .approx_eq(&self.circle.rescale_oriented(), PRECISION))
+        // || (circle
+        //     .rescale_oriented()
+        //     .approx_eq(&-self.circle.rescale_oriented(), PRECISION))
+        //||
+        (circle & self.circle).approx_eq_zero(SQRT_PRECISION) {
             return Ok(Some(Contains::Border));
         }
         let intersect = circle & self.circle;
@@ -317,9 +318,7 @@ impl Arc {
                     | [Contains::Border, Contains::Outside]
                     | [Contains::Outside, Contains::Border] => Ok(Some(Contains::Outside)),
                     [Contains::Border, Contains::Border] => {
-                        match real_intersect[0]
-                            .approx_eq(&boundary_points[0], Precision::new_simple(8))
-                        {
+                        match real_intersect[0].approx_eq(&boundary_points[0], SQRT_PRECISION) {
                             true => Ok(Some(Contains::Inside)),
                             false => Ok(Some(Contains::Outside)),
                         }
