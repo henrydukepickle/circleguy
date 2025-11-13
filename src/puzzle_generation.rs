@@ -13,13 +13,19 @@ use std::array;
 use std::collections::HashMap;
 use std::f32::consts::PI;
 
+///the color used for pieces that haven't yet been colored
 const NONE_COLOR: Color32 = Color32::GRAY;
-
+///a series of turns that the algorithm should cut along (and then undo)
 type Cut = Vec<Turn>;
+///a region of space to apply cuts or a coloring to
 type Region = Vec<Blade3>;
+///a coloring, which is a region along with a color
 type Coloring = (Region, Color32);
+///a compound of turns
 type Compound = Vec<Turn>;
+///a list of compounds
 type List = Vec<Compound>;
+///a getter to get the default colors
 fn get_default_color_hash() -> HashMap<String, Color32> {
     let mut hash = HashMap::new();
     hash.insert("RED".to_string(), Color32::RED);
@@ -148,7 +154,10 @@ impl PieceShape {
 }
 
 impl Puzzle {
-    fn cut(&mut self, cut: &Cut, region: &Region) -> Result<Result<(), bool>, String> {
+    ///cuts the puzzle according to a cut sequence, then undoes the turns
+    ///Ok() means that the cut was completed successfully
+    ///Err(e) means that the cutting failed somehow
+    fn cut(&mut self, cut: &Cut, region: &Region) -> Result<(), String> {
         let mut p2 = self.clone();
         let mut new_pieces = Vec::new();
         let mut old_pieces = Vec::new();
@@ -166,18 +175,22 @@ impl Puzzle {
         }
         p2.pieces = new_pieces;
         for turn in cut {
-            if let Err(x) = p2.turn(*turn, true)? {
-                return Ok(Err(x));
+            if !p2.turn(*turn, true)? {
+                return Err(String::from(
+                    "Puzzle.cut failed: turn was cut but still bandaged! (1)",
+                ));
             };
         }
         for turn in cut.clone().into_iter().rev() {
-            if let Err(x) = p2.turn(turn.inverse(), false)? {
-                return Ok(Err(x));
+            if !p2.turn(turn.inverse(), false)? {
+                return Err(String::from(
+                    "Puzzle.cut failed: undoing the cut turns ran into bandaging!",
+                ));
             };
         }
         self.pieces = p2.pieces;
         self.pieces.extend(old_pieces);
-        Ok(Ok(()))
+        Ok(())
     }
     fn color(&mut self, coloring: &Coloring) -> Result<(), String> {
         //dbg!("HI");
@@ -196,17 +209,18 @@ impl Puzzle {
         }
         Ok(())
     }
-    fn compound_turn(
-        &mut self,
-        compound: &Compound,
-        cut: bool,
-    ) -> Result<Result<(), bool>, String> {
+    ///performs a compound turn on the puzzle
+    ///'cut' determines whether the turns are cutting or not
+    ///Ok(true) means the compound was completed succesfully
+    ///Ok(false) means that the puzzle ran into bandaging
+    ///Err(e) means that an error was encountered
+    fn compound_turn(&mut self, compound: &Compound, cut: bool) -> Result<bool, String> {
         for turn in compound {
-            if let Err(x) = self.turn(*turn, cut)? {
-                return Ok(Err(x));
+            if !self.turn(*turn, cut)? {
+                return Ok(false);
             };
         }
-        Ok(Ok(()))
+        Ok(true)
     }
 }
 pub fn basic_turn(raw_circle: Blade3, angle: f64) -> Result<Turn, String> {
@@ -272,24 +286,9 @@ fn make_basic_puzzle(disks: Vec<Blade3>) -> Result<Result<Vec<Piece>, ()>, Strin
     return Ok(Ok(pieces));
 }
 
-fn puzzle_from_string(string: String) -> Option<Puzzle> {
-    let components = string
-        .split("--LOG FILE \n")
-        .into_iter()
-        .collect::<Vec<&str>>();
-    let mut puzzle = parse_kdl(components.get(0)?)?;
-    if components.len() > 1 {
-        let turns = components.get(1)?.split(",");
-        for turn in turns {
-            puzzle.turn_id(String::from(turn), false).ok()?.ok()?;
-        }
-    }
-    return Some(puzzle);
-}
-
 pub fn load_puzzle_and_def_from_file(path: &String) -> Option<Puzzle> {
     let contents = read_file_to_string(path).ok()?;
-    return Some(puzzle_from_string(contents.clone())?);
+    return Some(parse_kdl(&contents.clone())?);
 }
 // fn load(to_load: PuzzleDef, to_set: &mut PuzzleDef) -> Puzzle {
 //     *to_set = to_load;
@@ -551,7 +550,7 @@ fn parse_node(
                 }
             }
             for turns in &turn_seqs {
-                (puzzle.cut(turns, &region)).ok()?.ok()?;
+                (puzzle.cut(turns, &region)).ok()?;
                 // puzzle.pieces.len();
             }
         }
@@ -563,7 +562,7 @@ fn parse_node(
             }
             let mut add_seq = Vec::new();
             for turn in &sequence {
-                puzzle.turn(*turn, false).ok()?.ok()?;
+                puzzle.turn(*turn, false).ok()?;
                 add_seq.push(turn.clone());
             }
             data.def_stack.push(add_seq);
@@ -609,7 +608,7 @@ fn parse_node(
                 number -= 1;
                 if let Some(turns) = data.def_stack.pop() {
                     for turn in invert_compound_turn(&turns) {
-                        puzzle.turn(turn, false).ok()?.ok()?;
+                        puzzle.turn(turn, false).ok()?;
                     }
                 } else {
                     break;
@@ -622,7 +621,7 @@ fn parse_node(
                 .get(node.entries().get(0)?.value().as_string()?)?
                 .clone();
             for comp in &list {
-                puzzle.compound_turn(&comp, true).ok()?.ok()?;
+                puzzle.compound_turn(&comp, true).ok()?;
                 parse_nodes(
                     node.children()?.nodes(),
                     data,
@@ -639,7 +638,6 @@ fn parse_node(
                 )?;
                 puzzle
                     .compound_turn(&invert_compound_turn(&comp), false)
-                    .ok()?
                     .ok()?;
             }
         }
@@ -649,7 +647,7 @@ fn parse_node(
                 .get(node.entries().get(0)?.value().as_string()?)?
                 .clone();
             for comp in &list {
-                puzzle.compound_turn(&comp, true).ok()?.ok()?;
+                puzzle.compound_turn(&comp, true).ok()?;
                 parse_nodes(
                     node.children()?.nodes(),
                     data,
@@ -668,7 +666,6 @@ fn parse_node(
             for comp in list.clone().into_iter().rev() {
                 puzzle
                     .compound_turn(&invert_compound_turn(&comp), false)
-                    .ok()?
                     .ok()?;
             }
         }
@@ -681,7 +678,7 @@ fn parse_node(
             }
             let mut add_seq = Vec::new();
             for turn in &sequence {
-                puzzle.turn(*turn, false).ok()?.ok()?;
+                puzzle.turn(*turn, false).ok()?;
                 add_seq.push(turn.clone());
             }
         }
@@ -706,7 +703,7 @@ fn parse_node(
                 scramb[i] = val.clone();
             }
             for turn in &sequence {
-                puzzle.turn(*turn, false).ok()?.ok()?;
+                puzzle.turn(*turn, false).ok()?;
             }
             data.scramble = Some(scramb);
         }

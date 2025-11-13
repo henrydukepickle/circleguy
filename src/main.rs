@@ -15,14 +15,17 @@ use crate::app::*;
 
 use cga2d::*;
 
+///used for general purpose
 pub const PRECISION: approx_collections::Precision = Precision::new_simple(20);
-
+///used for purposes that have been tested to need slightly less precision
 pub const LOW_PRECISION: approx_collections::Precision = Precision::new_simple(16);
+///used for the float pools from approx
 pub const POOL_PRECISION: approx_collections::Precision = Precision::new_simple(26);
 
 // When compiling natively:
 #[cfg(not(target_arch = "wasm32"))]
 fn main() -> eframe::Result {
+    //run the native as defined in app.rs
     eframe::run_native(
         "circleguy",
         eframe::NativeOptions::default(),

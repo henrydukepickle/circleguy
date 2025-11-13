@@ -2,6 +2,7 @@ use crate::piece_shape::*;
 use crate::turn::*;
 use cga2d::*;
 use egui::Color32;
+use egui::Pos2;
 #[derive(Debug, Clone)]
 pub struct Piece {
     pub shape: PieceShape,

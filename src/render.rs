@@ -416,6 +416,11 @@ impl Puzzle {
         }
         Ok(())
     }
+    ///processes a click input and does the corresponding turns
+    ///Ok(true) means the turn was completed
+    ///Ok(false) means that the turn was bandanged, or no turn was found
+    ///Err(e) means that an error was encountered
+    ///'cut' is whether the turn should cut
     pub fn process_click(
         &mut self,
         rect: &Rect,
@@ -424,7 +429,7 @@ impl Puzzle {
         scale_factor: f32,
         offset: Vec2,
         cut: bool,
-    ) -> Result<Result<(), bool>, String> {
+    ) -> Result<bool, String> {
         let good_pos = from_egui_coords(&pos, rect, scale_factor, offset);
         let mut min_dist: f32 = 10000.0;
         let mut min_rad: f32 = 10000.0;
@@ -451,18 +456,13 @@ impl Puzzle {
             }
         }
         if correct_id.is_empty() {
-            return Ok(Ok(()));
+            return Ok(false);
         }
         if !left {
-            if let Err(x) = self.turn_id(correct_id, cut)? {
-                return Ok(Err(x));
-            };
+            Ok(self.turn_id(correct_id, cut)?)
         } else {
-            if let Err(x) = self.turn_id(correct_id + "'", cut)? {
-                return Ok(Err(x));
-            };
+            Ok(self.turn_id(correct_id + "'", cut)?)
         }
-        Ok(Ok(()))
     }
     pub fn get_hovered(
         &self,

@@ -16,9 +16,7 @@ pub struct Puzzle {
     pub authors: Vec<String>,
     pub pieces: Vec<Piece>,
     pub turns: HashMap<String, Turn>,
-    //pub turn_orders: HashMap<String, usize>,
     pub stack: Vec<String>,
-    //pub moves: usize,
     pub scramble: Option<[String; 500]>,
     pub animation_offset: Option<Turn>,
     pub intern_2: FloatPool,
@@ -30,32 +28,11 @@ pub struct Puzzle {
     pub def: String,
 }
 impl Puzzle {
-    // fn intern_all(&mut self) {
-    //     for piece in &mut self.pieces {
-    //         for arc in &mut piece.shape.border {
-    //             self.intern.intern_blade3(&mut arc.circle);
-    //             if let Some(bound) = arc.boundary.as_mut() {
-    //                 self.intern.intern_blade2(bound);
-    //             }
-    //         }
-    //         for circ in &mut piece.shape.bounds {
-    //             self.intern.intern_blade3(circ);
-    //         }
-    //     }
-    // }
-    //updates self.solved
-    // fn check(&mut self) {
-    //     self.solved = false;
-    //     //TEMPORARY -- SOLVED CHECKING
-    // }
-    // pub fn calc_moves(&self) -> usize {
-
-    // }
-
-    //returns if the turn could be completed
-    //Err(true) means that the turn was bandaged
-    //Err(false) means that the cutting failed
-    pub fn turn(&mut self, turn: Turn, cut: bool) -> Result<Result<(), bool>, String> {
+    ///turns the puzzle around a turn. cuts along the turn first if cut is true.
+    ///if the turn was completed, returns Ok(true)
+    ///if the turn was bandaged (and cut was false), returns Ok(false)
+    ///if an error was encountered, returns Err(e) where e was the error
+    pub fn turn(&mut self, turn: Turn, cut: bool) -> Result<bool, String> {
         let mut new_pieces = Vec::new();
         if cut {
             for piece in &self.pieces {
@@ -68,7 +45,7 @@ impl Puzzle {
         } else {
             for piece in &self.pieces {
                 new_pieces.push(match piece.turn(turn)? {
-                    None => return Ok(Err(true)),
+                    None => return Ok(false),
                     Some(x) => x,
                 });
             }
@@ -77,27 +54,31 @@ impl Puzzle {
         self.anim_left = 1.0;
         self.animation_offset = Some(turn.inverse());
         self.intern_all();
-        Ok(Ok(()))
+        Ok(true)
     }
-    pub fn turn_id(&mut self, id: String, cut: bool) -> Result<Result<(), bool>, String> {
+    pub fn turn_id(&mut self, id: String, cut: bool) -> Result<bool, String> {
         let turn = self.turns[&id];
-        if let Err(x) = self.turn(turn, cut)? {
-            return Ok(Err(x));
+        if !self.turn(turn, cut)? {
+            return Ok(false);
         }
         self.stack.push(id);
         //self.check();
-        Ok(Ok(()))
+        Ok(true)
     }
-    pub fn undo(&mut self) -> Result<Result<(), bool>, String> {
+    ///undoes the last turn.
+    ///Ok(true) means that the move was undone successfully
+    ///Ok(false) means that the stack was empty
+    ///Err(e) means that an error was encountered
+    pub fn undo(&mut self) -> Result<bool, String> {
         if self.stack.len() == 0 {
-            return Ok(Err(true));
+            return Ok(false);
         }
         let last_turn = self.turns[&self.stack.pop().unwrap()];
-        if let Err(x) = self.turn(last_turn.inverse(), false)? {
-            return Ok(Err(x));
+        if !self.turn(last_turn.inverse(), false)? {
+            return Err(String::from("Puzzle.undo failed: undo turn was bandaged!"));
         };
         //self.check();
-        Ok(Ok(()))
+        Ok(true)
     }
     pub fn scramble(&mut self, cut: bool) -> Result<(), String> {
         self.reset()?;
@@ -119,9 +100,7 @@ impl Puzzle {
                 .ok_or("Puzzle.scramble failed: rng choosing a turn failed!".to_string())?
                 .clone();
             // dbg!(&key);
-            if self.turn(self.turns[&key], cut)?.is_err_and(|x| !x) {
-                return Err("Puzzle.scramble failed: cutting failed while scrambling!".to_string());
-            }
+            self.turn(self.turns[&key], cut)?;
             scramble[i as usize] = key;
         }
         self.animation_offset = None;

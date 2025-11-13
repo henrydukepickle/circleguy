@@ -4,70 +4,52 @@ use crate::puzzle_generation::*;
 use crate::render::draw_circle;
 use egui::*;
 
+///default scale factor
 const SCALE_FACTOR: f32 = 200.0;
-
+///default animation speed
 const ANIMATION_SPEED: f64 = 5.0;
-
+///credits string
 const CREDITS: &str = "Created by Henry Pickle,
 with major help from:
 Luna Harran (sonicpineapple)
 Andrew Farkas (HactarCE)
 ";
-
-const DEFAULT_PUZZLE: &str = "1010101010geranium.kdl";
+///default puzzle loaded when the program is opened
+const DEFAULT_PUZZLE: &str = "55stars.kdl";
 
 #[derive(Debug, Clone)]
+///used for running the app. contains all puzzle and view data at runtime
 pub struct App {
-    data_storer: DataStorer,
-    puzzle: Puzzle,
-    log_path: String,
-    curr_msg: String,
-    animation_speed: f64,
-    last_frame_time: web_time::Instant,
-    outline_width: f32,
-    detail: f32,
-    scale_factor: f32,
-    offset: Vec2,
-    cut_on_turn: bool,
-    preview: bool,
-    rend_correct: bool,
-    //debug: usize,
-    //debug2: bool,
+    data_storer: DataStorer, //stores the data for the puzzles (on the right panel)
+    puzzle: Puzzle,          //stores the puzzle
+    log_path: String,        //stores the path log files are loaded from/saved to
+    curr_msg: String,        //current message (usually for errors)
+    animation_speed: f64,    //speed at which animations happen
+    last_frame_time: web_time::Instant, //the absolute time at which the last frame happened
+    outline_width: f32,      //the width of the outlines
+    detail: f32,             //the detail of rendering
+    scale_factor: f32,       //the scale factor (zoom)
+    offset: Vec2,            //the offset of the puzzle from the center of the screen (pan)
+    cut_on_turn: bool,       //whether or not turns should cut the puzzle
+    preview: bool,           //whether the solved state is being previewed
+    rend_correct: bool,      //whether rendering is being done in correct mode or not
+                             //debug: usize,
+                             //debug2: bool,
 }
 impl App {
+    ///initialize a new app, using some default settings (from the constants)
     pub fn new(_cc: &eframe::CreationContext<'_>) -> Self {
         let mut data_storer = DataStorer {
             data: Vec::new(),
             prev_data: Vec::new(),
             top: Vec::new(),
-        };
+        }; //initialize a new data storer
         let _ = data_storer.load_puzzles(&String::from("Puzzles/Definitions/"));
         let p =
             load_puzzle_and_def_from_file(&(String::from("Puzzles/Definitions/") + DEFAULT_PUZZLE))
-                .unwrap();
-        // for i in 0..20 {
-        //     p.0.turn_id("B".to_string(), true);
-        //     p.0.turn_id("A".to_string(), true);
-        // }
-        // let circ = circle(point(0.0, 0.0), 1.0);
-        // let t = crate::puzzle_generation::basic_turn(circ, std::f64::consts::PI / 3.5);
-        // let mut c2 = 1e-6 * circle(point(0.0, 1.0), 1.0);
-        // for i in 0..7000 {
-        //     c2 = cga2d::Rotoflector::sandwich(t.rotation, c2);
-        // }
-        // dbg!(match c2.unpack() {
-        //     cga2d::Circle::Circle { cx, cy, r, ori } => (cx, cy, r, ori),
-        //     _ => panic!("HI"),
-        // });
-        // for arc in &rel_piece.shape.border {
-        //     dbg!(dbg!(arc.circle).approx_eq(dbg!(&p.0.turns["A"].circle), PRECISION));
-        //     dbg!(
-        //         arc.circle
-        //             .approx_eq(&dbg!(-p.0.turns["A"].circle), PRECISION)
-        //     );
-        // }
-        // p.0.pieces = vec![rel_piece];
-        return Self {
+                .unwrap(); //load the default puzzle
+        Self {
+            //return
             data_storer,
             puzzle: p,
             log_path: String::from("logfile"),
@@ -81,55 +63,16 @@ impl App {
             cut_on_turn: false,
             preview: false,
             rend_correct: false,
-            //debug: 0,
-            //debug2: false,
-        };
+        }
     }
 }
 impl eframe::App for App {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
-        // fn show_popup(ui: &mut Ui, ctx: &Context) {
-        //     if ui.button("Open Popup").clicked() {
-        //         egui::Popup::new(0, egui::Context::, anchor, layer_id)
-        //     }
-        // }
+        //run the ui of the program on a central panel
         egui::CentralPanel::default().show(ctx, |ui| {
-            // dbg!(self.puzzle.pieces.len());
-            // dbg!(circle_orienation_euclid(
-            //     self.puzzle.pieces[0].shape.border[0].circle
-            // ));
-            // let a = point(0.0, 0.0);
-            // let c1 = inside_circle(a, 1.0);
-            // let b = point(1.0, 0.0);
-            // let c = point(0.0, 1.0);
-            // //dbg!(circle_orienation_euclid(c1));
-            // let arc = PieceArc {
-            //     circle: c1,
-            //     boundary: Some(b ^ c),
-            // };
-
-            // let mut sum = 0;
-            // for piece in &self.puzzle.pieces {
-            //     sum += piece.shape.border.len();
-            // }
-            //dbg!(sum);
-            // dbg!(arc.angle_euc());
-            let rect = ui.available_rect_before_wrap();
-            // dbg!(sum);
-            // arc.draw(
-            //     ui,
-            //     &rect,
-            //     good_detail,
-            //     None,
-            //     self.outline_width,
-            //     self.scale_factor,
-            //     self.offset,
-            // );
-            // dbg!(self.puzzle.pieces[self.debug].shape.border.len());
-            // for arc in &self.puzzle.pieces[self.debug].shape.border {
-            //     dbg!(arc.angle_euc());
-            // }
+            let rect = ui.available_rect_before_wrap(); //the space the program has to work with
             if !self.preview {
+                //if the puzzle isnt being previewed, render it
                 if let Err(x) = self.puzzle.render(
                     ui,
                     &rect,
@@ -141,100 +84,9 @@ impl eframe::App for App {
                 ) {
                     self.curr_msg = x;
                 }
-                // if self.debug2 {
-                //     self.puzzle.pieces[self.debug].render(
-                //         ui,
-                //         &rect,
-                //         None,
-                //         self.detail,
-                //         self.outline_width,
-                //         self.scale_factor,
-                //         self.offset,
-                //         false,
-                //     );
-                //     self.curr_msg = self.puzzle.pieces[self.debug]
-                //         .shape
-                //         .border
-                //         .len()
-                //         .to_string();
-                // }
-                // let a = PieceArc {
-                //     boundary: Some(Blade2 {
-                //         mp: -0.0293736,
-                //         mx: -0.03444056,
-                //         px: 0.024306666,
-                //         my: -0.01304419,
-                //         py: 0.03105767,
-                //         xy: 0.02562106,
-                //     }),
-                //     circle: Blade3 {
-                //         mpx: 0.00000011,
-                //         mpy: 0.499999863,
-                //         mxy: 0.58625006,
-                //         pxy: -0.41374993,
-                //     },
-                // };
-                // let c = Blade3 {
-                //     mpx: 0.0,
-                //     mpy: -0.5,
-                //     mxy: 0.695000,
-                //     pxy: -0.304999999,
-                // };
-                // let ca = PieceArc {
-                //     boundary: None,
-                //     circle: c,
-                // };
-                // dbg!(a.contains(a.intersect_circle(c)[1].unwrap()));
-                // if let Dipole::Real(real) = a.boundary.unwrap().unpack() {
-                //     dbg!(real[1].approx_eq(
-                //         &a.intersect_circle(c)[1].unwrap().unpack().unwrap(),
-                //         PRECISION
-                //     ));
-                // }
-                // dbg!(a.in_circle(c));
-                // //dbg!(a.in_circle(c));
-                // for p in [a, ca] {
-                //     p.draw(
-                //         ui,
-                //         &rect,
-                //         self.detail,
-                //         self.outline_width,
-                //         self.scale_factor,
-                //         self.offset,
-                //     );
-                // }
-                // self.puzzle.pieces[self.debug].render(
-                //     ui,
-                //     &rect,
-                //     None,
-                //     self.detail,
-                //     self.outline_width,
-                //     self.scale_factor,
-                //     self.offset,
-                // );
-                // for circ in &self.puzzle.pieces[self.debug].shape.bounds {
-                //     draw_circle(*circ, ui, &rect, self.scale_factor, self.offset);
-                // }
-                // self.puzzle.pieces[15].render(
-                //     ui,
-                //     &rect,
-                //     None,
-                //     self.detail,
-                //     self.outline_width,
-                //     self.scale_factor,
-                //     self.offset,
-                // );
-                // self.curr_msg = self.puzzle.pieces[0].shape.border.len().to_string();
-                // self.puzzle.pieces[0].shape.border[self.debug].draw(
-                //     ui,
-                //     &rect,
-                //     self.detail,
-                //     self.outline_width,
-                //     self.scale_factor,
-                //     self.offset,
-                // );
             } else {
-                for piece in &self.puzzle.solved_state {
+                //if the puzzle is in preview mode, render all of the pieces of the solved state
+                for piece in &mut self.puzzle.solved_state {
                     if let Err(x) = piece.render(
                         ui,
                         &rect,
@@ -249,43 +101,22 @@ impl eframe::App for App {
                     }
                 }
             }
-            // let arc = self.puzzle.pieces[1].shape.border[1];
-            // let arc2 = self.puzzle.pieces[1].shape.border[0];
-            // dbg!(circle_orientation_euclid(arc.circle));
-            // dbg!(circle_orientation_euclid(arc2.circle));
-            // dbg!(self.puzzle.pieces[1].in_circle(self.puzzle.turns["A"].circle));
-            // arc.draw(
-            //     ui,
-            //     &rect,
-            //     good_detail,
-            //     None,
-            //     self.outline_width,
-            //     self.scale_factor,
-            //     self.offset,
-            // );
-            // arc2.draw(
-            //     ui,
-            //     &rect,
-            //     good_detail,
-            //     None,
-            //     self.outline_width,
-            //     self.scale_factor,
-            //     self.offset,
-            // );
-
+            //render the data storer panel -- this stores all of the puzzles that you can load
             match self.data_storer.render_panel(ctx) {
                 Err(()) => {
                     self.curr_msg =
                         String::from("Failed to render side panel or failed to create puzzle!")
                 }
                 Ok(Some(puz)) => {
+                    //if a puzzle is returned (a button is clicked), load it
                     self.puzzle = puz;
                 }
                 _ => {}
             }
-            let delta_time = self.last_frame_time.elapsed();
-            self.last_frame_time = web_time::Instant::now();
+            let delta_time = self.last_frame_time.elapsed(); //the time since the last frame
+            self.last_frame_time = web_time::Instant::now(); //reset the time tracker
             if self.puzzle.anim_left >= 0.0 {
+                //if the animation is still running, advance it according to delta_time and the animation speed
                 self.puzzle.anim_left = f32::max(
                     self.puzzle.anim_left
                         - (delta_time.as_secs_f32() * self.animation_speed as f32),
@@ -293,61 +124,63 @@ impl eframe::App for App {
                 );
             }
             if 24.9 < self.animation_speed {
+                //if the animation speed is fast enough, remove animations entirely
                 self.puzzle.animation_offset = None;
             }
+            //add the undo button. undo can also be performed using the z key
             if (ui.add(egui::Button::new("UNDO")).clicked()
                 || ui.input(|i| i.key_pressed(egui::Key::Z)))
                 && !self.preview
             {
                 let _ = self.puzzle.undo();
             }
+            //add the scramble button
             if ui.add(egui::Button::new("SCRAMBLE")).clicked() && !self.preview {
                 let _ = self.puzzle.scramble(self.cut_on_turn);
             }
-            // if ui
-            //     .add(egui::Button::new("INCREMENT DEBUG COUNTER"))
-            //     .clicked()
-            // {
-            //     self.debug += 1;
-            // }
+            //add the reset button
             if ui.add(egui::Button::new("RESET")).clicked() && !self.preview {
                 if self.puzzle.reset().is_err() {
                     self.curr_msg = String::from("Reset failed!")
                 };
             }
+            //outline width scale
             ui.add(
                 egui::Slider::new(&mut self.outline_width, (0.0)..=(10.0)).text("Outline Width"),
             );
+            //detail scale
             ui.add(egui::Slider::new(&mut self.detail, (1.0)..=(100.0)).text("Detail"));
+            //animation speed scale
             ui.add(
                 egui::Slider::new(&mut self.animation_speed, (1.0)..=(25.0))
                     .text("Animation Speed"),
             );
+            //rendering size (zoom) scale
             ui.add(
                 egui::Slider::new(&mut self.scale_factor, (10.0)..=(5000.0)).text("Rendering Size"),
             );
-            // ui.add(egui::Slider::new(&mut def.r_left, (0.01)..=(2.0)).text("Left Radius"));
-            // ui.add(egui::Slider::new(&mut def.n_left, 2..=50).text("Left Number"));
-            // ui.add(egui::Slider::new(&mut def.r_right, (0.01)..=(2.0)).text("Right Radius"));
-            // ui.add(egui::Slider::new(&mut def.n_right, 2..=50).text("Right Number"));
+            //scales for panning (more efficiently done with mouse3, but possible via these)
             ui.add(egui::Slider::new(&mut self.offset.x, (-2.0)..=(2.0)).text("Move X"));
             ui.add(egui::Slider::new(&mut self.offset.y, (-2.0)..=(2.0)).text("Move Y"));
-            // ui.add(egui::Slider::new(&mut def.depth, 0..=5000).text("Scramble Depth"));
+            //resets the view to default
             if ui.add(egui::Button::new("RESET VIEW")).clicked() {
                 (self.scale_factor, self.offset) = (SCALE_FACTOR, vec2(0.0, 0.0))
             }
+            //input box for editing the path log files save to
             ui.label("Log File Path");
             ui.add(egui::TextEdit::singleline(&mut self.log_path));
+            //save functionality, only working when not on web
             #[cfg(not(target_arch = "wasm32"))]
             if ui.add(egui::Button::new("SAVE")).clicked() {
                 self.curr_msg = match self
                     .puzzle
                     .write_to_file(&(String::from("Puzzles/Logs/") + &self.log_path + ".kdl"))
                 {
-                    Ok(()) => String::new(),
+                    Ok(()) => String::from("Saved successfully!"),
                     Err(err) => err.to_string(),
                 }
             }
+            //load functionality, also only working not on web
             #[cfg(not(target_arch = "wasm32"))]
             if ui.add(egui::Button::new("LOAD LOG")).clicked() {
                 self.puzzle = load_puzzle_and_def_from_file(
@@ -355,43 +188,43 @@ impl eframe::App for App {
                 )
                 .unwrap_or(self.puzzle.clone());
             }
+            //reload the puzzles into the data_storer if they were modifed (doing this every frame is too costly)
             if ui.add(egui::Button::new("RELOAD PUZZLES")).clicked() {
                 let _ = self.data_storer.load_puzzles("Puzzles/Definitions/");
             }
-            // if ui.add(egui::Button::new("GENERATE")).clicked()
-            //     && alneq(1.0, def.r_left + def.r_right)
-            // {
-            //     puzzle = load(def.clone(), &mut def);
-            // }
-            // let new_p = data.show_puzzles(ui, &rect);
-            // if new_p.is_some() {
-            //     puzzle = load(new_p.unwrap(), &mut def);
-            // }
+            //whether turns should cut
             ui.checkbox(&mut self.cut_on_turn, "Cut on turn?");
+            //whether the solve state is being previewed
             ui.checkbox(&mut self.preview, "Preview solved state?");
+            //whether the program is rendering in fine mode
             ui.checkbox(&mut self.rend_correct, "Render in Fine Mode?");
-            //ui.checkbox(&mut self.debug2, "debug");
-            //ui.label("Fine mode fixes some rendering errors regarding disconnected pieces, but is significantly less performant.");
+            //display puzzle info
             ui.label(String::from("Name: ") + &self.puzzle.name.clone());
             ui.label(String::from("Authors: ") + &self.puzzle.authors.join(","));
             ui.label(self.puzzle.pieces.len().to_string() + " pieces");
             ui.label(self.puzzle.stack.len().to_string() + " turns (QTM uncollapsed)");
+            //display the current message if it isn't empty
             if !self.curr_msg.is_empty() {
                 ui.label(&self.curr_msg);
             }
+            //if the puzzle is solved, display as much (this is currently not working)
             if self.puzzle.solved {
                 ui.label("Solved!");
             }
+            //display the credits
             ui.label(CREDITS);
+            //gets the rect for interaction with the puzzle (so that ui elements like buttons dont conflict with puzzle input)
             let cor_rect = Rect {
                 min: pos2(180.0, 0.0),
                 max: pos2(rect.width() - 180.0, rect.height()),
             };
-            // dbg!((puzzle.turns[1].circle.center).to_pos2());
+            //if the puzzle is currently turning, request a repaint so the animation runs
             if self.puzzle.anim_left != 0.0 {
                 ui.ctx().request_repaint();
             }
+            //get the interactor
             let r = ui.interact(cor_rect, egui::Id::new(19), egui::Sense::all());
+            //read scroll input and parse the sign
             let scroll = ui.input(|input| {
                 input
                     .raw
@@ -407,10 +240,12 @@ impl eframe::App for App {
                     })
                     .sum::<i32>()
             });
+            //if the puzzle is clicked and not in preview mode
             if r.clicked()
                 && !self.preview
                 && let Some(pointer) = r.interact_pointer_pos()
             {
+                //process the input
                 if let Err(x) = self.puzzle.process_click(
                     &rect,
                     pointer,
@@ -422,6 +257,7 @@ impl eframe::App for App {
                     self.curr_msg = x;
                 }
             }
+            //the same input parsing but for the right click
             if r.clicked_by(egui::PointerButton::Secondary)
                 && !self.preview
                 && let Some(pointer) = r.interact_pointer_pos()
@@ -437,27 +273,7 @@ impl eframe::App for App {
                     self.curr_msg = x;
                 }
             }
-            // if ctx.input(|i| i.key_pressed(Key::D)) {
-            //     self.puzzle.turn_id(String::from("A'"), false);
-            // }
-            // if ctx.input(|i| i.key_pressed(Key::F)) {
-            //     self.puzzle.turn_id(String::from("A"), false);
-            // }
-            // if ctx.input(|i| i.key_pressed(Key::J)) {
-            //     self.puzzle.turn_id(String::from("B'"), false);
-            // }
-            // if ctx.input(|i| i.key_pressed(Key::K)) {
-            //     self.puzzle.turn_id(String::from("B"), false);
-            // }
-            // if ctx.input(|i| i.key_pressed(Key::Q)) {
-            //     self.puzzle.scramble(false);
-            // }
-            // if ctx.input(|i| i.key_pressed(Key::Num1)) {
-            //     self.debug += 1;
-            // }
-            // if ctx.input(|i| i.key_pressed(Key::Num2)) {
-            //     self.debug -= 1;
-            // }
+            //parse hovering. theres some casework here
             if r.hover_pos().is_some()
                 && !self.preview
                 && let Some(pointer) = r.hover_pos()
@@ -465,12 +281,15 @@ impl eframe::App for App {
                 let hovered_circle =
                     self.puzzle
                         .get_hovered(&rect, pointer, self.scale_factor, self.offset);
+                //get the hovered circle (turn circle)
                 if let Err(x) = &hovered_circle {
                     self.curr_msg = x.clone();
                 }
                 if let Ok(Some(real_circle)) = hovered_circle {
                     draw_circle(real_circle, ui, &rect, self.scale_factor, self.offset);
-                }
+                } //if a circle is hovered, highlight its border
+                //if a circle is being hovered and the scroll wheel is being used, parse the scroll like a click
+                //if the middle mouse button is pressed, or the control button is pressed, dont parse this input as these are camera commands
                 if scroll != 0
                     && !r.dragged_by(egui::PointerButton::Middle)
                     && !ui.input(|i| i.modifiers.command_only())
@@ -489,6 +308,7 @@ impl eframe::App for App {
                     }
                 }
             }
+            //if the middle mouse button is being pressed, pan the camera
             if r.dragged_by(egui::PointerButton::Middle) {
                 let delta = r.drag_delta();
                 let good_delta = vec2(
@@ -497,20 +317,9 @@ impl eframe::App for App {
                 );
                 self.offset += good_delta;
             }
+            //if ctrl scrolling, zoom
             if ui.input(|i| i.modifiers.command_only()) && scroll != 0 {
                 self.scale_factor += 10.0 * scroll as f32;
-                // if r.hover_pos().is_some() {
-                //     let pos = from_egui_coords(
-                //         &r.hover_pos().unwrap(),
-                //         &rect,
-                //         self.scale_factor,
-                //         self.offset,
-                //     );
-                //     let curr_center =
-                //         from_egui_coords(&rect.center(), &rect, self.scale_factor, self.offset)
-                //             + self.offset;
-                //     self.offset = self.offset + (curr_center - pos);
-                //}
             }
         });
     }
