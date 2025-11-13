@@ -1,0 +1,4 @@
+bind {
+    LEFT A
+    RIGHT B
+}

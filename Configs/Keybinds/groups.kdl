@@ -1,0 +1,4 @@
+groups {
+    LEFT F=1 D=-1
+    RIGHT K=1 J=-1
+}
