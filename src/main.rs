@@ -5,6 +5,7 @@ pub mod circle_utils;
 pub mod data_storer;
 pub mod intern;
 pub mod io;
+pub mod keybinds;
 pub mod piece;
 pub mod piece_shape;
 pub mod puzzle;
@@ -75,4 +76,22 @@ fn main() {
             }
         }
     });
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::puzzle_generation::load_puzzle_and_def_from_file;
+
+    use super::*;
+
+    #[test]
+    fn test_name() {
+        assert_eq!(
+            load_puzzle_and_def_from_file(&"Puzzles/Definitions/666666ring_deep.kdl".to_string())
+                .unwrap()
+                .pieces
+                .len(),
+            301
+        )
+    }
 }

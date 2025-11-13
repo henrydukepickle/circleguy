@@ -2,7 +2,9 @@ use crate::LOW_PRECISION;
 use crate::PRECISION;
 use crate::circle_utils::*;
 use cga2d::*;
-//if boundary is None, then the arc is the whole circle
+///stores an arc around a circle.
+///
+///a boundary of None means that the arc is a full circle
 #[derive(Debug, Clone, Copy)]
 pub struct Arc {
     pub circle: Blade3,
@@ -43,7 +45,7 @@ impl Arc {
     ///intersect the arc with a circle. the two points will be in a CGA-fixed order. if the circle and the arc are tangent, the first index is used.
     pub fn intersect_circle(&self, circle: Blade3) -> Result<[Option<Blade1>; 2], String> {
         if (circle & self.circle).approx_eq_zero(LOW_PRECISION) {
-            //if the circle and arc.circle do not touch, return nothing
+            //if the circle and self.circle are approximately the same, return None twice
             return Ok([None; 2]);
         }
         match (self.circle.rescale_oriented() & circle.rescale_oriented())

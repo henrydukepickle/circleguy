@@ -298,6 +298,8 @@ fn make_basic_puzzle(disks: Vec<Blade3>) -> Result<Result<Vec<Piece>, ()>, Strin
 }
 
 ///load a puzzle from a file
+///
+///needs a .kdl at the end, but is a relative path
 pub fn load_puzzle_and_def_from_file(path: &String) -> Option<Puzzle> {
     let contents = read_file_to_string(path).ok()?;
     return Some(parse_kdl(&contents.clone())?);
