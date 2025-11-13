@@ -24,4 +24,4 @@ colors {
 }
 color WHITE A B
 color GREEN A !B
-color BLUE B !A 
+color BLUE B !A
