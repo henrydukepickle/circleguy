@@ -8,39 +8,16 @@ use cga2d::*;
 pub type BoundingCircles = Vec<Blade3>;
 pub type BoundaryShape = Vec<Arc>;
 #[derive(Debug, Clone)]
+///the shape of a piece (a CCP)
 pub struct PieceShape {
-    pub bounds: BoundingCircles,
-    pub border: BoundaryShape,
+    pub bounds: BoundingCircles, //the ccp representation, a series of (oriented) circles whose intersection yields the piece
+    pub border: BoundaryShape,   //the arcs representing the border of the piece
 }
 #[derive(Debug, Clone)]
+///a connected component for rendering in fine mode
 pub struct ComponentShape {
     pub border: BoundaryShape,
 }
-
-//CGA NEEDS TESTING
-//gives the 'inside of the circle' arcs, ideally
-// pub fn inner_circle_arcs(mut starts: Vec<Blade1>, mut ends: Vec<Blade1>, circ: Blade3) -> Vec<Arc> {
-//     if (starts.len()) != (ends.len()) {
-//         panic!("inequal number of starts and ends passed");
-//     }
-//     if starts.is_empty() {
-//         return Vec::new();
-//     }
-//     let mut arcs = Vec::new();
-//     ends.sort_by(|a, b| comp_points_on_circle(starts[0], *a, *b, circ));
-//     starts.sort_by(|a, b| comp_points_on_circle(*ends.last().unwrap(), *a, *b, circ));
-//     for i in 0..starts.len() {
-//         if starts[i].approx_eq(&ends[i], PRECISION) {
-//             continue;
-//         } else {
-//             arcs.push(Arc {
-//                 circle: circ,
-//                 boundary: Some((starts[i] ^ ends[i]).rescale_oriented()),
-//             });
-//         }
-//     }
-//     return arcs;
-// }
 
 //return the collapsed CCP representation
 pub fn collapse_shape_and_add(
@@ -119,46 +96,9 @@ impl PieceShape {
         let mut result = [Vec::new(), Vec::new()]; //initialize a result. the 0 index will be inside, and the 1 index will be outside
         let mut cut_points: ApproxHashMap<Point, ()> = ApproxHashMap::new(LOW_PRECISION); //initialize the cut points
         for arc in &self.border {
-            //iterate over the border
-            // dbg!(match arc.circle.unpack() {
-            //     Circle::Circle { cx, cy, r, ori } => (cx, cy, r, ori),
-            //     _ => panic!("hi"),
-            // });
-            // dbg!(match circle.unpack() {
-            //     Circle::Circle { cx, cy, r, ori } => (cx, cy, r, ori),
-            //     _ => panic!("hi"),
-            // });
-            if
-            //arc //if the circle the arc is around is approximately equal to the circle you're cutting by (or negative), return None since we can't cut
-            // .circle
-            // .rescale_oriented()
-            // .approx_eq(&circle.rescale_oriented(), PRECISION)
-            // || arc
-            //     .circle
-            //     .rescale_oriented()
-            //     .approx_eq(&-circle.rescale_oriented(), PRECISION)
-            //||
-            (circle & arc.circle).approx_eq_zero(LOW_PRECISION) {
+            if (circle & arc.circle).approx_eq_zero(LOW_PRECISION) {
                 return Ok(None);
             }
-            // if arc
-            //     .circle
-            //     .rescale_oriented()
-            //     .approx_eq(&circle.rescale_oriented(), Precision::new_simple(14))
-            //     || arc
-            //         .circle
-            //         .rescale_oriented()
-            //         .approx_eq(&-circle.rescale_oriented(), Precision::new_simple(14))
-            // {
-            //     dbg!(match circle.unpack() {
-            //         Circle::Circle { cx, cy, r, ori } => (cx, cy, r, ori),
-            //         _ => panic!("HAHA"),
-            //     });
-            //     dbg!(match arc.circle.unpack() {
-            //         Circle::Circle { cx, cy, r, ori } => (cx, cy, r, ori),
-            //         _ => panic!("HAHA"),
-            //     });
-            // }
             for int in (arc.intersect_circle(circle))? {
                 //for each intersection of the arc and the circle
                 if let Some(point) = int {
@@ -197,11 +137,12 @@ impl PieceShape {
             //check if the shape was actually cut
             Some(x) => x, //if it was cut, set shapes to the resulting shapes
             None => {
+                //if it wasn't cut, return a single piece either inside or outside
                 return match self.in_circle(circle)? {
+                    //if the piece crosses the border, debug some info and return Err
                     None => {
                         dbg!(self.border.len());
                         for arc in &self.border {
-                            // dbg!(arc.in_circle(circle));
                             match arc.circle.unpack() {
                                 Circle::Circle { cx, cy, r, ori } => {
                                     dbg!((cx, cy, r, ori));
@@ -213,11 +154,11 @@ impl PieceShape {
                         }
                         Err("PieceShape.cut_by_circle failed: piece_shape was cut, but still blocked the turn!".to_string())
                     }
-                    Some(Contains::Inside) => Ok([Some(self.clone()), None]),
-                    Some(Contains::Outside) => Ok([None, Some(self.clone())]),
+                    Some(Contains::Inside) => Ok([Some(self.clone()), None]), //if its inside, return it inside
+                    Some(Contains::Outside) => Ok([None, Some(self.clone())]), //likewise for outside
                     Some(Contains::Border) => Err(
                         "PieceShape.cut_by_circle failed: piece_shape is on border of circle!"
-                            .to_string(),
+                            .to_string(), //if its on the border, return an error as well
                     ),
                 };
             }
@@ -244,19 +185,6 @@ impl PieceShape {
         let mut inside = None; //tracks whether the piece is inside the circle
         for arc in &self.border {
             //iterate over the border arcs. essentially, if all of them are in or out, return Some(in or out), otherwise we return none.
-            //
-            // if arc.in_circle(circle).is_none() {
-            //     // dbg!((arc.circle & circle).mag2());
-            //     // if let Dipole::Real(real) = arc.boundary.unwrap().unpack() {
-            //     //     dbg!(real);
-            //     // }
-            //     // if let Circle::Circle { cx, cy, r, ori } = arc.circle.unpack() {
-            //     //     dbg!((cx, cy, r, ori));
-            //     // }
-            //     // if let Circle::Circle { cx, cy, r, ori } = circle.unpack() {
-            //     //     dbg!((cx, cy, r, ori));
-            //     // }
-            // }
             let contained = match arc.in_circle(circle)? {
                 //match if the arc is in the circle. if it crosses the border, we can immediately return None
                 None => return Ok(None),
@@ -280,35 +208,43 @@ impl PieceShape {
         }
         return Ok(inside); //return in/out
     }
+    ///turn a pieceshape according to a turn
+    ///Ok(None) means that the pieceshape blocks the turn
     pub fn turn(&self, turn: Turn) -> Result<Option<PieceShape>, String> {
-        //dbg!(self.in_circle(turn.circle));
+        //if the pieceshape blocks the turn, return none
         if match self.in_circle(turn.circle)? {
             None => return Ok(None),
             Some(x) => x,
         } == Contains::Outside
+        //if the piece is outside the turn, do not turn and return the piece
         {
             return Ok(Some(self.clone()));
         }
         let mut new_border = Vec::new();
         for arc in &self.border {
+            //rotate all the arcs according to the turn
             new_border.push(arc.rotate(turn.rotation));
         }
         let mut new_bounds = Vec::new();
         for bound in &self.bounds {
+            //also rotate the bounds
             new_bounds.push(turn.rotation.sandwich(*bound));
         }
         Ok(Some(PieceShape {
             bounds: new_bounds,
             border: new_border,
-        }))
+        })) //return the new piece
     }
+    ///rotate a pieceshape according to a rotoflector
     pub fn rotate(&self, rotation: Rotoflector) -> Self {
         let mut new_border = Vec::new();
         for arc in &self.border {
+            //rotate all the arcs in the border
             new_border.push(arc.rotate(rotation));
         }
         let mut new_bounds = Vec::new();
         for bound in &self.bounds {
+            //rotate the bounds as well
             new_bounds.push(rotation.sandwich(*bound));
         }
         Self {
@@ -316,47 +252,61 @@ impl PieceShape {
             border: new_border,
         }
     }
+    ///turn a piece along a turn and cut the piece along that turn
+    /// like with other cutting functions, returns two Option<pieceshape>s
+    /// the first index is the 'inside' piece and the second is the 'outside'
+    /// None is in either index if the resulting piece doesnt exist (i.e., the piece was fully inside/outside of the circle)
     pub fn turn_cut(&self, turn: Turn) -> Result<[Option<PieceShape>; 2], String> {
-        let mut cut_bits = self.cut_by_circle(turn.circle)?;
+        let mut cut_bits = self.cut_by_circle(turn.circle)?; //cut the pieceshape by the circle
         if let Some(x) = &cut_bits[0] {
-            cut_bits[0] = Some(x.rotate(turn.rotation));
+            cut_bits[0] = Some(x.rotate(turn.rotation)); //rotate the inside piece according to the turn
         }
         Ok(cut_bits)
     }
+    ///return if a pieceshape contains a given arc
+    ///if the arc crosses the border, returns Ok(Outside)
     fn contains_arc(&self, arc: Arc) -> Result<Contains, String> {
         for circle in &self.bounds {
+            //check the arc against all the bounding circles
             let cont = arc.in_circle(*circle)?;
             if cont == None || cont == Some(Contains::Outside) {
+                //if the arc is outside one of the bounding circles or crosses it, return Outside
                 return Ok(Contains::Outside);
             }
         }
-        Ok(Contains::Inside)
+        Ok(Contains::Inside) //otherwise return inside
     }
+    ///get the components of the pieceshape for fine mode rendering. in the case that correct is false, just returns a single 'component' (the entire piece)
     pub fn get_components(&self, correct: bool) -> Result<Vec<ComponentShape>, String> {
         if !correct {
+            //return a single component
             return Ok(vec![ComponentShape {
                 border: self.border.clone(),
             }]);
         }
-        let mut comps = Vec::new();
-        let mut remaining_arcs = self.border.clone();
+        let mut comps = Vec::new(); //initialize a new vec for the components
+        let mut remaining_arcs = self.border.clone(); //get all the arcs
         loop {
+            //essentially, whenever we complete a component, we pick a new starting point and make a new component
             if remaining_arcs.is_empty() {
+                //if there are no arcs left, return
                 break;
             }
-            let mut curr_arc = remaining_arcs.pop().unwrap();
-            let mut curr_comp = vec![curr_arc];
+            let mut curr_arc = remaining_arcs.pop().unwrap(); //start a new components
+            let mut curr_comp = vec![curr_arc]; //initialize the component
             loop {
                 if curr_arc.boundary.is_none() {
+                    //if the boundary is None, this component is done
                     break;
                 }
                 if let Some(next) = next_arc(&self.border, curr_arc) {
+                    //get the next arc in the component and add it
                     curr_arc = next;
                     curr_comp.push(curr_arc);
                 } else {
                     return Err("PieceShape.get_components failed: No next arc found!".to_string());
                 }
-                if let Some(x) = curr_arc.boundary
+                if let Some(x) = curr_arc.boundary //if we've reached the starting point of this component, break and make a new component
                     && let Dipole::Real(pair) = x.unpack()
                     && let Some(y) = curr_comp[0].boundary
                     && let Dipole::Real(base_pair) = y.unpack()
@@ -365,18 +315,21 @@ impl PieceShape {
                     break;
                 }
             }
-            comps.push(ComponentShape { border: curr_comp });
+            comps.push(ComponentShape { border: curr_comp }); //add the component
         }
         Ok(comps)
     }
 }
+///get the next arc from a series of arcs (this simply returns the first arc it finds with curr.end = arc.start)
 pub fn next_arc(bound: &BoundaryShape, curr: Arc) -> Option<Arc> {
     for arc in bound {
+        //iterate over the arcs
         if let Some(boundary) = arc.boundary
             && let Dipole::Real(real) = boundary.unpack()
             && let Dipole::Real(real_curr) = curr.boundary?.unpack()
             && (real_curr[1].approx_eq(&real[0], LOW_PRECISION))
         {
+            //if the end point of curr is the start point of arc, return
             return Some(*arc);
         }
     }

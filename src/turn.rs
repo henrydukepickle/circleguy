@@ -15,7 +15,7 @@ fn rotor_pow(i: isize, rot: Rotoflector) -> Rotoflector {
         rotor_pow(-i, rot).rev()
     }
 }
-///implement turn multiplication for convenience
+//implement turn multiplication for convenience
 auto_ops::impl_op!(*|a: isize, b: Turn| -> Turn {
     Turn {
         circle: b.circle,

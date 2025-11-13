@@ -37,13 +37,9 @@ impl Arc {
                 -((self.boundary.unwrap() ^ point) << self.circle), //decide in/out
             )));
         }
-        // if let Dipole::Tangent(p, d) = self.boundary.unwrap().unpack() {
-        //     dbg!(p);
-        // }
         Err("Arc.contains failed: Arc boundary was tangent or imaginary.".to_string())
     }
 
-    //IF THEY ARE TANGENT, THEN return[1] is always NONE
     ///intersect the arc with a circle. the two points will be in a CGA-fixed order. if the circle and the arc are tangent, the first index is used.
     pub fn intersect_circle(&self, circle: Blade3) -> Result<[Option<Blade1>; 2], String> {
         if (circle & self.circle).approx_eq_zero(LOW_PRECISION) {
@@ -66,15 +62,12 @@ impl Arc {
                 }
                 Ok(new_points)
             }
-            // int_points.map(|a| match self.contains(a.into()) {
-            //     None => None,
-            //     Some(Contains::Outside) => None,
-            //     Some(Contains::Border) | Some(Contains::Inside) => Some(a.into()),
-            // }),
             Dipole::Tangent(p, _) => match self.contains(p.into())? {
-                Some(Contains::Inside) | Some(Contains::Border) => Ok([Some(p.into()), None]),
-                Some(Contains::Outside) => Ok([None; 2]),
+                //if the intersection is tangent, we see if the arc contains the intersection point
+                Some(Contains::Inside) | Some(Contains::Border) => Ok([Some(p.into()), None]), //if it containts it (properly or on the border) then return is as the first
+                Some(Contains::Outside) => Ok([None; 2]), //otherwise don't return it
                 None => {
+                    //if its not on the circle, debug and return an error
                     dbg!(p);
                     match self.circle.unpack() {
                         Circle::Circle { cx, cy, r, ori } => {
@@ -97,6 +90,7 @@ impl Arc {
             _ => Ok([None; 2]),
         }
     }
+    ///rescale_oriented an arc, essentially according to the cga2d algorithm
     pub fn rescale_oriented(&self) -> Self {
         Self {
             circle: self.circle.rescale_oriented(),
@@ -271,46 +265,36 @@ impl Arc {
             circle: rot.sandwich(self.circle).rescale_oriented(),
         }
     }
-    //None -- the arc crosses the circles boundary
-    //Border -- the arc is on the circle
-    //Inside/Outside -- arc endpoints can be on the boundary
-    //potential useful precondition -- the arc does not cross the boundary, only touches it. should be sufficient for cutting, however not sufficient for bandaging reasons
+    ///determines if the arc lies in a circle.
+    ///None -- the arc crosses the circles boundary
+    ///Border -- the arc is on the circle
+    ///Inside/Outside -- arc endpoints can be on the boundary
     pub fn in_circle(&self, circle: Blade3) -> Result<Option<Contains>, String> {
-        // let arc_circle = self.circle;
-        // let circ = circle;
-        if
-        //(circle
-        // .rescale_oriented()
-        // .approx_eq(&self.circle.rescale_oriented(), PRECISION))
-        // || (circle
-        //     .rescale_oriented()
-        //     .approx_eq(&-self.circle.rescale_oriented(), PRECISION))
-        //||
-        (circle & self.circle).approx_eq_zero(LOW_PRECISION) {
+        if (circle & self.circle).approx_eq_zero(LOW_PRECISION) {
             return Ok(Some(Contains::Border));
-        }
-        let intersect = circle & self.circle;
+        } //if the circles are approx the same, return border
+        let intersect = circle & self.circle; //intersect them
         match intersect.unpack_with_prec(PRECISION) {
             Dipole::Real(real_intersect) => {
                 if self.boundary == None || self.contains_either_properly(real_intersect)? {
                     return Ok(None);
-                }
+                } //if the intersection is real, and the arc contains either of the intersection points, return None
                 let boundary_points = match self.boundary.unwrap().unpack() {
+                    //check the boundary points
                     Dipole::Real(points) => points,
                     _ => {
-                        // dbg!(self.boundary.unwrap().unpack());
-                        // dbg!(self.boundary.unwrap().mag2());
                         return Err(
                             "Arc.in_circle failed: arc boundary was tangent or imaginary!"
                                 .to_string(),
-                        );
+                        ); //if the boundary isnt real, return an error
                     }
                 };
                 let contains = [
                     circle_contains(circle, boundary_points[0].into()),
                     circle_contains(circle, boundary_points[1].into()),
-                ];
+                ]; //check the endpoints being contained in both circles
                 return match contains {
+                    //do casework if theyre contained in the circles
                     [Contains::Inside, Contains::Inside]
                     | [Contains::Inside, Contains::Border]
                     | [Contains::Border, Contains::Inside] => Ok(Some(Contains::Inside)),
@@ -321,89 +305,18 @@ impl Arc {
                         match real_intersect[0].approx_eq(&boundary_points[0], LOW_PRECISION) {
                             true => Ok(Some(Contains::Inside)),
                             false => Ok(Some(Contains::Outside)),
-                        }
+                        } //this is the interesting case. here we use the order of the intersection points, in comparison to the boundary points of the arc
+                        //to read the relative orientation of the arc circle and the circle circle
                     }
                     _ => {
-                        // dbg!(contains);
-                        // dbg!(match self.boundary.unwrap().unpack() {
-                        //     Dipole::Real(real) => real,
-                        //     _ => return Err(""),
-                        // });
-                        // //dbg!(self.contains_either_properly(circle & self.circle));
-                        // dbg!(self.contains(real_intersect[0].into()));
-                        // dbg!(self.contains(real_intersect[1].into()));
-                        // dbg!(match self.circle.unpack() {
-                        //     Circle::Circle { cx, cy, r, ori } => (cx, cy, r, ori),
-                        //     _ => panic!("Lmao"),
-                        // });
-                        // dbg!(match circle.unpack() {
-                        //     Circle::Circle { cx, cy, r, ori } => (cx, cy, r, ori),
-                        //     _ => panic!("Lmao"),
-                        // });
+                        //if the boundary is not real, return an error
                         return Err(
                             "Arc.in_circle failed: arc did not contain either intersection point properly but its boundary crossed the border!".to_string()
                         );
                     }
                 };
             }
-            _ => Ok(Some(circ_border_inside_circ(circle, self.circle))),
+            _ => Ok(Some(circ_border_inside_circ(circle, self.circle))), //if the boundary of the circle is None,
         }
-        // let intersect = circ & arc_circle;
-        // match intersect.unpack() {
-        //     Dipole::Real(real) => {
-        //         if self.contains_either_properly(intersect) {
-        //             return None;
-        //         }
-        //         //FLIP SIGN MAYBE
-        //         let bound_points = match self.boundary?.unpack() {
-        //             Dipole::Real(r) => r,
-        //             _ => {
-        //                 dbg!(self.boundary.unwrap().mag2());
-        //                 dbg!(self.boundary);
-        //                 dbg!(self.boundary.unwrap().unpack());
-        //                 panic!("schlimble")
-        //             }
-        //         };
-        //         let contains = [
-        //             circle_contains(circ, bound_points[0].into()),
-        //             circle_contains(circ, bound_points[1].into()),
-        //         ];
-        //         return match contains {
-        //             [Contains::Inside, Contains::Inside]
-        //             | [Contains::Inside, Contains::Border]
-        //             | [Contains::Border, Contains::Inside] => Some(Contains::Inside),
-        //             [Contains::Outside, Contains::Outside]
-        //             | [Contains::Outside, Contains::Border]
-        //             | [Contains::Border, Contains::Outside] => Some(Contains::Outside),
-        //             [Contains::Border, Contains::Border] => Some(
-        //                 //SIGN NEEDS CHECKING
-        //                 match real[0].approx_eq(
-        //                     &match self.boundary?.unpack() {
-        //                         Dipole::Real(real_boundary) => real_boundary[0],
-        //                         _ => panic!("terrorism"),
-        //                     },
-        //                     PRECISION,
-        //                 ) {
-        //                     false => Contains::Outside,
-        //                     true => Contains::Inside,
-        //                 },
-        //             ),
-        //             _ => {
-        //                 dbg!(self);
-        //                 dbg!(circ);
-        //                 dbg!(
-        //                     dbg!(
-        //                         -(self.boundary.unwrap() ^ Into::<Blade1>::into(real[0]))
-        //                             << self.circle
-        //                     )
-        //                     .approx_eq(&0.0, PRECISION)
-        //                 );
-        //                 dbg!(3.2195042811735317e-5.approx_eq(&0.0, PRECISION));
-        //                 panic!("what have you done.")
-        //             }
-        //         };
-        //     }
-        //     _ => Some(circ_border_inside_circ(circ, arc_circle)),
-        // }
     }
 }

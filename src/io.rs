@@ -6,6 +6,7 @@ use std::io::Write;
 
 use crate::puzzle::Puzzle;
 impl Puzzle {
+    ///turn the puzzle into a string for saving purposes. just appends 'scramble' and 'solve' nodes to the end
     pub fn get_puzzle_string(&self) -> String {
         format!(
             "{}\nscramble \"{}\"\nsolve \"{}\"",
@@ -19,8 +20,10 @@ impl Puzzle {
         )
     }
     #[cfg(not(target_arch = "wasm32"))]
+    ///write the puzzle state to a file (for saving purposes)
     pub fn write_to_file(&self, path: &str) -> Result<(), std::io::Error> {
         let curr_path = match DEV {
+            //where the path is depends on if the program is being compiled or run in an EXE removed from the original folder. the DEV constant handles this
             false => String::from(
                 std::env::current_exe()
                     .unwrap()
@@ -33,19 +36,21 @@ impl Puzzle {
             ),
             true => String::new(),
         };
-        let real_path = curr_path + path;
+        let real_path = curr_path + path; //add the path to the base path
         let mut buffer = OpenOptions::new()
             .write(true)
             .create(true)
-            .open(real_path)?;
-        buffer.write_all(self.get_puzzle_string().as_bytes())?;
+            .open(real_path)?; //open the file. if it doesnt exist, create it
+        buffer.write_all(self.get_puzzle_string().as_bytes())?; //write the data
         Ok(())
     }
 }
 
 #[cfg(not(target_arch = "wasm32"))]
+///read a file to a string for loading purposes
 pub fn read_file_to_string(path: &String) -> std::io::Result<String> {
     let curr_path = match DEV {
+        //where the path is depends on if the program is being compiled or run in an EXE removed from the original folder. the DEV constant handles this
         false => String::from(
             std::env::current_exe()
                 .unwrap()
@@ -58,7 +63,7 @@ pub fn read_file_to_string(path: &String) -> std::io::Result<String> {
         ),
         true => String::new(),
     };
-    std::fs::read_to_string(curr_path + &path)
+    std::fs::read_to_string(curr_path + &path) //read to a string
 }
 
 #[cfg(target_arch = "wasm32")]

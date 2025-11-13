@@ -85,21 +85,29 @@ impl eframe::App for App {
                     self.curr_msg = x;
                 }
             } else {
-                //if the puzzle is in preview mode, render all of the pieces of the solved state
-                for piece in &mut self.puzzle.solved_state {
-                    if let Err(x) = piece.render(
-                        ui,
-                        &rect,
-                        None,
-                        self.detail,
-                        self.outline_width,
-                        self.scale_factor,
-                        self.offset,
-                        self.rend_correct,
-                    ) {
-                        self.curr_msg = x;
+                match &mut self.puzzle.solved_state {
+                    Some(p) => {
+                        for piece in p {
+                            if let Err(x) = piece.render(
+                                ui,
+                                &rect,
+                                None,
+                                self.detail,
+                                self.outline_width,
+                                self.scale_factor,
+                                self.offset,
+                                self.rend_correct,
+                            ) {
+                                self.curr_msg = x;
+                            }
+                        }
+                    }
+                    None => {
+                        self.curr_msg =
+                            String::from("Error in App.update: could not generate puzzle preview!")
                     }
                 }
+                //if the puzzle is in preview mode, render all of the pieces of the solved state
             }
             //render the data storer panel -- this stores all of the puzzles that you can load
             match self.data_storer.render_panel(ctx) {

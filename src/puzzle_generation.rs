@@ -55,6 +55,7 @@ fn get_default_color_hash() -> HashMap<String, Color32> {
 }
 
 #[derive(Debug, Clone, Copy)]
+///the different commands that are used in puzzle generation
 enum Commands {
     Name,
     Author,
@@ -77,6 +78,7 @@ enum Commands {
 }
 
 impl Commands {
+    ///get the string representation of a command for parsing
     fn name(&self) -> String {
         match self {
             Commands::Author => "author".to_string(),
@@ -101,6 +103,7 @@ impl Commands {
     }
 }
 
+///all the data in a puzzle definition
 struct DefData {
     circles: HashMap<String, Blade3>,
     twists: HashMap<String, Turn>,
@@ -110,7 +113,7 @@ struct DefData {
     regions: HashMap<String, Region>,
     lists: HashMap<String, List>,
     twist_orders: HashMap<String, isize>,
-    def_stack: List,
+    def_stack: List, //used during the definition for the sake of the 'undo' command
     stack: Vec<String>,
     scramble: Option<[String; 500]>,
 }
@@ -133,7 +136,9 @@ impl Default for DefData {
 }
 
 impl PieceShape {
+    ///determines if a pieceshape falls in a region
     fn in_region(&self, region: &Region) -> Result<Option<Contains>, String> {
+        //essentially checks if it falls in every circle of the region
         let mut none = false;
         for circ in region {
             let cont = self.in_circle(*circ)?;
@@ -157,11 +162,13 @@ impl Puzzle {
     ///cuts the puzzle according to a cut sequence, then undoes the turns
     ///Ok() means that the cut was completed successfully
     ///Err(e) means that the cutting failed somehow
+    ///only pieces within 'region' are cut
     fn cut(&mut self, cut: &Cut, region: &Region) -> Result<(), String> {
         let mut p2 = self.clone();
         let mut new_pieces = Vec::new();
         let mut old_pieces = Vec::new();
         for piece in &p2.pieces {
+            //cut each piece
             if piece
                 .shape
                 .in_region(&region)?
@@ -173,6 +180,7 @@ impl Puzzle {
                 old_pieces.push(piece.clone());
             }
         }
+        //set the pieces to the pieces within the relevant region
         p2.pieces = new_pieces;
         for turn in cut {
             if !p2.turn(*turn, true)? {
@@ -180,31 +188,25 @@ impl Puzzle {
                     "Puzzle.cut failed: turn was cut but still bandaged! (1)",
                 ));
             };
-        }
+        } //perform all the cut turns on the relevant pieces
         for turn in cut.clone().into_iter().rev() {
             if !p2.turn(turn.inverse(), false)? {
                 return Err(String::from(
                     "Puzzle.cut failed: undoing the cut turns ran into bandaging!",
                 ));
             };
-        }
+        } //undo them
         self.pieces = p2.pieces;
-        self.pieces.extend(old_pieces);
+        self.pieces.extend(old_pieces); //add back the old pieces
         Ok(())
     }
+    ///colors the puzzle according to a coloring
     fn color(&mut self, coloring: &Coloring) -> Result<(), String> {
-        //dbg!("HI");
         for piece in &mut self.pieces {
-            let mut color = true;
-            for circle in coloring.0.clone().into_iter() {
-                let contains = piece.shape.in_circle(circle)?;
-                if contains != Some(Contains::Inside) {
-                    color = false;
-                    break;
-                }
-            }
-            if color {
-                piece.color = coloring.1;
+            if piece.shape.in_region(&coloring.0)? == Some(Contains::Inside)
+                || piece.shape.in_region(&coloring.0)? == Some(Contains::Border)
+            {
+                piece.color = coloring.1; //if the piece falls in the region, color it
             }
         }
         Ok(())
@@ -216,6 +218,7 @@ impl Puzzle {
     ///Err(e) means that an error was encountered
     fn compound_turn(&mut self, compound: &Compound, cut: bool) -> Result<bool, String> {
         for turn in compound {
+            //just do all the turns in the compound
             if !self.turn(*turn, cut)? {
                 return Ok(false);
             };
@@ -223,6 +226,7 @@ impl Puzzle {
         Ok(true)
     }
 }
+///makes a basic turn in CGA, given a circle and an angle
 pub fn basic_turn(raw_circle: Blade3, angle: f64) -> Result<Turn, String> {
     if let Circle::Circle {
         cx,
@@ -233,39 +237,45 @@ pub fn basic_turn(raw_circle: Blade3, angle: f64) -> Result<Turn, String> {
     {
         let p1 = point(cx, cy);
         let p2 = point(cx + 1.0, cy);
-        let p3 = point(cx + (angle / 2.0).cos(), cy + (angle / 2.0).sin());
+        let p3 = point(cx + (angle / 2.0).cos(), cy + (angle / 2.0).sin()); //make some point sin preparation
         return Ok(Turn {
             circle: raw_circle.rescale_oriented(),
-            rotation: Rotoflector::Rotor(((p1 ^ p3 ^ NI) * (p1 ^ p2 ^ NI)).rescale_oriented()),
+            rotation: Rotoflector::Rotor(((p1 ^ p3 ^ NI) * (p1 ^ p2 ^ NI)).rescale_oriented()), //the second one is horizontal, the first is exactly half the angle above the horizon
+                                                                                                //this gives a rotation of exactly angle
         });
     } else {
         return Err("basic_turn failed: A line was passed!".to_string());
     }
 }
+///multiply a compound (by repetition)
 fn multiply_turns(a: isize, compound: &Vec<Turn>) -> Vec<Turn> {
     if a < 0 {
-        return invert_compound_turn(&multiply_turns(-1 * a, compound));
+        return invert_compound_turn(&multiply_turns(-1 * a, compound)); //invert it to get to the positive case
     } else if a > 0 {
-        let mut multiply_turns = multiply_turns(a - 1, compound);
+        let mut multiply_turns = multiply_turns(a - 1, compound); //recursive call
         multiply_turns.extend(compound);
         return multiply_turns;
     } else {
         return Vec::new();
     }
 }
-
+///invert a compound turn, i.e., invert all the turns and the order
 fn invert_compound_turn(compound: &Vec<Turn>) -> Vec<Turn> {
     let mut turns = Vec::new();
     for turn in compound.into_iter().rev() {
+        //invert all the turns and the order
         turns.push(turn.inverse());
     }
     return turns;
 }
+///makes the shape of a basic puzzle from a base
 fn make_basic_puzzle(disks: Vec<Blade3>) -> Result<Result<Vec<Piece>, ()>, String> {
     let mut pieces = Vec::new();
     let mut old_disks = Vec::new();
     for disk in &disks {
+        //for each disk we want to add to the base
         let mut disk_piece = Piece {
+            //make a new piece that's just a circle
             shape: PieceShape {
                 bounds: vec![*disk],
                 border: vec![Arc {
@@ -277,24 +287,23 @@ fn make_basic_puzzle(disks: Vec<Blade3>) -> Result<Result<Vec<Piece>, ()>, Strin
         };
         for old_disk in &old_disks {
             if let Some(x) = &disk_piece.cut_by_circle(*old_disk)?[1] {
+                //for each already existing disk, cut it by these disks and take the outside one
                 disk_piece = x.clone();
             }
         }
         old_disks.push(*disk);
-        pieces.push(disk_piece);
+        pieces.push(disk_piece); //because of how the for loop was constructed, this piece is outside of all the other disks
     }
     return Ok(Ok(pieces));
 }
 
+///load a puzzle from a file
 pub fn load_puzzle_and_def_from_file(path: &String) -> Option<Puzzle> {
     let contents = read_file_to_string(path).ok()?;
     return Some(parse_kdl(&contents.clone())?);
 }
-// fn load(to_load: PuzzleDef, to_set: &mut PuzzleDef) -> Puzzle {
-//     *to_set = to_load;
-//     return puzzle_from_two_circles(to_load);
-// }
 
+///strip the number from the end of a string for parsing reasons
 fn strip_number_end(str: &str) -> Option<(String, String)> {
     let chars = str.chars();
     let end = chars
@@ -303,13 +312,14 @@ fn strip_number_end(str: &str) -> Option<(String, String)> {
         .collect::<Vec<char>>()
         .into_iter()
         .rev()
-        .collect::<String>();
+        .collect::<String>(); //iter bs
     return match end.is_empty() {
         true => None,
         false => Some((String::from(str.strip_suffix(&end)?), end)),
     };
 }
 
+///gives a circle with positive orientation
 fn oriented_circle(cent: Blade1, rad: f64, inside: bool) -> Blade3 {
     let circ = circle(cent, rad);
     return if (circle_orientation_euclid(circ) == Contains::Outside) == inside {
@@ -319,11 +329,14 @@ fn oriented_circle(cent: Blade1, rad: f64, inside: bool) -> Blade3 {
     };
 }
 
+///parse a compound turn from a string
 fn parse_compound(val: &str, compounds: &HashMap<String, Compound>) -> Option<Compound> {
     Some(match val.strip_suffix("'") {
+        //check for inverses
         None => match strip_number_end(val) {
             None => compounds.get(val)?.clone(),
             Some(real) => multiply_turns(
+                //if theres a number, multiply it by that number
                 real.1.parse::<isize>().ok()?,
                 compounds.get(real.0.as_str())?,
             ),
@@ -331,6 +344,7 @@ fn parse_compound(val: &str, compounds: &HashMap<String, Compound>) -> Option<Co
         Some(real) => match strip_number_end(real) {
             None => invert_compound_turn(compounds.get(real)?),
             Some(inside) => invert_compound_turn(&multiply_turns(
+                //same as above
                 inside.1.parse::<isize>().ok()?,
                 compounds.get(inside.0.as_str())?,
             )),
@@ -338,11 +352,12 @@ fn parse_compound(val: &str, compounds: &HashMap<String, Compound>) -> Option<Co
     })
 }
 
+///use meval to parse a value as a float in the given context
 fn parse_value_as_float(val: &KdlValue, ctx: &meval::Context) -> Result<f64, String> {
     Ok(match val.is_string() {
         true => meval::eval_str_with_context(val.as_string().unwrap(), ctx).or(Err(
             "parse_value_as_float failed: value was a string that could not be parsed by meval!"
-                .to_string(),
+                .to_string(), //if its a string, use meval to parse it
         ))?,
         false => match val.is_integer() {
             true => val.as_integer().unwrap() as f64,
@@ -351,6 +366,7 @@ fn parse_value_as_float(val: &KdlValue, ctx: &meval::Context) -> Result<f64, Str
     })
 }
 
+///parse a single node of a puzzle definition given what kind of command it is
 fn parse_node(
     node: &KdlNode,
     kind: Commands,
@@ -358,18 +374,21 @@ fn parse_node(
     puzzle: &mut Puzzle,
     ctx: &mut meval::Context,
 ) -> Option<()> {
+    //here we modify data to build the puzzle
     match kind {
-        Commands::Name => puzzle.name = String::from(node.entries().get(0)?.value().as_string()?),
-        Commands::Author => puzzle
+        Commands::Name => puzzle.name = String::from(node.entries().get(0)?.value().as_string()?), //set the name
+        Commands::Author => puzzle //add the author
             .authors
             .push(String::from(node.entries().get(0)?.value().as_string()?)),
         Commands::Vars => {
+            //add the new variables
             for var in node.children()?.nodes() {
                 let val = var.entries().get(0)?.value();
                 ctx.var(var.name().value(), parse_value_as_float(val, &ctx).ok()?);
             }
         }
         Commands::Circles => {
+            //make and add the circles
             for created_circle in node.children()?.nodes() {
                 let name = created_circle.name().value();
                 let circ = oriented_circle(
@@ -378,26 +397,29 @@ fn parse_node(
                         parse_value_as_float(created_circle.get("y")?, &ctx).ok()?,
                     ),
                     parse_value_as_float(created_circle.get("r")?, &ctx).ok()?,
-                    true,
+                    true, //parse the parameters of the circle from meval
                 )
                 .rescale_oriented();
                 let name2 = "!".to_string() + name;
-                data.circles.insert(name.to_string(), circ);
+                data.circles.insert(name.to_string(), circ); //add it to the relevant hashmaps for later
                 data.regions.insert(name.to_string(), vec![circ]);
                 data.regions.insert(name2.to_string(), vec![-circ]);
             }
         }
         Commands::Regions => {
+            //add the new regions
             for created_region in node.children()?.nodes() {
                 let mut region = Vec::new();
                 let name = created_region.name().value();
                 for subregion in node.entries().into_iter() {
+                    //parse the regions recursively so we can define regions in terms of other regions
                     region.extend(data.regions.get(subregion.value().as_string()?)?);
                 }
                 data.regions.insert(name.to_string(), region);
             }
         }
         Commands::Base => {
+            //create the base of the puzzle using make_basic_puzzle
             let mut disks = Vec::new();
             for disk in node.entries().into_iter() {
                 disks.push(*data.circles.get(disk.value().as_string()?)?);
@@ -405,6 +427,7 @@ fn parse_node(
             puzzle.pieces = make_basic_puzzle(disks).ok()?.ok()?;
         }
         Commands::Twists => {
+            //add the new twists
             for turn in node.children()?.nodes() {
                 data.twists.insert(
                     turn.name().value().to_string(),
@@ -412,15 +435,16 @@ fn parse_node(
                         *data
                             .circles
                             .get(turn.entries().get(0)?.value().as_string()?)?,
-                        -2.0 * PI as f64 / (turn.entries().get(1)?.value().as_integer()? as f64),
+                        -2.0 * PI as f64 / (turn.entries().get(1)?.value().as_integer()? as f64), //make the basic turn
                     )
                     .ok()?,
                 );
                 data.twist_orders.insert(
                     turn.name().value().to_string(),
-                    turn.entries().get(1)?.value().as_integer()? as isize,
+                    turn.entries().get(1)?.value().as_integer()? as isize, //add the twist order for the * command
                 );
                 if turn.entries().len() == 2 {
+                    //so that excluded ! turns are skipped
                     data.real_twists.insert(
                         turn.name().value().to_string(),
                         basic_turn(
@@ -430,11 +454,11 @@ fn parse_node(
                             -2.0 * PI as f64
                                 / (turn.entries().get(1)?.value().as_integer()? as f64),
                         )
-                        .ok()?,
+                        .ok()?, //add it to the relevant hashmaps
                     );
                 }
                 data.compounds.insert(
-                    turn.name().value().to_string(),
+                    turn.name().value().to_string(), //add the inverse of turn as a basic (1-turn) compound
                     vec![
                         basic_turn(
                             *data
@@ -449,25 +473,29 @@ fn parse_node(
             }
         }
         Commands::Compounds => {
+            //parse the new compounds
             let mut compound_adds: Vec<Vec<Turn>> = vec![Vec::new()];
             for compound in node.children()?.nodes() {
                 for val in compound.entries() {
                     for compound_add in &mut compound_adds {
                         compound_add
-                            .extend(parse_compound(val.value().as_string()?, &data.compounds)?);
+                            .extend(parse_compound(val.value().as_string()?, &data.compounds)?); //recursively read it in terms of other compounds
                     }
                 }
                 for compound_add in &compound_adds {
+                    //add it to data
                     data.compounds
                         .insert(compound.name().value().to_string(), compound_add.clone());
                 }
             }
         }
         Commands::List => {
+            //make the lists
             let mut list = List::new();
             let name = node.entries().get(0)?.value().as_string()?;
             for element in node.children()?.nodes() {
                 if element.name().value() != "-" {
+                    //very temporary syntax to parse each line
                     return None;
                 }
                 let num = element.entries().get(0)?.value().as_integer()?;
@@ -476,15 +504,17 @@ fn parse_node(
                     compound.extend(parse_compound(val.value().as_string()?, &data.compounds)?);
                 }
                 for _ in 0..num {
-                    list.push(compound.clone());
+                    list.push(compound.clone()); //allow easily adding the same compound to a list repeatedly
                 }
             }
-            data.lists.insert(name.to_string(), list);
+            data.lists.insert(name.to_string(), list); //add it to data.lists
         }
         Commands::Cut => {
+            //cut the puzzle
             let mut turn_seqs = vec![Vec::new()];
             let mut extend = Vec::new();
             let region = match node.get("region") {
+                //get the region
                 None => Vec::new(),
                 Some(x) => data.regions.get(x.as_string()?)?.clone(),
             };
@@ -493,86 +523,53 @@ fn parse_node(
                     continue;
                 }
                 match val.value().as_string()?.strip_suffix("*") {
-                    None => extend = parse_compound(val.value().as_string()?, &data.compounds)?,
+                    None => extend = parse_compound(val.value().as_string()?, &data.compounds)?, //in this case just parse the compound
                     Some(real) => {
+                        //in this case we create multiple turn sequences
                         let turn = *data.twists.get(real)?;
                         let number = *data.twist_orders.get(real)?;
                         let mut new_adds = Vec::new();
                         for add in &turn_seqs {
                             for i in 0..number {
+                                //we use the order of the turn here
                                 let mut new_add = add.clone();
-                                new_add.push(i * turn);
+                                new_add.push(i * turn); //for each power of the turn, we add it in the middle of the turn sequence
                                 new_adds.push(new_add);
                             }
                         }
-                        turn_seqs.extend(new_adds);
+                        turn_seqs.extend(new_adds); //add them all to turn_seqs
                     }
                 }
-                // match val.value().as_string()?.strip_suffix("'") {
-                //     None => match strip_number_end(val.value().as_string()?) {
-                //         None => match val.value().as_string()?.strip_suffix("*") {
-                //             None => extend = compounds.get(val.value().as_string()?)?.clone(),
-                //             Some(real) => {
-                //                 let turn = *twists.get(real)?;
-                //                 let number = *twist_orders.get(real)?;
-                //                 let mut new_adds = Vec::new();
-                //                 for add in &turn_seqs {
-                //                     for i in 0..number {
-                //                         let mut new_add = add.clone();
-                //                         new_add.push(i * turn);
-                //                         new_adds.push(new_add);
-                //                     }
-                //                 }
-                //                 turn_seqs.extend(new_adds);
-                //             }
-                //         },
-                //         Some(real) => {
-                //             extend = multiply_turns(
-                //                 real.1.parse::<isize>().ok()?,
-                //                 compounds.get(real.0.as_str())?,
-                //             );
-                //         }
-                //     },
-                //     Some(real) => match strip_number_end(real) {
-                //         None => {
-                //             extend = invert_compound_turn(compounds.get(real)?);
-                //         }
-                //         Some(inside) => {
-                //             extend = invert_compound_turn(&multiply_turns(
-                //                 inside.1.parse::<isize>().ok()?,
-                //                 compounds.get(inside.0.as_str())?,
-                //             ))
-                //         }
-                //     },
-                // }
                 for turns in &mut turn_seqs {
-                    turns.extend(extend.clone());
+                    turns.extend(extend.clone()); //add the turns to turns
                 }
             }
             for turns in &turn_seqs {
-                (puzzle.cut(turns, &region)).ok()?;
-                // puzzle.pieces.len();
+                (puzzle.cut(turns, &region)).ok()?; //execute the cuts
             }
         }
         Commands::Twist => {
+            //twist the puzzle
             let mut sequence = Vec::new();
             for val in node.entries() {
-                let extend = parse_compound(val.value().as_string()?, &data.compounds)?;
+                let extend = parse_compound(val.value().as_string()?, &data.compounds)?; //parse the compounds
                 sequence.extend(extend);
             }
             let mut add_seq = Vec::new();
             for turn in &sequence {
+                //execute the turns
                 puzzle.turn(*turn, false).ok()?;
                 add_seq.push(turn.clone());
             }
             data.def_stack.push(add_seq);
         }
         Commands::Colors => {
+            //define the new colors. this does overwrite defaults
             for color in node.children()?.nodes() {
                 data.colors.insert(
                     color.name().value().to_string(),
                     Color32::from_rgb(
-                        color.entries().get(0)?.value().as_integer()? as u8,
+                        color.entries().get(0)?.value().as_integer()? as u8, //parse the rgb
                         color.entries().get(1)?.value().as_integer()? as u8,
                         color.entries().get(2)?.value().as_integer()? as u8,
                     ),
@@ -580,31 +577,36 @@ fn parse_node(
             }
         }
         Commands::Color => {
-            //dbg!("TEST?");
+            //color the region
             let color = *data.colors.get(node.entries()[0].value().as_string()?)?;
             let mut coloring_circles = Region::new();
             for i in 1..node.entries().len() {
                 let circle = node.entries().get(i)?.value().as_string()?;
-                coloring_circles.extend(data.regions.get(circle)?.clone());
+                coloring_circles.extend(data.regions.get(circle)?.clone()); //parse the region
             }
-            puzzle.color(&(coloring_circles, color)).ok()?;
+            puzzle.color(&(coloring_circles, color)).ok()?; //execute the color command
         }
         Commands::Undo => {
+            //undo the relevant turns from data.def_stack
             let mut number;
             if node.entries().is_empty() {
+                //if there are no entries, just undo 1 turn
                 number = 1;
             } else {
                 let entry = &node.entries().get(0)?;
                 match entry.value().as_integer() {
                     None => {
+                        //if its not a number, undo everything
                         number = -1;
                     }
                     Some(num) => {
+                        //otherwise undo the number
                         number = num;
                     }
                 }
             }
             while number != 0 {
+                //undo the turns
                 number -= 1;
                 if let Some(turns) = data.def_stack.pop() {
                     for turn in invert_compound_turn(&turns) {
@@ -616,6 +618,7 @@ fn parse_node(
             }
         }
         Commands::Foreach => {
+            //very temporary syntax not used in any current puzzle definitions. not worth commenting, will probably be removed/seriously modified
             let list = data
                 .lists
                 .get(node.entries().get(0)?.value().as_string()?)?
@@ -642,6 +645,7 @@ fn parse_node(
             }
         }
         Commands::Along => {
+            //very temporary syntax not used in any current puzzle definitions. not worth commenting, will probably be removed/seriously modified
             let list = data
                 .lists
                 .get(node.entries().get(0)?.value().as_string()?)?
@@ -670,20 +674,32 @@ fn parse_node(
             }
         }
         Commands::Solve => {
+            //stores the solve sequence for the puzzle. ideally only generated by the program
+            if puzzle.solved_state.is_none() {
+                //if these are the first real turns done on the puzzle, set the solved state first
+                puzzle.solved_state = Some(puzzle.pieces.clone())
+            }
             let mut sequence = Vec::new();
             for val in node.entries().get(0)?.value().as_string()?.split(",") {
+                //build the turn sequence
                 let extend = parse_compound(val, &data.compounds)?;
                 sequence.extend(extend);
-                data.stack.push(val.to_string());
+                data.stack.push(val.to_string()); //add these turns to data.stack, *not* data.def_stack
             }
             let mut add_seq = Vec::new();
             for turn in &sequence {
+                //execute it
                 puzzle.turn(*turn, false).ok()?;
                 add_seq.push(turn.clone());
             }
         }
         Commands::Scramble => {
-            let mut scramb = array::from_fn(|_| "".to_string());
+            //stores the scramble for the puzzle
+            if puzzle.solved_state.is_none() {
+                //if these are the first real turns done on the puzzle, set the solved state first
+                puzzle.solved_state = Some(puzzle.pieces.clone())
+            }
+            let mut scramb = array::from_fn(|_| "".to_string()); //make a new array
             let vals = node
                 .entries()
                 .get(0)?
@@ -691,7 +707,7 @@ fn parse_node(
                 .as_string()?
                 .split(",")
                 .map(|x| x.to_string())
-                .collect::<Vec<String>>();
+                .collect::<Vec<String>>(); //parse into a bunch of turn id's
             if vals.is_empty() {
                 return Some(());
             }
@@ -700,10 +716,10 @@ fn parse_node(
                 let val = vals.get(i)?;
                 let extend = parse_compound(val, &data.compounds)?;
                 sequence.extend(extend);
-                scramb[i] = val.clone();
+                scramb[i] = val.clone(); //populate the scramble sequence
             }
             for turn in &sequence {
-                puzzle.turn(*turn, false).ok()?;
+                puzzle.turn(*turn, false).ok()?; //execute the turns without adding them to the stack
             }
             data.scramble = Some(scramb);
         }
@@ -711,6 +727,7 @@ fn parse_node(
     Some(())
 }
 
+///parses all the nodes in a document using parse_node
 fn parse_nodes(
     nodes: &[KdlNode],
     data: &mut DefData,
@@ -719,6 +736,7 @@ fn parse_nodes(
     allowed_commands: &Vec<Commands>,
 ) -> Option<()> {
     for node in nodes {
+        //just iterate over the nodes and parse them all
         for command in allowed_commands {
             if node.name().value() == command.name() {
                 parse_node(node, *command, data, puzzle, ctx)?;
@@ -728,6 +746,7 @@ fn parse_nodes(
     Some(())
 }
 
+///parses a kdl document to give a puzzle using parse_nodes
 pub fn parse_kdl(string: &str) -> Option<Puzzle> {
     let mut puzzle = Puzzle {
         name: String::new(),
@@ -740,24 +759,17 @@ pub fn parse_kdl(string: &str) -> Option<Puzzle> {
         intern_2: approx_collections::FloatPool::new(POOL_PRECISION),
         intern_3: approx_collections::FloatPool::new(POOL_PRECISION),
         depth: 500,
-        solved_state: Vec::new(),
+        solved_state: None,
         solved: false,
         anim_left: 0.0,
         def: string.to_string(),
-    };
+    }; //initialize a new puzzle
     let doc: KdlDocument = match string.parse() {
         Ok(real) => real,
         Err(_err) => return None,
-    };
+    }; //parse the document to kdl
     let mut data = DefData::default();
-    // let mut circles: HashMap<String, Blade3> = HashMap::new();
-    // let mut twists: HashMap<String, Turn> = HashMap::new();
-    // let mut real_twists: HashMap<String, Turn> = HashMap::new();
-    // let mut colors: HashMap<String, Color32> = get_default_color_hash();
-    // let mut compounds: HashMap<String, Compound> = HashMap::new();
-    // let mut regions: HashMap<String, Region> = HashMap::new();
-    // let mut lists: HashMap<String, List> = HashMap::new();
-    let mut ctx = meval::Context::new();
+    let mut ctx = meval::Context::new(); //make a new meval context
     let all_commands = vec![
         Commands::Name,
         Commands::Author,
@@ -777,14 +789,16 @@ pub fn parse_kdl(string: &str) -> Option<Puzzle> {
         Commands::Foreach,
         Commands::Scramble,
         Commands::Solve,
-    ];
-    // let mut twist_orders: HashMap<String, isize> = HashMap::new();
-    parse_nodes(doc.nodes(), &mut data, &mut puzzle, &mut ctx, &all_commands)?;
+    ]; //make a list of all the commands, so we can find which command to use by iterating through
+    parse_nodes(doc.nodes(), &mut data, &mut puzzle, &mut ctx, &all_commands)?; //parse the nodes
     for turn in data.real_twists {
+        //add the turns to the puzzle. the 'real twists' are the ones that should be doable on the puzzle (not SYM)
         puzzle.turns.insert(turn.0.clone(), turn.1);
         puzzle.turns.insert(turn.0.clone() + "'", turn.1.inverse());
     }
-    puzzle.solved_state = puzzle.pieces.clone();
+    if puzzle.solved_state.is_none() {
+        puzzle.solved_state = Some(puzzle.pieces.clone());
+    } //set some values of the puzzle based on data and the puzzles current state
     puzzle.animation_offset = None;
     puzzle.stack = data.stack;
     puzzle.scramble = data.scramble;
