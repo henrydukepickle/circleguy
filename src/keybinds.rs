@@ -30,7 +30,7 @@ fn parse_keybinds_kdl(kdl: &String, groups: &Groups) -> Option<Keybinds> {
     let doc: KdlDocument = kdl.parse().ok()?;
     let node = doc.get("bind")?;
     for bind in node.entries() {
-        let name = dbg!(bind.name()?.value());
+        let name = bind.name()?.value();
         let group = bind.value().as_string()?;
         let group_real = groups.get(group)?;
         for (k, v) in group_real {
