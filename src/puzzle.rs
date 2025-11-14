@@ -17,7 +17,7 @@ pub struct Puzzle {
     pub pieces: Vec<Piece>,
     pub base_turns: HashMap<String, Turn>,
     pub turn_orders: HashMap<String, isize>,
-    pub stack: Vec<String>,
+    pub stack: Vec<(String, isize)>,
     pub scramble: Option<[String; 500]>,
     pub animation_offset: Option<Turn>, //the turn of the puzzle that the animation is currently doing
     pub intern_2: FloatPool,
@@ -68,7 +68,7 @@ impl Puzzle {
         if !self.turn(turn, cut)? {
             return Ok(false);
         }
-        self.stack.push(id);
+        self.stack.push((id, mult));
         Ok(true)
     }
     ///undoes the last turn.
@@ -79,8 +79,9 @@ impl Puzzle {
         if self.stack.is_empty() {
             return Ok(false);
         }
-        let last_turn = self.base_turns[&self.stack.pop().unwrap()]; //try to find the last turn
-        if !self.turn(last_turn.inverse(), false)? {
+        let last = &self.stack.pop().unwrap();
+        let last_turn = self.base_turns[&last.0]; //try to find the last turn
+        if !self.turn(last.1 * last_turn.inverse(), false)? {
             return Err(String::from("Puzzle.undo failed: undo turn was bandaged!"));
         };
         Ok(true)

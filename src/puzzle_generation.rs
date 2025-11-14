@@ -75,6 +75,7 @@ enum Commands {
     Foreach,
     Scramble,
     Solve,
+    LogFileBreak,
 }
 
 impl Commands {
@@ -99,6 +100,7 @@ impl Commands {
             Commands::Foreach => "foreach".to_string(),
             Commands::Scramble => "scramble".to_string(),
             Commands::Solve => "solve".to_string(),
+            Commands::LogFileBreak => "logfilebreak".to_string(),
         }
     }
 }
@@ -114,7 +116,7 @@ struct DefData {
     lists: HashMap<String, List>,
     twist_orders: HashMap<String, isize>,
     def_stack: List, //used during the definition for the sake of the 'undo' command
-    stack: Vec<String>,
+    stack: Vec<(String, isize)>,
     scramble: Option<[String; 500]>,
 }
 impl Default for DefData {
@@ -681,18 +683,23 @@ fn parse_node(
                 //if these are the first real turns done on the puzzle, set the solved state first
                 puzzle.solved_state = Some(puzzle.pieces.clone())
             }
-            let mut sequence = Vec::new();
+            if node.entries().get(0)?.value().as_string()?.is_empty() {
+                return Some(());
+            }
             for val in node.entries().get(0)?.value().as_string()?.split(",") {
                 //build the turn sequence
-                let extend = parse_compound(val, &data.compounds)?;
-                sequence.extend(extend);
-                data.stack.push(val.to_string()); //add these turns to data.stack, *not* data.def_stack
-            }
-            let mut add_seq = Vec::new();
-            for turn in &sequence {
-                //execute it
-                puzzle.turn(*turn, false).ok()?;
-                add_seq.push(turn.clone());
+                let (twist, num) = match val.strip_suffix("'") {
+                    None => match strip_number_end(&val) {
+                        None => (val.to_string(), 1),
+                        Some((a, b)) => (a, b.parse::<isize>().ok()?),
+                    },
+                    Some(x) => match strip_number_end(&x) {
+                        None => (x.to_string(), -1),
+                        Some((a, b)) => (a, -1 * b.parse::<isize>().ok()?),
+                    },
+                };
+                data.stack.push((twist.clone(), num).clone()); //add these turns to data.stack, *not* data.def_stack
+                puzzle.turn(num * *data.twists.get(&twist)?, false).ok()?;
             }
         }
         Commands::Scramble => {
@@ -700,6 +707,9 @@ fn parse_node(
             if puzzle.solved_state.is_none() {
                 //if these are the first real turns done on the puzzle, set the solved state first
                 puzzle.solved_state = Some(puzzle.pieces.clone())
+            }
+            if node.entries().get(0)?.value().as_string()?.is_empty() {
+                return Some(());
             }
             let mut scramb = array::from_fn(|_| "".to_string()); //make a new array
             let vals = node
@@ -725,6 +735,7 @@ fn parse_node(
             }
             data.scramble = Some(scramb);
         }
+        Commands::LogFileBreak => {}
     }
     Some(())
 }
@@ -748,6 +759,13 @@ fn parse_nodes(
     Some(())
 }
 
+fn remove_solve_scramble(str: &str) -> String {
+    if let Some((x, _)) = str.split_once("\nlogfilebreak") {
+        x.to_string()
+    } else {
+        str.to_string()
+    }
+}
 ///parses a kdl document to give a puzzle using parse_nodes
 pub fn parse_kdl(string: &str) -> Option<Puzzle> {
     let mut puzzle = Puzzle {
@@ -765,7 +783,7 @@ pub fn parse_kdl(string: &str) -> Option<Puzzle> {
         solved_state: None,
         solved: false,
         anim_left: 0.0,
-        def: string.to_string(),
+        def: remove_solve_scramble(string).to_string(),
     }; //initialize a new puzzle
     let doc: KdlDocument = match string.parse() {
         Ok(real) => real,
@@ -792,6 +810,7 @@ pub fn parse_kdl(string: &str) -> Option<Puzzle> {
         Commands::Foreach,
         Commands::Scramble,
         Commands::Solve,
+        Commands::LogFileBreak,
     ]; //make a list of all the commands, so we can find which command to use by iterating through
     parse_nodes(doc.nodes(), &mut data, &mut puzzle, &mut ctx, &all_commands)?; //parse the nodes
     for turn in data.real_twists {

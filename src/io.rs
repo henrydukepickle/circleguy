@@ -5,19 +5,28 @@ use std::fs::*;
 use std::io::Write;
 
 use crate::puzzle::Puzzle;
+
 impl Puzzle {
     ///turn the puzzle into a string for saving purposes. just appends 'scramble' and 'solve' nodes to the end
     pub fn get_puzzle_string(&self) -> String {
-        format!(
-            "{}\nscramble \"{}\"\nsolve \"{}\"",
+        dbg!(format!(
+            "{}\nlogfilebreak\nscramble \"{}\"\nsolve \"{}\"",
             self.def,
             if let Some(x) = &self.scramble {
                 x.join(",")
             } else {
                 "".to_string()
             },
-            self.stack.join(",")
-        )
+            self.stack
+                .iter()
+                .map(|x| if x.1 < 0 {
+                    format!("{}{}'", x.0, -x.1)
+                } else {
+                    format!("{}{}", x.0, x.1)
+                })
+                .collect::<Vec<String>>()
+                .join(",")
+        ))
     }
     #[cfg(not(target_arch = "wasm32"))]
     ///write the puzzle state to a file (for saving purposes)
