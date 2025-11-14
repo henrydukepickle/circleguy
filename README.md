@@ -6,6 +6,8 @@ general puzzle simulator for circle puzzles. currently supports custom puzzle de
 
 keybinds are configured in the Configs/Keybinds/ folder. there are 2 relevant files you need to touch to implement keybinds for a puzzle.
 
+currently, the `Z` key is reserved for undo. using the `Z` key in your own keybind set is not recommended.
+
 ## groups.kdl
 
 in this file, you define 'keybind groups'. these are sets of keybinds for turning around the same circle. groups are declared on different lines within a single 'groups' node.
