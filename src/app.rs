@@ -137,7 +137,6 @@ impl eframe::App for App {
                             && let Some(gr) = puzzle_data.keybind_groups
                             && let Some(keybinds) = load_keybinds(&kb, &gr)
                         {
-                            dbg!("hi");
                             self.keybinds = Some(keybinds);
                         }
                     }

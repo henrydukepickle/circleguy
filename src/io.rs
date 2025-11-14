@@ -9,7 +9,7 @@ use crate::puzzle::Puzzle;
 impl Puzzle {
     ///turn the puzzle into a string for saving purposes. just appends 'scramble' and 'solve' nodes to the end
     pub fn get_puzzle_string(&self) -> String {
-        dbg!(format!(
+        format!(
             "{}\nlogfilebreak\nscramble \"{}\"\nsolve \"{}\"",
             self.def,
             if let Some(x) = &self.scramble {
@@ -26,7 +26,7 @@ impl Puzzle {
                 })
                 .collect::<Vec<String>>()
                 .join(",")
-        ))
+        )
     }
     #[cfg(not(target_arch = "wasm32"))]
     ///write the puzzle state to a file (for saving purposes)
