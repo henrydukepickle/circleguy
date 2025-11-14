@@ -82,8 +82,6 @@ fn main() {
 mod tests {
     use crate::puzzle_generation::load_puzzle_and_def_from_file;
 
-    use super::*;
-
     #[test]
     fn test_name() {
         assert_eq!(

@@ -15,7 +15,8 @@ pub struct Puzzle {
     pub name: String,
     pub authors: Vec<String>,
     pub pieces: Vec<Piece>,
-    pub turns: HashMap<String, Turn>,
+    pub base_turns: HashMap<String, Turn>,
+    pub turn_orders: HashMap<String, isize>,
     pub stack: Vec<String>,
     pub scramble: Option<[String; 500]>,
     pub animation_offset: Option<Turn>, //the turn of the puzzle that the animation is currently doing
@@ -62,8 +63,8 @@ impl Puzzle {
     ///if the turn was completed, returns Ok(true)
     ///if the turn was bandaged (and cut was false), returns Ok(false)
     ///if an error was encountered, returns Err(e) where e was the error
-    pub fn turn_id(&mut self, id: String, cut: bool) -> Result<bool, String> {
-        let turn = self.turns[&id];
+    pub fn turn_id(&mut self, id: String, cut: bool, mult: isize) -> Result<bool, String> {
+        let turn = mult * self.base_turns[&id];
         if !self.turn(turn, cut)? {
             return Ok(false);
         }
@@ -78,7 +79,7 @@ impl Puzzle {
         if self.stack.is_empty() {
             return Ok(false);
         }
-        let last_turn = self.turns[&self.stack.pop().unwrap()]; //try to find the last turn
+        let last_turn = self.base_turns[&self.stack.pop().unwrap()]; //try to find the last turn
         if !self.turn(last_turn.inverse(), false)? {
             return Err(String::from("Puzzle.undo failed: undo turn was bandaged!"));
         };
@@ -101,12 +102,12 @@ impl Puzzle {
         for i in 0..self.depth {
             //choose a random turn and do it
             let key = self
-                .turns
+                .base_turns
                 .keys()
                 .choose(&mut rng)
                 .ok_or("Puzzle.scramble failed: rng choosing a turn failed!".to_string())?
                 .clone();
-            self.turn(self.turns[&key], cut)?;
+            self.turn(self.base_turns[&key], cut)?;
             scramble[i as usize] = key;
         }
         self.animation_offset = None;

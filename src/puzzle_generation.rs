@@ -754,7 +754,8 @@ pub fn parse_kdl(string: &str) -> Option<Puzzle> {
         name: String::new(),
         authors: Vec::new(),
         pieces: Vec::new(),
-        turns: HashMap::new(),
+        base_turns: HashMap::new(),
+        turn_orders: HashMap::new(),
         stack: Vec::new(),
         scramble: None,
         animation_offset: None,
@@ -795,8 +796,10 @@ pub fn parse_kdl(string: &str) -> Option<Puzzle> {
     parse_nodes(doc.nodes(), &mut data, &mut puzzle, &mut ctx, &all_commands)?; //parse the nodes
     for turn in data.real_twists {
         //add the turns to the puzzle. the 'real twists' are the ones that should be doable on the puzzle (not SYM)
-        puzzle.turns.insert(turn.0.clone(), turn.1);
-        puzzle.turns.insert(turn.0.clone() + "'", turn.1.inverse());
+        puzzle.base_turns.insert(turn.0.clone(), turn.1);
+        puzzle
+            .turn_orders
+            .insert(turn.0.clone(), *data.twist_orders.get(&turn.0)?);
     }
     if puzzle.solved_state.is_none() {
         puzzle.solved_state = Some(puzzle.pieces.clone());

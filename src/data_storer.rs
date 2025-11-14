@@ -3,11 +3,21 @@ use kdl::*;
 use std::{cmp::Ordering, collections::HashMap, fs::*};
 pub const TOP: usize = 5;
 #[derive(Debug, Clone)]
+pub struct PuzzleData {
+    pub preview: String,
+    pub data: String,
+    pub keybinds: Option<String>,
+    pub keybind_groups: Option<String>,
+}
+#[derive(Debug, Clone)]
 ///stores the data for loading puzzles (definitions and basic info for preview)
 pub struct DataStorer {
-    pub data: Vec<(String, String)>, //puzzle preview string, puzzle data string
+    pub puzzles: HashMap<String, PuzzleData>,
+    // pub data: Vec<(String, String, Option<String>)>, //puzzle preview string, puzzle data string, keybind string
+    // pub keybind_groups: Option<String>,              //the data in the keybind groups file
     pub prev_data: Vec<PuzzlePrevData>,
     pub top: Vec<(String, usize)>,
+    pub sorted_puzzles: Vec<PuzzleData>,
 }
 #[derive(Debug, Clone)]
 ///puzzle preview data
@@ -65,24 +75,29 @@ fn prev_parse_kdl(string: &str) -> Option<PuzzlePrevData> {
 impl DataStorer {
     #[cfg(not(target_arch = "wasm32"))]
     ///load the puzzle definitions into the DataStorer
-    pub fn load_puzzles(&mut self, def_path: &str) -> Result<(), ()> {
-        self.data = Vec::new();
-        let paths = read_dir(def_path).or(Err(())).unwrap().into_iter(); //get the paths to puzzles
+    pub fn load_puzzles(
+        &mut self,
+        def_path: &str,
+        kb_path: &str,
+        kb_group_path: &str,
+    ) -> Result<(), ()> {
+        self.puzzles = HashMap::new();
+        let paths = read_dir(def_path).or(Err(()))?.into_iter(); //get the paths to puzzles
         for path in paths {
-            let data = read_file_to_string(
-                &(String::from(def_path)
-                    + (&path
-                        .or(Err(()))
-                        .unwrap()
-                        .file_name()
-                        .into_string()
-                        .or(Err(()))?)),
-            )
-            .or(Err(()))?; //get the data from the puzzle
-            self.data.push((get_preview_string(&data), data.clone())); //parse the data and push it to the DataStorer
+            let filename = path.or(Err(()))?.file_name().into_string().or(Err(()))?;
+            let data = read_file_to_string(&(String::from(def_path) + (&filename))).or(Err(()))?; //get the data from the puzzle
+            let keybind_data = read_file_to_string(&(String::from(kb_path) + (&filename))).ok();
+            let puzzle_data = PuzzleData {
+                preview: get_preview_string(&data),
+                data: data.clone(),
+                keybinds: keybind_data,
+                keybind_groups: read_file_to_string(&kb_group_path.to_string()).ok(),
+            }; //parse the data and push it to the DataStorer
             self.prev_data.push(prev_parse_kdl(&data).ok_or(())?); //also add the data not in string format
-        }
-        self.data.sort_by_key(|a| a.0.clone()); //sort the puzzle alphabetically by name
+            self.puzzles.insert(filename, puzzle_data.clone());
+            self.sorted_puzzles.push(puzzle_data);
+        } //sort the puzzle alphabetically by name
+        self.sorted_puzzles.sort_by_key(|x| x.preview.clone());
         Ok(())
     }
     ///gets the top authors of puzzles, for fun

@@ -1,4 +1,1 @@
-bind {
-    LEFT A
-    RIGHT B
-}
+bind A=LEFT B=RIGHT

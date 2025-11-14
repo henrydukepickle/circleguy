@@ -2,9 +2,9 @@ use crate::PRECISION;
 use crate::arc::*;
 use crate::circle_utils::*;
 use crate::data_storer::DataStorer;
+use crate::data_storer::PuzzleData;
 use crate::piece::*;
 use crate::puzzle::*;
-use crate::puzzle_generation::parse_kdl;
 use crate::turn::*;
 use approx_collections::*;
 use cga2d::*;
@@ -403,7 +403,7 @@ impl Puzzle {
         let mut min_dist: f32 = 10000.0;
         let mut min_rad: f32 = 10000.0;
         let mut correct_id: String = String::from("");
-        for turn in &self.turns {
+        for turn in &self.base_turns {
             //iterate over the turns to find the closest one
             let (center, radius) = match turn.1.circle.unpack() {
                 Circle::Circle { cx, cy, r, ori: _ } => (pos2(cx as f32, cy as f32), r as f32),
@@ -420,7 +420,6 @@ impl Puzzle {
                     && (radius.approx_cmp(&min_rad, PRECISION)) == Ordering::Less))
                 && circle_contains(turn.1.circle, point(good_pos.x as f64, good_pos.y as f64))
                     == Contains::Inside
-                && !turn.0.ends_with("'")
             {
                 min_dist = good_pos.distance(center);
                 min_rad = radius;
@@ -433,9 +432,9 @@ impl Puzzle {
         }
         if !left {
             //invert based on the type of click
-            Ok(self.turn_id(correct_id, cut)?)
+            Ok(self.turn_id(correct_id, cut, 1)?)
         } else {
-            Ok(self.turn_id(correct_id + "'", cut)?)
+            Ok(self.turn_id(correct_id, cut, -1)?)
         }
     }
     ///get the circle hovered by the mouse
@@ -450,7 +449,7 @@ impl Puzzle {
         let mut min_dist: f32 = 10000.0;
         let mut min_rad: f32 = 10000.0;
         let mut correct_turn = None;
-        for turn in self.turns.clone().values() {
+        for turn in self.base_turns.clone().values() {
             //this algorithm proceeds very similarly to the process_click algorithm above
             let (cent, rad) = euc_center_rad(turn.circle)?;
             if ((good_pos.distance(cent).approx_cmp(&min_dist, PRECISION) == Ordering::Less)
@@ -478,19 +477,15 @@ impl Puzzle {
 
 impl DataStorer {
     ///render the data panel on the screen and read input for which button is clicked
-    pub fn render_panel(&self, ctx: &egui::Context) -> Result<Option<Puzzle>, ()> {
+    pub fn render_panel(&self, ctx: &egui::Context) -> Result<Option<PuzzleData>, ()> {
         let panel = egui::SidePanel::new(egui::panel::Side::Right, "data_panel").resizable(false); //make the new panel
-        let mut puzzle = None;
+        let mut puzzle_data = None;
         panel.show(ctx, |ui| {
             egui::ScrollArea::vertical().show(ui, |ui| {
-                //make the scroll panel
-                for puz in &self.data {
-                    if ui.add(egui::Button::new(&puz.0)).clicked() {
+                for puz in &self.sorted_puzzles {
+                    if ui.add(egui::Button::new(puz.preview.clone())).clicked() {
                         //make the buttons for each puzzle
-                        puzzle = match parse_kdl(&puz.1) {
-                            Some(inside) => Some(inside),
-                            None => None,
-                        }
+                        puzzle_data = Some(puz.clone());
                     }
                 }
                 ui.label("Top puzzle contributors:");
@@ -505,6 +500,6 @@ impl DataStorer {
                 }
             })
         });
-        Ok(puzzle)
+        Ok(puzzle_data)
     }
 }

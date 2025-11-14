@@ -1,4 +1,8 @@
+use std::collections::HashMap;
+
 use crate::data_storer::*;
+use crate::keybinds::Keybinds;
+use crate::keybinds::load_keybinds;
 use crate::puzzle::*;
 use crate::puzzle_generation::*;
 use crate::render::draw_circle;
@@ -33,25 +37,27 @@ pub struct App {
     cut_on_turn: bool,       //whether or not turns should cut the puzzle
     preview: bool,           //whether the solved state is being previewed
     rend_correct: bool,      //whether rendering is being done in correct mode or not
-                             //debug: usize,
-                             //debug2: bool,
+    keybinds: Option<Keybinds>,
 }
 impl App {
     ///initialize a new app, using some default settings (from the constants)
     pub fn new(_cc: &eframe::CreationContext<'_>) -> Self {
         let mut data_storer = DataStorer {
-            data: Vec::new(),
+            puzzles: HashMap::new(),
+            sorted_puzzles: Vec::new(),
             prev_data: Vec::new(),
             top: Vec::new(),
         }; //initialize a new data storer
-        let _ = data_storer.load_puzzles(&String::from("Puzzles/Definitions/"));
-        let p =
-            load_puzzle_and_def_from_file(&(String::from("Puzzles/Definitions/") + DEFAULT_PUZZLE))
-                .unwrap(); //load the default puzzle
+        let _ = data_storer.load_puzzles(
+            "Puzzles/Definitions/",
+            "Configs/Keybinds/Puzzles/",
+            "Configs/Keybinds/groups.kdl",
+        );
+        let p_data = &data_storer.puzzles.get(DEFAULT_PUZZLE).unwrap().clone();
         Self {
             //return
             data_storer,
-            puzzle: p,
+            puzzle: parse_kdl(&p_data.data).unwrap(),
             log_path: String::from("logfile"),
             curr_msg: String::new(),
             animation_speed: ANIMATION_SPEED,
@@ -63,6 +69,14 @@ impl App {
             cut_on_turn: false,
             preview: false,
             rend_correct: false,
+            keybinds: if let Some(kb) = &p_data.keybinds
+                && let Some(gr) = &p_data.keybind_groups
+                && let Some(keybinds) = load_keybinds(&kb, &gr)
+            {
+                Some(keybinds.clone())
+            } else {
+                None
+            },
         }
     }
 }
@@ -115,9 +129,18 @@ impl eframe::App for App {
                     self.curr_msg =
                         String::from("Failed to render side panel or failed to create puzzle!")
                 }
-                Ok(Some(puz)) => {
+                Ok(Some(puzzle_data)) => {
                     //if a puzzle is returned (a button is clicked), load it
-                    self.puzzle = puz;
+                    if let Some(puz) = parse_kdl(&puzzle_data.data) {
+                        self.puzzle = puz;
+                        if let Some(kb) = puzzle_data.keybinds
+                            && let Some(gr) = puzzle_data.keybind_groups
+                            && let Some(keybinds) = load_keybinds(&kb, &gr)
+                        {
+                            dbg!("hi");
+                            self.keybinds = Some(keybinds);
+                        }
+                    }
                 }
                 _ => {}
             }
@@ -198,7 +221,11 @@ impl eframe::App for App {
             }
             //reload the puzzles into the data_storer if they were modifed (doing this every frame is too costly)
             if ui.add(egui::Button::new("RELOAD PUZZLES")).clicked() {
-                let _ = self.data_storer.load_puzzles("Puzzles/Definitions/");
+                let _ = self.data_storer.load_puzzles(
+                    "Puzzles/Definitions/",
+                    "Configs/Keybinds/Puzzles/",
+                    "Configs/Keybinds/groups.kdl",
+                );
             }
             //whether turns should cut
             ui.checkbox(&mut self.cut_on_turn, "Cut on turn?");
@@ -279,6 +306,28 @@ impl eframe::App for App {
                     self.cut_on_turn,
                 ) {
                     self.curr_msg = x;
+                }
+            }
+            //keybinds
+            let ev = ctx.input(|i| i.events.clone());
+            for event in ev {
+                if let Event::Key {
+                    key,
+                    physical_key,
+                    pressed,
+                    repeat: _,
+                    modifiers: _,
+                } = event
+                {
+                    let b = if let Some(p) = physical_key { p } else { key };
+                    if pressed
+                        && let Some(k) = &self.keybinds
+                        && let Some((t, m)) = k.get(&b)
+                    {
+                        if let Err(x) = self.puzzle.turn_id(t.clone(), self.cut_on_turn, *m) {
+                            self.curr_msg = x;
+                        }
+                    }
                 }
             }
             //parse hovering. theres some casework here
