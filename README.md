@@ -1,3 +1,46 @@
+# Overview
+
+general puzzle simulator for circle puzzles. currently supports custom puzzle definitions and keybinds.
+
+# Keybinds
+
+keybinds are configured in the Configs/Keybinds/ folder. there are 2 relevant files you need to touch to implement keybinds for a puzzle.
+
+currently, the `Z` key is reserved for undo. using the `Z` key in your own keybind set is not recommended.
+
+## groups.kdl
+
+in this file, you define 'keybind groups'. these are sets of keybinds for turning around the same circle. groups are declared on different lines within a single 'groups' node.
+
+for instance: 
+
+```
+groups {
+	LEFT F=1 D=-1
+    RIGHT K=1 J=-1
+}
+```
+
+generates two groups. the first such group is called `LEFT`, and the `F` key corresponds to a degree `1` turn around `LEFT`, and the `D` key corresponds to a degree `-1` turn around left.
+
+these groups don't do anything by themselves but are used in the puzzle-specific keybind controls.
+
+two groups can share keys, but using two groups with overlapping keys in the same puzzle will yield undefined results.
+
+## /Puzzles/ keybind files
+
+within the Configs/Keybinds/Puzzles/ folder, you can implement keybinds for specific puzzles using the groups defined in `groups.kdl`.
+
+each distinct 'base' turn in the puzzle (essentially, each circle you can turn around) is corresponded to a group. for instance:
+
+```bind A=LEFT B=RIGHT```
+
+here the `A` turn is corresponded to the `LEFT` group, and the `B` turn to the `RIGHT` group.
+
+in combination with the `groups.kdl` example given above, this will, for instance, mean that a press of the `F` key turns the `A` circle one turn.
+
+the name of the keybind file must be identical to the name of the puzzle file (not the name of the puzzle).
+
 # Puzzle Definition Format
 
 puzzles are defined using the KDL document format. each definition consists of a sequence of commands in an order.
