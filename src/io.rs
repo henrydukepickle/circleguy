@@ -1,5 +1,5 @@
 #[cfg(not(target_arch = "wasm32"))]
-const DEV: bool = false;
+const DEV: bool = true;
 
 use std::fs::*;
 use std::io::Write;
