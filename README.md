@@ -301,17 +301,6 @@ not all commands will always be used, but almost all puzzles will use name, auth
 
 after making and generating your puzzle in the program, if reasonably possible, use the piece counter on the left to ensure that you didn't accidentally create any tiny pieces due to floats not being specified precisely enough.
 
-if for some reason you want to specify a log file, just put "--LOG FILE" in a new line below the definition, followed by a new line, followed by a comma-separated list of twist names. 
-only twists accessible in the puzzle (basic twists defined without ! in the twists { } command) are allowed, and numbers are also not allowed. for instance, it could look like:
-
-```
-[definition]  
---LOG FILE  
-R,L,L,R,R',L,L,L',L,R,R',R,R,R
-```
-
-note the lack of whitespace and terminal comma. only twists actually performed in the program itself are added to the log file--twists done via the 'twist' command are not stored there.
-
 definitions belong in Puzzles/Definitions/ and log files belong in Puzzles/Logs/
 
 please make sure to use the name and author commands in every puzzle definition for organization reasons.
