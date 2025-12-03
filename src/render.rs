@@ -9,8 +9,8 @@ use crate::turn::*;
 use approx_collections::*;
 use cga2d::*;
 use egui::{
-    Color32, Pos2, Rect, Stroke, Ui, Vec2,
-    epaint::{self, PathShape},
+    Color32, Pos2, Rect, Stroke, Ui, Vec2, RichText,
+    epaint::{self, PathShape, FontId},
     pos2, vec2,
 };
 use std::cmp::*;
@@ -477,26 +477,26 @@ impl Puzzle {
 
 impl DataStorer {
     ///render the data panel on the screen and read input for which button is clicked
-    pub fn render_panel(&self, ctx: &egui::Context) -> Result<Option<PuzzleData>, ()> {
+    pub fn render_panel(&mut self, ctx: &egui::Context) -> Result<Option<PuzzleData>, ()> {
         let panel = egui::SidePanel::new(egui::panel::Side::Right, "data_panel").resizable(false); //make the new panel
         let mut puzzle_data = None;
         panel.show(ctx, |ui| {
+            ui.label(RichText::new("Puzzles").font(FontId::proportional(20.0)));
+            //button to reload the puzzles into the data_storer if they were modifed (doing this every frame is too costly)
+            if ui.add(egui::Button::new("Reload Puzzle List")).clicked() {
+                let _ = self.load_puzzles(
+                    "Puzzles/Definitions/",
+                    "Configs/Keybinds/Puzzles/",
+                    "Configs/Keybinds/groups.kdl",
+                );
+            }
+            ui.separator();
             egui::ScrollArea::vertical().show(ui, |ui| {
                 for puz in &self.sorted_puzzles {
                     if ui.add(egui::Button::new(puz.preview.clone())).clicked() {
                         //make the buttons for each puzzle
                         puzzle_data = Some(puz.clone());
                     }
-                }
-                ui.label("Top puzzle contributors:");
-                match self.get_top_authors::<{ crate::data_storer::TOP }>() {
-                    //add the labels for the top 5 puzzle contributors
-                    Ok(top) => {
-                        for t in top {
-                            ui.label(format!("{}: {}", t.0, t.1));
-                        }
-                    }
-                    Err(_) => {}
                 }
             })
         });
