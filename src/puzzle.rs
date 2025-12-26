@@ -1,3 +1,4 @@
+use crate::intern::Interner;
 use crate::piece::*;
 use crate::puzzle_generation::parse_kdl;
 use crate::turn::*;
@@ -20,8 +21,7 @@ pub struct Puzzle {
     pub stack: Vec<(String, isize)>,
     pub scramble: Option<[String; 500]>,
     pub animation_offset: Option<Turn>, //the turn of the puzzle that the animation is currently doing
-    pub intern_2: FloatPool,
-    pub intern_3: FloatPool,
+    pub intern: Interner,
     pub depth: u16,
     pub solved_state: Option<Vec<Piece>>,
     pub solved: bool,

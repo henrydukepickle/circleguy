@@ -64,10 +64,10 @@ pub fn simple_buffer_test() {
             }
         }
     }
-    dbg!(puzzle.intern_3.len());
-    dbg!(&puzzle.intern_3);
-    puzzle.turn_id("A", false, 1);
-    dbg!(puzzle.intern_3.len());
+    // dbg!(puzzle.intern_3.len());
+    // dbg!(&puzzle.intern_3);
+    // puzzle.turn_id("A", false, 1);
+    // dbg!(puzzle.intern_3.len());
     // for i in 0..10000 {
     //     if !puzzle.turn_id("A", false, 1).unwrap() || !puzzle.turn_id("B", false, 1).unwrap() {
     //         panic!("{i}");

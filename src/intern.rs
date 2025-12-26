@@ -46,10 +46,11 @@ use crate::puzzle::Puzzle;
 //     }
 // }
 
+#[derive(Debug, Clone)]
 pub struct Interner {
-    prec: Precision,
-    dipoles: Vec<Blade2>,
-    circles: Vec<Blade3>,
+    pub prec: Precision,
+    pub dipoles: Vec<Blade2>,
+    pub circles: Vec<Blade3>,
 }
 
 impl Interner {
@@ -71,6 +72,13 @@ impl Interner {
         }
         self.circles.push(*blade);
     }
+    pub fn new(prec: Precision) -> Self {
+        Self {
+            prec,
+            dipoles: Vec::new(),
+            circles: Vec::new(),
+        }
+    }
 }
 
 impl Puzzle {
@@ -79,10 +87,9 @@ impl Puzzle {
         for piece in &mut self.pieces {
             for arc in &mut piece.shape.border {
                 *arc = arc.rescale_oriented(); //for each arc, rescale it and then intern both its circle and its boundary (if it exists)
-                self.intern_3.intern_in_place(&mut arc.circle);
-                let len = self.intern_2.len();
+                self.intern.intern_3(&mut arc.circle);
                 if let Some(bound) = &mut arc.boundary {
-                    self.intern_2.intern_in_place(bound);
+                    self.intern.intern_2(bound);
                     // if self.intern_2.len() > len {
                     //     //dbg!(&arc.boundary.unwrap());
                     //     //arc.debug();
@@ -92,7 +99,7 @@ impl Puzzle {
             for circle in &mut piece.shape.bounds {
                 //intern each circle
                 *circle = circle.rescale_oriented();
-                self.intern_3.intern_in_place(circle);
+                self.intern.intern_3(circle);
             }
         }
     }

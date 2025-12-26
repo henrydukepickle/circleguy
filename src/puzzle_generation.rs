@@ -1,6 +1,7 @@
 use crate::POOL_PRECISION;
 use crate::arc::*;
 use crate::circle_utils::*;
+use crate::intern::Interner;
 use crate::io::*;
 use crate::piece::*;
 use crate::piece_shape::*;
@@ -775,8 +776,7 @@ pub fn parse_kdl(string: &str) -> Option<Puzzle> {
         stack: Vec::new(),
         scramble: None,
         animation_offset: None,
-        intern_2: approx_collections::FloatPool::new(POOL_PRECISION),
-        intern_3: approx_collections::FloatPool::new(POOL_PRECISION),
+        intern: Interner::new(POOL_PRECISION),
         depth: 500,
         solved_state: None,
         solved: false,

@@ -140,10 +140,7 @@ impl eframe::App for App {
                 self.puzzle.turn_id("B", false, 2);
             }
             ui.checkbox(&mut self.debug, "LOL");
-            ui.label(self.puzzle.intern_3.len().to_string());
-            if ui.button("FLOATS").clicked() {
-                dbg!(&self.puzzle.intern_2);
-            }
+            ui.label(self.puzzle.intern.dipoles.len().to_string());
             if ui.button("PIECES").clicked() {
                 for piece in &self.puzzle.pieces {
                     for arc in &piece.shape.border {

@@ -19,9 +19,9 @@ use crate::app::*;
 use cga2d::*;
 
 ///used for general purpose
-pub const PRECISION: approx_collections::Precision = Precision::new_simple(16);
+pub const PRECISION: approx_collections::Precision = Precision::new_simple(20);
 ///used for purposes that have been tested to need slightly less precision
-pub const LOW_PRECISION: approx_collections::Precision = Precision::new_simple(12);
+pub const LOW_PRECISION: approx_collections::Precision = Precision::new_simple(16);
 ///used for the float pools from approx
 pub const POOL_PRECISION: approx_collections::Precision = Precision::new(20, 20);
 
