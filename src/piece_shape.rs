@@ -1,4 +1,5 @@
 use crate::LOW_PRECISION;
+use crate::PRECISION;
 use crate::arc::*;
 use crate::circle_utils::*;
 use crate::turn::*;
@@ -32,7 +33,7 @@ pub fn collapse_shape_and_add(
             new_bounding_circles.push(*circ); //add it
         } else {
             //debug some info
-            dbg!(match circ.unpack() {
+            dbg!(match circ.unpack_with_prec(PRECISION) {
                 Circle::Circle { cx, cy, r, ori } => (cx, cy, r, ori),
                 _ =>
                     return Err(
@@ -40,7 +41,7 @@ pub fn collapse_shape_and_add(
                             .to_string()
                     ),
             });
-            dbg!(match new_circle.unpack() {
+            dbg!(match new_circle.unpack_with_prec(PRECISION) {
                 Circle::Circle { cx, cy, r, ori } => (cx, cy, r, ori),
                 _ =>
                     return Err(
@@ -79,9 +80,11 @@ impl PieceShape {
                     //add a new arc
                     circle, //around the circle
                     boundary: Some(
-                        (points[i].to_blade().rescale_unoriented()
-                            ^ points[i + 1].to_blade().rescale_unoriented())
-                        .rescale_oriented(), //the point pair representing points[i] to points[i + 1]
+                        (points[i].to_blade().rescale_unoriented_with_prec(PRECISION)
+                            ^ points[i + 1]
+                                .to_blade()
+                                .rescale_unoriented_with_prec(PRECISION))
+                        .rescale_oriented_with_prec(PRECISION), //the point pair representing points[i] to points[i + 1]
                     ),
                 });
                 if points[i].approx_eq(&points[i + 1], LOW_PRECISION) {
@@ -103,7 +106,13 @@ impl PieceShape {
                 //for each intersection of the arc and the circle
                 if let Some(point) = int {
                     //if the point is something
-                    cut_points.insert(point.rescale_unoriented().unpack().unwrap(), ()); //insert the point to cut_points
+                    cut_points.insert(
+                        point
+                            .rescale_unoriented_with_prec(PRECISION)
+                            .unpack_with_prec(PRECISION)
+                            .unwrap(),
+                        (),
+                    ); //insert the point to cut_points
                 }
             }
             for i in [0, 1] {
@@ -117,7 +126,7 @@ impl PieceShape {
         for arc in &circle_arcs {
             //for each arc in the circle arcs
             if let Some(x) = arc.boundary //if the boundary exists and is tangent, return an error
-                && let Dipole::Tangent(_, _) = x.unpack()
+                && let Dipole::Tangent(_, _) = x.unpack_with_prec(PRECISION)
             {
                 return Err("PieceShape.cut_boundary failed: arc boundary was tangent!".to_string());
             }
@@ -143,7 +152,7 @@ impl PieceShape {
                     None => {
                         dbg!(self.border.len());
                         for arc in &self.border {
-                            match arc.circle.unpack() {
+                            match arc.circle.unpack_with_prec(PRECISION) {
                                 Circle::Circle { cx, cy, r, ori } => {
                                     dbg!((cx, cy, r, ori));
                                 }
@@ -307,9 +316,9 @@ impl PieceShape {
                     return Err("PieceShape.get_components failed: No next arc found!".to_string());
                 }
                 if let Some(x) = curr_arc.boundary //if we've reached the starting point of this component, break and make a new component
-                    && let Dipole::Real(pair) = x.unpack()
+                    && let Dipole::Real(pair) = x.unpack_with_prec(PRECISION)
                     && let Some(y) = curr_comp[0].boundary
-                    && let Dipole::Real(base_pair) = y.unpack()
+                    && let Dipole::Real(base_pair) = y.unpack_with_prec(PRECISION)
                     && pair[1].approx_eq(&base_pair[0], LOW_PRECISION)
                 {
                     break;
@@ -325,8 +334,8 @@ pub fn next_arc(bound: &BoundaryShape, curr: Arc) -> Option<Arc> {
     for arc in bound {
         //iterate over the arcs
         if let Some(boundary) = arc.boundary
-            && let Dipole::Real(real) = boundary.unpack()
-            && let Dipole::Real(real_curr) = curr.boundary?.unpack()
+            && let Dipole::Real(real) = boundary.unpack_with_prec(PRECISION)
+            && let Dipole::Real(real_curr) = curr.boundary?.unpack_with_prec(PRECISION)
             && (real_curr[1].approx_eq(&real[0], LOW_PRECISION))
         {
             //if the end point of curr is the start point of arc, return

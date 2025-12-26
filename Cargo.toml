@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-approx_collections = "3.1.0"
+approx_collections = "3.2.0"
 auto_ops = "0.3.0"
 cga2d = "2.0.0"
 eframe = "0.32.1"
@@ -24,3 +24,6 @@ getrandom = { version = "*", features = ["wasm_js"] }
 
 [profile.release]
 opt-level = 2 # fast and small wasm
+
+[patch.crates-io]
+approx_collections = { git = "https://github.com/HactarCE/approx_collections.git"}

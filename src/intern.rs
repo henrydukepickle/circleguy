@@ -1,6 +1,78 @@
-use cga2d::Multivector;
+use approx_collections::FloatPool;
+use cga2d::{ApproxEq, Blade2, Blade3, Circle, Multivector, Precision};
 
 use crate::puzzle::Puzzle;
+
+// pub struct DipoleInterner {
+//     pub mp: FloatPool,
+//     pub mx: FloatPool,
+//     pub px: FloatPool,
+//     pub my: FloatPool,
+//     pub py: FloatPool,
+//     pub xy: FloatPool,
+// }
+
+// impl DipoleInterner {
+//     pub fn new(prec: Precision) -> Self {
+//         Self {
+//             mp: FloatPool::new(prec),
+//             mx: FloatPool::new(prec),
+//             my: FloatPool::new(prec),
+//             px: FloatPool::new(prec),
+//             py: FloatPool::new(prec),
+//             xy: FloatPool::new(prec),
+//         }
+//     }
+//     fn get_mut_pools(&mut self) -> [&mut FloatPool; 6] {
+//         return [
+//             &mut self.mp,
+//             &mut self.mx,
+//             &mut self.px,
+//             &mut self.my,
+//             &mut self.py,
+//             &mut self.xy,
+//         ];
+//     }
+//     fn get_pools(&self) -> [&FloatPool; 6] {
+//         return [&self.mp, &self.mx, &self.px, &self.my, &self.py, &self.xy];
+//     }
+//     fn intern_dipole(&mut self, dip: &mut Blade2) {}
+//     fn check_dipole(&self, dip: &Blade2) -> bool {
+//         let axes = [&dip.mp, &dip.mx, &dip.px, &dip.my, &dip.py, &dip.xy];
+//         let pools = self.get_pools();
+//         for i in 0..6 {
+//             if pools[i].intern(value)
+//         }
+//     }
+// }
+
+pub struct Interner {
+    prec: Precision,
+    dipoles: Vec<Blade2>,
+    circles: Vec<Blade3>,
+}
+
+impl Interner {
+    pub fn intern_2(&mut self, blade: &mut Blade2) {
+        for b in &self.dipoles {
+            if b.approx_eq(blade, self.prec) {
+                *blade = *b;
+                return;
+            }
+        }
+        self.dipoles.push(*blade);
+    }
+    pub fn intern_3(&mut self, blade: &mut Blade3) {
+        for b in &self.circles {
+            if b.approx_eq(blade, self.prec) {
+                *blade = *b;
+                return;
+            }
+        }
+        self.circles.push(*blade);
+    }
+}
+
 impl Puzzle {
     ///intern all the relevant floats in the puzzle into the 2 float pools
     pub fn intern_all(&mut self) {
@@ -8,14 +80,19 @@ impl Puzzle {
             for arc in &mut piece.shape.border {
                 *arc = arc.rescale_oriented(); //for each arc, rescale it and then intern both its circle and its boundary (if it exists)
                 self.intern_3.intern_in_place(&mut arc.circle);
-                if arc.boundary.is_some() {
-                    self.intern_2.intern_in_place(&mut arc.boundary.unwrap());
+                let len = self.intern_2.len();
+                if let Some(bound) = &mut arc.boundary {
+                    self.intern_2.intern_in_place(bound);
+                    // if self.intern_2.len() > len {
+                    //     //dbg!(&arc.boundary.unwrap());
+                    //     //arc.debug();
+                    // }
                 }
             }
-            for mut circle in &mut piece.shape.bounds {
+            for circle in &mut piece.shape.bounds {
                 //intern each circle
                 *circle = circle.rescale_oriented();
-                self.intern_3.intern_in_place(&mut circle);
+                self.intern_3.intern_in_place(circle);
             }
         }
     }

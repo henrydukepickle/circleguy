@@ -1,0 +1,23 @@
+name "Fluorine"
+author "Henry Pickle"
+circles {
+     L x=-0.5 y=0.0 r=0.8
+     R x=0.5 y=0.0 r=0.6
+}
+base L R
+twists {
+     L L 9
+     R R 3
+}
+cut L* R
+cut R* L R
+cut R* L' R
+color BLUE R
+twist L3
+color BLUE R
+twist L3
+color BLUE R
+undo *
+logfilebreak
+scramble "R,R,R,R,L,R,L,R,L,L,R,L,L,R,R,R,L,R,L,R,R,R,R,L,R,R,R,R,R,L,L,L,L,L,R,R,R,R,R,L,R,R,R,R,L,R,L,R,R,L,L,L,L,L,R,L,L,L,R,L,R,R,L,L,L,L,L,R,R,R,R,R,L,R,R,L,R,L,L,L,L,L,L,R,L,L,L,R,R,L,R,L,R,R,L,R,R,L,R,R,L,L,R,R,L,L,R,R,R,R,R,L,R,R,R,R,L,R,R,R,L,L,R,R,R,R,R,L,L,L,R,L,R,L,L,L,L,L,L,L,R,L,R,L,R,L,R,R,R,R,L,L,L,R,L,R,R,L,R,R,R,R,L,L,R,R,L,R,R,R,L,R,R,R,R,L,R,R,R,L,L,R,R,L,R,R,L,L,R,L,R,R,L,R,R,R,L,L,R,R,R,R,L,L,L,R,L,R,L,L,L,L,L,R,L,R,R,R,R,R,L,R,L,R,R,R,R,R,L,L,R,L,L,R,R,R,L,L,L,L,L,R,L,R,R,R,R,L,L,R,R,R,R,R,R,L,R,L,R,L,L,R,R,R,L,R,R,R,R,R,R,R,R,L,R,L,R,R,L,L,L,L,R,R,R,L,R,R,L,R,L,R,L,R,L,L,R,R,L,L,R,L,L,R,R,L,L,R,R,R,L,R,R,R,L,L,R,R,L,R,R,R,L,R,L,L,R,L,L,L,R,L,L,L,L,R,R,R,L,L,L,L,L,L,R,R,L,R,R,R,L,R,R,R,R,R,L,L,L,L,L,L,R,L,L,L,L,L,L,L,R,R,L,R,R,R,L,L,L,L,R,R,L,L,R,L,R,L,L,R,L,L,R,L,R,R,R,L,L,R,R,L,R,R,R,L,L,R,R,R,R,R,R,L,R,R,L,L,R,R,R,L,L,L,R,L,R,R,L,L,R,L,R,R,L,L,R,L,L,R,L,R,R,R,R,L,L,R,L,R,R,R,R,L,R,L,L,L,R,L,L,R,R,R,R,L,L,L,R,L,L,L,R,L,L,L,R,R,L,R,R,L,R,R,L,L,L,L,R,R,L,R,L,R,R,L,R,R,R,L"
+solve "L1',R1,L1,L1,R1,R1,R1,R1,R1,R1,R1,R1,R1,R1,R1,R1,R1,R1,R1,R1,R1,R1,R1,R1,R1,R1,R1"

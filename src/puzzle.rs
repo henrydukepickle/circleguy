@@ -57,18 +57,19 @@ impl Puzzle {
         self.anim_left = 1.0; //set the animation to run
         self.animation_offset = Some(turn.inverse());
         self.intern_all(); //intern everything
+        //dbg!(self.intern_2.len());
         Ok(true)
     }
     ///turns the puzzle around a turn, given by an id. cuts along the turn first if cut is true.
-    ///if the turn was completed, returns Ok(true)
-    ///if the turn was bandaged (and cut was false), returns Ok(false)
+    ///if the turn was completed, returns Ok(true).
+    ///if the turn was bandaged (and cut was false), returns Ok(false).
     ///if an error was encountered, returns Err(e) where e was the error
-    pub fn turn_id(&mut self, id: String, cut: bool, mult: isize) -> Result<bool, String> {
-        let turn = mult * self.base_turns[&id];
+    pub fn turn_id(&mut self, id: &str, cut: bool, mult: isize) -> Result<bool, String> {
+        let turn = mult * self.base_turns[id];
         if !self.turn(turn, cut)? {
             return Ok(false);
         }
-        self.stack.push((id, mult));
+        self.stack.push((id.to_string(), mult));
         Ok(true)
     }
     ///undoes the last turn.
@@ -88,7 +89,7 @@ impl Puzzle {
     }
     ///scramble the puzzle 500 moves
     pub fn scramble(&mut self, cut: bool) -> Result<(), String> {
-        self.reset()?;
+        //self.reset()?;
         let mut scramble = array::from_fn(|_| "".to_string()); //used to track the scramble
         let mut h = DefaultHasher::new();
         Instant::now().hash(&mut h);

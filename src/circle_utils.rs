@@ -9,6 +9,16 @@ pub enum Contains {
     Outside,
     Border,
 }
+
+pub fn debug_circ(circ: Blade3) {
+    dbg!(match circ.unpack_with_prec(PRECISION) {
+        Circle::Circle { cx, cy, r, ori } => {
+            dbg!(cx, cy, r, ori);
+        }
+        _ => {}
+    })
+}
+
 ///given two circles, tells whether the border of c2 lies inside the border of c1. if they intersect, returns Border.
 ///aeq circles will return Border
 pub fn circ_border_inside_circ(c1: Blade3, c2: Blade3) -> Contains {
@@ -32,7 +42,7 @@ pub fn circ_border_inside_circ(c1: Blade3, c2: Blade3) -> Contains {
 pub fn circle_contains(circ: Blade3, point: Blade1) -> Contains {
     contains_from_metric_prec(
         //wedge the point with the circle and take the sign of the dual
-        !(circ.rescale_oriented() ^ point.rescale_oriented()),
+        !(circ.rescale_oriented_with_prec(PRECISION) ^ point.rescale_oriented_with_prec(PRECISION)),
         LOW_PRECISION,
     )
 }

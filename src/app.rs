@@ -19,7 +19,7 @@ Luna Harran (sonicpineapple)
 Andrew Farkas (HactarCE)
 ";
 ///default puzzle loaded when the program is opened
-const DEFAULT_PUZZLE: &str = "55stars.kdl";
+const DEFAULT_PUZZLE: &str = "piecetype.kdl";
 
 #[derive(Debug, Clone)]
 ///used for running the app. contains all puzzle and view data at runtime
@@ -38,6 +38,7 @@ pub struct App {
     preview: bool,           //whether the solved state is being previewed
     rend_correct: bool,      //whether rendering is being done in correct mode or not
     keybinds: Option<Keybinds>,
+    debug: bool,
 }
 impl App {
     ///initialize a new app, using some default settings (from the constants)
@@ -55,7 +56,7 @@ impl App {
         );
         let p_data = &data_storer.puzzles.get(DEFAULT_PUZZLE).unwrap().clone();
         Self {
-            //return
+            //return the default app
             data_storer,
             puzzle: parse_kdl(&p_data.data).unwrap(),
             log_path: String::from("logfile"),
@@ -69,6 +70,7 @@ impl App {
             cut_on_turn: false,
             preview: false,
             rend_correct: false,
+            debug: false,
             keybinds: if let Some(kb) = &p_data.keybinds
                 && let Some(gr) = &p_data.keybind_groups
                 && let Some(keybinds) = load_keybinds(&kb, &gr)
@@ -99,29 +101,55 @@ impl eframe::App for App {
                     self.curr_msg = x;
                 }
             } else {
-                match &mut self.puzzle.solved_state {
-                    Some(p) => {
-                        for piece in p {
-                            if let Err(x) = piece.render(
-                                ui,
-                                &rect,
-                                None,
-                                self.detail,
-                                self.outline_width,
-                                self.scale_factor,
-                                self.offset,
-                                self.rend_correct,
-                            ) {
-                                self.curr_msg = x;
-                            }
-                        }
-                    }
-                    None => {
-                        self.curr_msg =
-                            String::from("Error in App.update: could not generate puzzle preview!")
+                self.puzzle.pieces[2].render(
+                    ui,
+                    &rect,
+                    None,
+                    self.detail,
+                    self.outline_width,
+                    self.scale_factor,
+                    self.offset,
+                    false,
+                );
+                // match &mut self.puzzle.solved_state {
+                //     Some(p) => {
+                //         for piece in p {
+                //             if let Err(x) = piece.render(
+                //                 ui,
+                //                 &rect,
+                //                 None,
+                //                 self.detail,
+                //                 self.outline_width,
+                //                 self.scale_factor,
+                //                 self.offset,
+                //                 self.rend_correct,
+                //             ) {
+                //                 self.curr_msg = x;
+                //             }
+                //         }
+                //     }
+                //     None => {
+                //         self.curr_msg =
+                //             String::from("Error in App.update: could not generate puzzle preview!")
+                //     }
+                // }
+                //if the puzzle is in preview mode, render all of the pieces of the solved state
+            }
+            if self.debug {
+                self.puzzle.turn_id("A", false, 1);
+                self.puzzle.turn_id("B", false, 2);
+            }
+            ui.checkbox(&mut self.debug, "LOL");
+            ui.label(self.puzzle.intern_3.len().to_string());
+            if ui.button("FLOATS").clicked() {
+                dbg!(&self.puzzle.intern_2);
+            }
+            if ui.button("PIECES").clicked() {
+                for piece in &self.puzzle.pieces {
+                    for arc in &piece.shape.border {
+                        dbg!(arc.boundary);
                     }
                 }
-                //if the puzzle is in preview mode, render all of the pieces of the solved state
             }
             //render the data storer panel -- this stores all of the puzzles that you can load
             match self.data_storer.render_panel(ctx) {
@@ -323,7 +351,7 @@ impl eframe::App for App {
                         && let Some(k) = &self.keybinds
                         && let Some((t, m)) = k.get(&b)
                     {
-                        if let Err(x) = self.puzzle.turn_id(t.clone(), self.cut_on_turn, *m) {
+                        if let Err(x) = self.puzzle.turn_id(&t, self.cut_on_turn, *m) {
                             self.curr_msg = x;
                         }
                     }

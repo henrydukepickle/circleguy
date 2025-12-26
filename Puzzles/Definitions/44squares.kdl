@@ -1,7 +1,7 @@
 name "Squares"
 author "Henry Pickle"
 vars {
-	d "-0.5"
+	d "-0.4"
 }
 circles {
 	A x="d" y=0.0 r=0.8

@@ -432,9 +432,9 @@ impl Puzzle {
         }
         if !left {
             //invert based on the type of click
-            Ok(self.turn_id(correct_id, cut, 1)?)
+            Ok(self.turn_id(&correct_id, cut, 1)?)
         } else {
-            Ok(self.turn_id(correct_id, cut, -1)?)
+            Ok(self.turn_id(&correct_id, cut, -1)?)
         }
     }
     ///get the circle hovered by the mouse

@@ -21,5 +21,6 @@ twists {
 compounds {
 	AB A B
 }
-cut SYM* A* B* C* AB5
+cut A* B* C* AB5
+cut SYM A* B* C* AB5
 color BLUE A B C D

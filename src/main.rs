@@ -11,17 +11,19 @@ pub mod piece_shape;
 pub mod puzzle;
 pub mod puzzle_generation;
 pub mod render;
+#[cfg(test)]
+pub mod testing;
 pub mod turn;
 use crate::app::*;
 
 use cga2d::*;
 
 ///used for general purpose
-pub const PRECISION: approx_collections::Precision = Precision::new_simple(20);
+pub const PRECISION: approx_collections::Precision = Precision::new_simple(16);
 ///used for purposes that have been tested to need slightly less precision
-pub const LOW_PRECISION: approx_collections::Precision = Precision::new_simple(16);
+pub const LOW_PRECISION: approx_collections::Precision = Precision::new_simple(12);
 ///used for the float pools from approx
-pub const POOL_PRECISION: approx_collections::Precision = Precision::new_simple(26);
+pub const POOL_PRECISION: approx_collections::Precision = Precision::new(20, 20);
 
 // When compiling natively:
 #[cfg(not(target_arch = "wasm32"))]
@@ -78,18 +80,7 @@ fn main() {
     });
 }
 
-#[cfg(test)]
-mod tests {
-    use crate::puzzle_generation::load_puzzle_and_def_from_file;
+// #[cfg(test)]
+// pub mod tests {
 
-    #[test]
-    fn test_name() {
-        assert_eq!(
-            load_puzzle_and_def_from_file(&"Puzzles/Definitions/666666ring_deep.kdl".to_string())
-                .unwrap()
-                .pieces
-                .len(),
-            301
-        )
-    }
-}
+// }

@@ -11,6 +11,26 @@ pub struct Arc {
     pub boundary: Option<Blade2>,
 }
 impl Arc {
+    pub fn debug(&self) {
+        debug_circ(self.circle);
+        match self.boundary {
+            None => {
+                dbg!("None");
+            }
+            Some(x) => match x.unpack_with_prec(PRECISION) {
+                Dipole::Real(a) => {
+                    dbg!(a);
+                }
+                Dipole::Tangent(p, d) => {
+                    dbg!("tangent: ");
+                    dbg!((p, d));
+                }
+                Dipole::Imaginary(_) => {
+                    dbg!("imaginary.");
+                }
+            },
+        }
+    }
     ///check if an arc contains a point, None means that the point is not even on the circle of the arc
     pub fn contains(&self, point: Blade1) -> Result<Option<Contains>, String> {
         if circle_contains(self.circle, point) != Contains::Border {
@@ -21,11 +41,11 @@ impl Arc {
             //if the boundary doesnt exist, the arc is a circle and the point is in the circle
             return Ok(Some(Contains::Inside));
         }
-        if let Dipole::Real(real) = self.boundary.unwrap().unpack() {
+        if let Dipole::Real(real) = self.boundary.unwrap().unpack_with_prec(PRECISION) {
             //if the boundary is real, unpack it
             for p in real {
                 //for each point in the dipole
-                if let Some(x) = point.unpack() {
+                if let Some(x) = point.unpack_with_prec(PRECISION) {
                     //unpack it
                     if x.approx_eq(&p, LOW_PRECISION) {
                         //if the point is approximately equal to the boundary, return border
@@ -48,8 +68,9 @@ impl Arc {
             //if the circle and self.circle are approximately the same, return None twice
             return Ok([None; 2]);
         }
-        match (self.circle.rescale_oriented() & circle.rescale_oriented())
-            .unpack_with_prec(PRECISION)
+        match (self.circle.rescale_oriented_with_prec(PRECISION)
+            & circle.rescale_oriented_with_prec(PRECISION))
+        .unpack_with_prec(PRECISION)
         {
             Dipole::Real(int_points) => {
                 //if there are two intersection points
@@ -71,18 +92,25 @@ impl Arc {
                 None => {
                     //if its not on the circle, debug and return an error
                     dbg!(p);
-                    match self.circle.unpack() {
+                    match self.circle.unpack_with_prec(PRECISION) {
                         Circle::Circle { cx, cy, r, ori } => {
                             dbg!((cx, cy, r, ori));
                         }
                         _ => panic!("L"),
                     }
-                    match circle.unpack() {
+                    match self.boundary.unwrap().unpack_with_prec(PRECISION) {
+                        Dipole::Real(a) => {
+                            dbg!(a);
+                        }
+                        _ => panic!("lmao"),
+                    }
+                    match circle.unpack_with_prec(PRECISION) {
                         Circle::Circle { cx, cy, r, ori } => {
                             dbg!((cx, cy, r, ori));
                         }
                         _ => panic!("L"),
                     }
+                    self.debug();
                     Err(
                         "Arc.intersect_circle failed: intersection point is not on arc.circle!"
                             .to_string(),
@@ -95,10 +123,10 @@ impl Arc {
     ///rescale_oriented an arc, essentially according to the cga2d algorithm
     pub fn rescale_oriented(&self) -> Self {
         Self {
-            circle: self.circle.rescale_oriented(),
+            circle: self.circle.rescale_oriented_with_prec(PRECISION),
             boundary: match self.boundary {
                 None => None,
-                Some(x) => Some(x.rescale_oriented()),
+                Some(x) => Some(x.rescale_oriented_with_prec(PRECISION)),
             },
         }
     }
@@ -115,10 +143,10 @@ impl Arc {
         let mut sorted_arcs = [Vec::new(), Vec::new()];
         let mut segments = Vec::new();
         let mut new_points: Vec<Blade1> = Vec::new();
-        // if let Circle::Circle { cx, cy, r, ori } = circle.unpack() {
+        // if let Circle::Circle { cx, cy, r, ori } = circle.unpack_with_prec(PRECISION) {
         //     dbg!((cx, cy, r, ori));
         // }
-        // if let Circle::Circle { cx, cy, r, ori } = self.circle.unpack() {
+        // if let Circle::Circle { cx, cy, r, ori } = self.circle.unpack_with_prec(PRECISION) {
         //     dbg!((cx, cy, r, ori));
         // }
         match (circle & self.circle).unpack_with_prec(LOW_PRECISION) {
@@ -133,14 +161,14 @@ impl Arc {
                     }
                 }
                 for point in &mut new_points {
-                    *point = point.rescale_oriented();
+                    *point = point.rescale_oriented_with_prec(PRECISION);
                 }
                 if new_points.is_empty() {
                     segments = vec![*self];
                 } else {
                     let mut base = new_points[0];
                     if let Some(x) = self.boundary {
-                        if let Dipole::Real(r) = x.unpack() {
+                        if let Dipole::Real(r) = x.unpack_with_prec(PRECISION) {
                             base = r[0].into();
                         } else {
                             return Err(
@@ -153,14 +181,14 @@ impl Arc {
                     if let Some(x) = self.boundary {
                         new_points.insert(
                             0,
-                            match x.unpack() {
+                            match x.unpack_with_prec(PRECISION) {
                                 Dipole::Real(r) => r[0].into(),
                                 _ => return Err(
                             "Arc.cut_by_circle failed: arc boundary was tangent or imaginary! (2)".to_string()
                         ),
                             },
                         );
-                        new_points.push(match x.unpack() {
+                        new_points.push(match x.unpack_with_prec(PRECISION) {
                             Dipole::Real(r) => r[1].into(),
                             _ => return Err(
                             "Arc.cut_by_circle failed: arc boundary was tangent or imaginary! (3)".to_string()
@@ -174,16 +202,16 @@ impl Arc {
                         let arc = Arc {
                             circle: self.circle,
                             boundary: Some(
-                                (new_points[i].rescale_unoriented()
-                                    ^ new_points[i + 1].rescale_unoriented())
-                                .rescale_oriented(),
+                                (new_points[i].rescale_unoriented_with_prec(PRECISION)
+                                    ^ new_points[i + 1].rescale_unoriented_with_prec(PRECISION))
+                                .rescale_oriented_with_prec(PRECISION),
                             ),
                         };
                         if let Some(x) = arc.boundary
-                            && let Dipole::Tangent(_, _) = x.unpack()
+                            && let Dipole::Tangent(_, _) = x.unpack_with_prec(PRECISION)
                         {
-                            // dbg!(new_points[i].unpack().unwrap());
-                            // dbg!(new_points[i + 1].unpack().unwrap());
+                            // dbg!(new_points[i].unpack_with_prec(PRECISION).unwrap());
+                            // dbg!(new_points[i + 1].unpack_with_prec(PRECISION).unwrap());
                             return Err(
                             "Arc.cut_by_circle failed: arc boundary was tangent or imaginary! (4)".to_string()
                         );
@@ -196,7 +224,7 @@ impl Arc {
         }
         for arc in segments {
             if let Some(x) = arc.boundary
-                && let Dipole::Tangent(_, _) = x.unpack()
+                && let Dipole::Tangent(_, _) = x.unpack_with_prec(PRECISION)
             {
                 return Err("Arc.cut_by_circle failed: arc.boundary was tangent!".to_string());
             }
@@ -204,24 +232,24 @@ impl Arc {
             //dbg!(circle);
             match arc.in_circle(circle)? {
                 None => {
-                    dbg!(arc);
-                    // dbg!(match arc.boundary.unwrap().unpack() {
+                    self.debug();
+                    // dbg!(match arc.boundary.unwrap().unpack_with_prec(PRECISION) {
                     //     Dipole::Real(r) => r,
                     //     _ => panic!("hi"),
                     // });
-                    // dbg!(match arc.circle.unpack() {
+                    // dbg!(match arc.circle.unpack_with_prec(PRECISION) {
                     //     Circle::Circle { cx, cy, r, ori } => (cx, cy, r, ori),
                     //     _ => panic!("hi"),
                     // });
-                    // dbg!(match circle.unpack() {
+                    // dbg!(match circle.unpack_with_prec(PRECISION) {
                     //     Circle::Circle { cx, cy, r, ori } => (cx, cy, r, ori),
                     //     _ => panic!("hi"),
                     // });
                     // if arc.intersect_circle(circle)[0].is_some() {
-                    //     dbg!(arc.intersect_circle(circle)[0].unwrap().unpack());
+                    //     dbg!(arc.intersect_circle(circle)[0].unwrap().unpack_with_prec(PRECISION));
                     // }
                     // if arc.intersect_circle(circle)[1].is_some() {
-                    //     dbg!(arc.intersect_circle(circle)[0].unwrap().unpack());
+                    //     dbg!(arc.intersect_circle(circle)[0].unwrap().unpack_with_prec(PRECISION));
                     // }
                     dbg!(circle);
                     return Err("Arc.cut_by_circle failed: cut arc piece still overlaps properly with circle!".to_string());
@@ -262,9 +290,11 @@ impl Arc {
         Arc {
             boundary: match self.boundary {
                 None => None,
-                Some(x) => Some(rot.sandwich(x).rescale_oriented()),
+                Some(x) => Some(rot.sandwich(x).rescale_oriented_with_prec(PRECISION)),
             },
-            circle: rot.sandwich(self.circle).rescale_oriented(),
+            circle: rot
+                .sandwich(self.circle)
+                .rescale_oriented_with_prec(PRECISION),
         }
     }
     ///determines if the arc lies in a circle.
@@ -281,7 +311,7 @@ impl Arc {
                 if self.boundary == None || self.contains_either_properly(real_intersect)? {
                     return Ok(None);
                 } //if the intersection is real, and the arc contains either of the intersection points, return None
-                let boundary_points = match self.boundary.unwrap().unpack() {
+                let boundary_points = match self.boundary.unwrap().unpack_with_prec(PRECISION) {
                     //check the boundary points
                     Dipole::Real(points) => points,
                     _ => {

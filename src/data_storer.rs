@@ -82,6 +82,7 @@ impl DataStorer {
         kb_group_path: &str,
     ) -> Result<(), ()> {
         self.puzzles = HashMap::new();
+        self.sorted_puzzles = Vec::new();
         let paths = read_dir(def_path).or(Err(()))?.into_iter(); //get the paths to puzzles
         for path in paths {
             let filename = path.or(Err(()))?.file_name().into_string().or(Err(()))?;

@@ -31,6 +31,8 @@ impl Puzzle {
     #[cfg(not(target_arch = "wasm32"))]
     ///write the puzzle state to a file (for saving purposes)
     pub fn write_to_file(&self, path: &str) -> Result<(), std::io::Error> {
+        use std::fs;
+
         let curr_path = match DEV {
             //where the path is depends on if the program is being compiled or run in an EXE removed from the original folder. the DEV constant handles this
             false => String::from(
@@ -46,18 +48,19 @@ impl Puzzle {
             true => String::new(),
         };
         let real_path = curr_path + path; //add the path to the base path
-        let mut buffer = OpenOptions::new()
-            .write(true)
-            .create(true)
-            .open(real_path)?; //open the file. if it doesnt exist, create it
-        buffer.write_all(self.get_puzzle_string().as_bytes())?; //write the data
+        // let mut buffer = OpenOptions::new()
+        //     .write(true)
+        //     .create(true)
+        //     .open(real_path)?; //open the file. if it doesnt exist, create it
+        // buffer.write_all(self.get_puzzle_string().as_bytes())?; //write the data
+        fs::write(real_path, self.get_puzzle_string().as_bytes())?;
         Ok(())
     }
 }
 
 #[cfg(not(target_arch = "wasm32"))]
 ///read a file to a string for loading purposes
-pub fn read_file_to_string(path: &String) -> std::io::Result<String> {
+pub fn read_file_to_string(path: &str) -> std::io::Result<String> {
     let curr_path = match DEV {
         //where the path is depends on if the program is being compiled or run in an EXE removed from the original folder. the DEV constant handles this
         false => String::from(

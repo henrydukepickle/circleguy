@@ -166,10 +166,9 @@ impl Puzzle {
     ///Err(e) means that the cutting failed somehow
     ///only pieces within 'region' are cut
     fn cut(&mut self, cut: &Cut, region: &Region) -> Result<(), String> {
-        let mut p2 = self.clone();
         let mut new_pieces = Vec::new();
         let mut old_pieces = Vec::new();
-        for piece in &p2.pieces {
+        for piece in &self.pieces {
             //cut each piece
             if piece
                 .shape
@@ -183,22 +182,21 @@ impl Puzzle {
             }
         }
         //set the pieces to the pieces within the relevant region
-        p2.pieces = new_pieces;
+        self.pieces = new_pieces;
         for turn in cut {
-            if !p2.turn(*turn, true)? {
+            if !self.turn(*turn, true)? {
                 return Err(String::from(
                     "Puzzle.cut failed: turn was cut but still bandaged! (1)",
                 ));
             };
         } //perform all the cut turns on the relevant pieces
         for turn in cut.clone().into_iter().rev() {
-            if !p2.turn(turn.inverse(), false)? {
+            if !self.turn(turn.inverse(), false)? {
                 return Err(String::from(
                     "Puzzle.cut failed: undoing the cut turns ran into bandaging!",
                 ));
             };
         } //undo them
-        self.pieces = p2.pieces;
         self.pieces.extend(old_pieces); //add back the old pieces
         Ok(())
     }
@@ -302,7 +300,7 @@ fn make_basic_puzzle(disks: Vec<Blade3>) -> Result<Result<Vec<Piece>, ()>, Strin
 ///load a puzzle from a file
 ///
 ///needs a .kdl at the end, but is a relative path
-pub fn load_puzzle_and_def_from_file(path: &String) -> Option<Puzzle> {
+pub fn load_puzzle_and_def_from_file(path: &str) -> Option<Puzzle> {
     let contents = read_file_to_string(path).ok()?;
     return Some(parse_kdl(&contents.clone())?);
 }
