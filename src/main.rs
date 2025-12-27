@@ -1,22 +1,9 @@
 //#![windows_subsystem = "windows"]
 pub mod app;
-pub mod arc;
-pub mod circle_utils;
-pub mod data_storer;
-pub mod intern;
-pub mod io;
-pub mod keybinds;
-pub mod piece;
-pub mod piece_shape;
+pub mod complex;
 pub mod puzzle;
-pub mod puzzle_generation;
-pub mod render;
-#[cfg(test)]
-pub mod testing;
-pub mod turn;
+pub mod ui;
 use crate::app::*;
-
-use cga2d::*;
 
 ///used for general purpose
 pub const PRECISION: approx_collections::Precision = Precision::new_simple(20);

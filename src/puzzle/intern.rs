@@ -1,7 +1,6 @@
 use approx_collections::FloatPool;
-use cga2d::{ApproxEq, Blade2, Blade3, Circle, Multivector, Precision};
 
-use crate::puzzle::Puzzle;
+use crate::puzzle::puzzle::Puzzle;
 
 // pub struct DipoleInterner {
 //     pub mp: FloatPool,
@@ -46,60 +45,22 @@ use crate::puzzle::Puzzle;
 //     }
 // }
 
-#[derive(Debug, Clone)]
-pub struct Interner {
-    pub prec: Precision,
-    pub dipoles: Vec<Blade2>,
-    pub circles: Vec<Blade3>,
-}
-
-impl Interner {
-    pub fn intern_2(&mut self, blade: &mut Blade2) {
-        for b in &self.dipoles {
-            if b.approx_eq(blade, self.prec) {
-                *blade = *b;
-                return;
-            }
-        }
-        self.dipoles.push(*blade);
-    }
-    pub fn intern_3(&mut self, blade: &mut Blade3) {
-        for b in &self.circles {
-            if b.approx_eq(blade, self.prec) {
-                *blade = *b;
-                return;
-            }
-        }
-        self.circles.push(*blade);
-    }
-    pub fn new(prec: Precision) -> Self {
-        Self {
-            prec,
-            dipoles: Vec::new(),
-            circles: Vec::new(),
-        }
-    }
-}
-
 impl Puzzle {
     ///intern all the relevant floats in the puzzle into the 2 float pools
     pub fn intern_all(&mut self) {
         for piece in &mut self.pieces {
             for arc in &mut piece.shape.border {
-                *arc = arc.rescale_oriented(); //for each arc, rescale it and then intern both its circle and its boundary (if it exists)
-                self.intern.intern_3(&mut arc.circle);
-                if let Some(bound) = &mut arc.boundary {
-                    self.intern.intern_2(bound);
-                    // if self.intern_2.len() > len {
-                    //     //dbg!(&arc.boundary.unwrap());
-                    //     //arc.debug();
-                    // }
-                }
+                self.intern.intern_in_place(&mut arc.circle.center.re);
+                self.intern.intern_in_place(&mut arc.circle.center.im);
+                self.intern.intern_in_place(&mut arc.circle.r_sq);
+                self.intern.intern_in_place(&mut arc.start.re);
+                self.intern.intern_in_place(&mut arc.start.im);
+                self.intern.intern_in_place(&mut arc.angle);
             }
             for circle in &mut piece.shape.bounds {
-                //intern each circle
-                *circle = circle.rescale_oriented();
-                self.intern.intern_3(circle);
+                self.intern.intern_in_place(&mut circle.circ.center.re);
+                self.intern.intern_in_place(&mut circle.circ.center.im);
+                self.intern.intern_in_place(&mut circle.circ.r_sq);
             }
         }
     }

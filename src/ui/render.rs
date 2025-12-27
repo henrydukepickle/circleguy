@@ -1,13 +1,12 @@
 use crate::PRECISION;
-use crate::arc::*;
-use crate::circle_utils::*;
-use crate::data_storer::DataStorer;
-use crate::data_storer::PuzzleData;
-use crate::piece::*;
-use crate::puzzle::*;
-use crate::turn::*;
+use crate::complex::arc::*;
+use crate::complex::c64::Point;
+use crate::puzzle::piece::*;
+use crate::puzzle::puzzle::*;
+use crate::puzzle::turn::*;
+use crate::ui::data_storer::DataStorer;
+use crate::ui::data_storer::PuzzleData;
 use approx_collections::*;
-use cga2d::*;
 use egui::{
     Color32, Pos2, Rect, Stroke, Ui, Vec2,
     epaint::{self, PathShape},
@@ -15,6 +14,14 @@ use egui::{
 };
 use std::cmp::*;
 use std::f32::consts::PI;
+
+pub struct RenderingCircle {
+    pub cent: Pos2,
+    pub rad: f32,
+}
+
+pub type RenderingPoint = Pos2;
+
 fn aeq_pos(p1: Pos2, p2: Pos2) -> bool {
     p1.x.approx_eq(&p2.x, PRECISION) && p1.y.approx_eq(&p2.y, PRECISION)
 }
@@ -107,6 +114,12 @@ fn euc_center_rad(circ: Blade3) -> Result<(Pos2, f32), String> {
         }
     };
 }
+impl Point {
+    pub fn to_pos2(&self) -> Pos2 {
+        pos2(self.re as f32, self.im as f32)
+    }
+}
+
 impl Arc {
     ///draws an arc (the outline) in OUTLINE_COLOR, according to the parameters passed
     fn draw(
@@ -119,7 +132,7 @@ impl Arc {
         offset_pos: Vec2,
     ) -> Result<(), String> {
         let size =
-            self.angle_euc()?.abs() as f32 * euc_center_rad(self.circle)?.1 * DETAIL_FACTOR as f32; //get the absolute size of the arc, to measure how finely we need to render it
+            self.angle_euc().abs() as f32 * euc_center_rad(self.circle)?.1 * DETAIL_FACTOR as f32; //get the absolute size of the arc, to measure how finely we need to render it
         let divisions = (size * detail * DETAIL as f32).max(2.0) as u16; //find the number of divisions we do for the arc
         let mut coords = Vec::new();
         for pos in self.get_polygon(divisions)? {
@@ -133,38 +146,22 @@ impl Arc {
     ///gets the polygon representation of an arc for rendering its outline and for triangulation
     fn get_polygon(&self, divisions: u16) -> Result<Vec<Pos2>, String> {
         let mut points: Vec<Pos2> = Vec::new();
-        let start_point = match self.boundary {
-            //pick an arbitrary start point
-            None => euc_center_rad(self.circle)?.0 + vec2(0.0, euc_center_rad(self.circle)?.1),
-            Some(b2) => {
-                if let Dipole::Real(real) = b2.unpack()
-                    && let Point::Finite([x, y]) = real[0]
-                {
-                    pos2(x as f32, y as f32)
-                } else {
-                    return Err(
-                        "Arc.get_polygon failed: Arc boundary was infinite or not real!"
-                            .to_string(),
-                    );
-                }
-            }
-        };
-        let angle = self.angle_euc()? as f32; //take the angle of the arc
+        let start_point = self.start;
+        let angle = self.angle_euc(); //take the angle of the arc
         let inc_angle = angle / (divisions as f32);
-        points.push(start_point);
-        for i in 1..=divisions {
+        for i in 0..=divisions {
             //increment the angle and take points
-            points.push(rotate_about(
-                euc_center_rad(self.circle)?.0,
-                start_point,
-                inc_angle * (i as f32),
-            ));
+            points.push(
+                start_point
+                    .rotate_about(self.circle.center, (inc_angle as f64) * (i as f64))
+                    .to_pos2(),
+            );
         }
         return Ok(points);
     }
     ///triangulate the arc with respect to a given center
     fn triangulate(&self, center: Pos2, detail: f32) -> Result<Vec<Vec<Pos2>>, String> {
-        let size = self.angle_euc()?.abs() as f32 * euc_center_rad(self.circle)?.1;
+        let size = self.angle_euc().abs() as f32 * euc_center_rad(self.circle)?.1;
         let div = (detail * size * DETAIL as f32).max(2.0) as u16; //get the absolute size and use it to determine the level of detail
         let polygon = self.get_polygon(div)?;
         let mut triangles = Vec::new();
@@ -175,67 +172,8 @@ impl Arc {
         Ok(triangles)
     }
     ///get the euclidian angle of the arc. clockwise arcs are negative by convention
-    fn angle_euc(&self) -> Result<f32, String> {
-        let orientation = circle_orientation_euclid(self.circle) == Contains::Inside; //get the orientation of the arc's circle as a bool
-        if self.boundary == None {
-            return if orientation {
-                Ok(2.0 * PI)
-            } else {
-                Ok(-2.0 * PI)
-            }; //if there is no boundary, we can immediately say the angle is ori * 2PI
-        } else {
-            let Dipole::Real([p1, p2]) = self.boundary.unwrap().unpack() else {
-                //unpack the boundary
-                return Err(
-                    "Arc.angle_euc failed: arc.boundary was tangent or imaginary!".to_string(),
-                );
-            };
-            let (pos1, pos2) = match (p1, p2) {
-                //get the points as egui poins
-                (Point::Finite([x1, y1]), Point::Finite([x2, y2])) => {
-                    (pos2(x1 as f32, y1 as f32), pos2(x2 as f32, y2 as f32))
-                }
-                _ => {
-                    return Err(
-                        "Arc.angle_euc failed: arc.boundary had infinite endpoint(s)!".to_string(),
-                    );
-                }
-            };
-            let center = euc_center_rad(self.circle)?.0; //do angle math
-            let angle = ((pos2 - center).angle() - (pos1 - center).angle()).rem_euclid(2.0 * PI);
-            if orientation {
-                Ok(angle)
-            } else {
-                Ok(angle - (2.0 * PI))
-            }
-        }
-    }
-    ///get the euclidian midpoint of the arc
-    fn midpoint_euc(&self) -> Result<Option<Pos2>, String> {
-        let p = match (match self.boundary {
-            //unpack the boundary
-            None => return Ok(None),
-            Some(x) => x,
-        })
-        .unpack()
-        {
-            Dipole::Real(real) => match real[0] {
-                //get the start point of the arc
-                Point::Finite([x, y]) => pos2(x as f32, y as f32),
-                _ => {
-                    return Err(
-                        "Arc.midpoint_euc failed: Arc has an infinite endpoint!".to_string()
-                    );
-                }
-            },
-            _ => return Err("Arc.midpoint_euc failed: arc.boundary was not real!".to_string()),
-        };
-        Ok(Some(rotate_about(
-            //rotate the start point by half the euclidian angle
-            euc_center_rad(self.circle)?.0,
-            p,
-            self.angle_euc()? as f32 / 2.0,
-        )))
+    fn angle_euc(&self) -> f32 {
+        self.angle as f32
     }
 }
 ///render a piece, with an outline
@@ -253,10 +191,8 @@ impl Piece {
     ) -> Result<(), String> {
         //get the offset of the piece, base on if its in the animation_offset circle
         let true_offset = if offset.is_none()
-            || self
-                .shape
-                .in_circle(offset.unwrap().circle)?
-                .is_some_and(|x| x == Contains::Inside)
+            || self.shape.in_circle(offset.unwrap().circle)
+                == Some(crate::complex::complex_circle::Contains::Inside)
         {
             offset
         } else {
@@ -264,7 +200,7 @@ impl Piece {
         };
         let true_piece = if let Some(twist) = true_offset {
             //turn the piece around the offset
-            self.turn(twist)?.unwrap_or(self.clone())
+            turn(twist)?.unwrap_or(self.clone())
         } else {
             self.clone()
         };
@@ -362,11 +298,7 @@ impl Puzzle {
     ) -> Result<(), String> {
         let proper_offset = if let Some(off) = self.animation_offset {
             //get the offset from the animation_offset and anim_left
-            Some(Turn {
-                circle: off.circle,
-                rotation: self.anim_left as f64 * off.rotation
-                    + (1.0 - self.anim_left) as f64 * Rotoflector::ident(),
-            })
+            Some(off.mult(self.anim_left as f64))
         } else {
             None
         };
@@ -405,14 +337,7 @@ impl Puzzle {
         let mut correct_id: String = String::from("");
         for turn in &self.base_turns {
             //iterate over the turns to find the closest one
-            let (center, radius) = match turn.1.circle.unpack() {
-                Circle::Circle { cx, cy, r, ori: _ } => (pos2(cx as f32, cy as f32), r as f32),
-                _ => {
-                    return Err(
-                        "Puzzle.process_click failed: Circle was a line or imaginary!".to_string(),
-                    );
-                }
-            };
+            let (center, radius) = (turn.1.circle.center.to_pos2(), turn.1.circle.rad() as f32);
             //compare how close they are
             //ties are broken by the radius, smaller radius gets priority (so that concentric circles work)
             if ((good_pos.distance(center).approx_cmp(&min_dist, PRECISION) == Ordering::Less)

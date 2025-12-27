@@ -1,25 +1,27 @@
 use crate::POOL_PRECISION;
-use crate::arc::*;
-use crate::circle_utils::*;
-use crate::intern::Interner;
-use crate::io::*;
-use crate::piece::*;
-use crate::piece_shape::*;
-use crate::puzzle::*;
-use crate::turn::*;
-use cga2d::*;
+use crate::complex::arc::*;
+use crate::complex::c64::C64;
+use crate::complex::c64::Scalar;
+use crate::complex::complex_circle::Circle;
+use crate::complex::complex_circle::Contains;
+use crate::complex::complex_circle::OrientedCircle;
+use crate::puzzle::piece::*;
+use crate::puzzle::piece_shape::*;
+use crate::puzzle::puzzle::Puzzle;
+use crate::puzzle::turn::*;
+use crate::ui::io::*;
 use egui::*;
 use kdl::*;
 use std::array;
 use std::collections::HashMap;
-use std::f32::consts::PI;
+use std::f64::consts::PI;
 
 ///the color used for pieces that haven't yet been colored
 const NONE_COLOR: Color32 = Color32::GRAY;
 ///a series of turns that the algorithm should cut along (and then undo)
 type Cut = Vec<Turn>;
 ///a region of space to apply cuts or a coloring to
-type Region = Vec<Blade3>;
+type Region = Vec<Circle>;
 ///a coloring, which is a region along with a color
 type Coloring = (Region, Color32);
 ///a compound of turns
@@ -108,7 +110,7 @@ impl Commands {
 
 ///all the data in a puzzle definition
 struct DefData {
-    circles: HashMap<String, Blade3>,
+    circles: HashMap<String, Circle>,
     twists: HashMap<String, Turn>,
     real_twists: HashMap<String, Turn>,
     colors: HashMap<String, Color32>,
@@ -144,7 +146,7 @@ impl PieceShape {
         //essentially checks if it falls in every circle of the region
         let mut none = false;
         for circ in region {
-            let cont = self.in_circle(*circ)?;
+            let cont = self.in_circle(*circ);
             match cont {
                 None => {
                     none = true;
@@ -185,14 +187,14 @@ impl Puzzle {
         //set the pieces to the pieces within the relevant region
         self.pieces = new_pieces;
         for turn in cut {
-            if !self.turn(*turn, true)? {
+            if !self.turn(*turn, true) {
                 return Err(String::from(
                     "Puzzle.cut failed: turn was cut but still bandaged! (1)",
                 ));
             };
         } //perform all the cut turns on the relevant pieces
         for turn in cut.clone().into_iter().rev() {
-            if !self.turn(turn.inverse(), false)? {
+            if !self.turn(turn.inverse(), false) {
                 return Err(String::from(
                     "Puzzle.cut failed: undoing the cut turns ran into bandaging!",
                 ));
@@ -220,7 +222,7 @@ impl Puzzle {
     fn compound_turn(&mut self, compound: &Compound, cut: bool) -> Result<bool, String> {
         for turn in compound {
             //just do all the turns in the compound
-            if !self.turn(*turn, cut)? {
+            if !self.turn(*turn, cut) {
                 return Ok(false);
             };
         }
@@ -228,25 +230,11 @@ impl Puzzle {
     }
 }
 ///makes a basic turn in CGA, given a circle and an angle
-pub fn basic_turn(raw_circle: Blade3, angle: f64) -> Result<Turn, String> {
-    if let Circle::Circle {
-        cx,
-        cy,
-        r: _,
-        ori: _,
-    } = raw_circle.unpack()
-    {
-        let p1 = point(cx, cy);
-        let p2 = point(cx + 1.0, cy);
-        let p3 = point(cx + (angle / 2.0).cos(), cy + (angle / 2.0).sin()); //make some point sin preparation
-        return Ok(Turn {
-            circle: raw_circle.rescale_oriented(),
-            rotation: Rotoflector::Rotor(((p1 ^ p3 ^ NI) * (p1 ^ p2 ^ NI)).rescale_oriented()), //the second one is horizontal, the first is exactly half the angle above the horizon
-                                                                                                //this gives a rotation of exactly angle
-        });
-    } else {
-        return Err("basic_turn failed: A line was passed!".to_string());
-    }
+pub fn basic_turn(circle: Circle, angle: f64) -> Result<Turn, String> {
+    Ok(Turn {
+        circle,
+        rot: Rot::from_angle(angle),
+    })
 }
 ///multiply a compound (by repetition)
 fn multiply_turns(a: isize, compound: &Vec<Turn>) -> Vec<Turn> {
@@ -270,18 +258,27 @@ fn invert_compound_turn(compound: &Vec<Turn>) -> Vec<Turn> {
     return turns;
 }
 ///makes the shape of a basic puzzle from a base
-fn make_basic_puzzle(disks: Vec<Blade3>) -> Result<Result<Vec<Piece>, ()>, String> {
+fn make_basic_puzzle(disks: Vec<Circle>) -> Result<Result<Vec<Piece>, ()>, String> {
     let mut pieces = Vec::new();
     let mut old_disks = Vec::new();
     for disk in &disks {
+        let start = disk.center
+            + C64 {
+                re: disk.rad(),
+                im: 0.,
+            };
         //for each disk we want to add to the base
         let mut disk_piece = Piece {
             //make a new piece that's just a circle
             shape: PieceShape {
-                bounds: vec![*disk],
+                bounds: vec![OrientedCircle {
+                    circ: *disk,
+                    ori: Contains::Inside,
+                }],
                 border: vec![Arc {
                     circle: *disk,
-                    boundary: None,
+                    start,
+                    angle: 2.0 * PI,
                 }],
             },
             color: NONE_COLOR,

@@ -1,11 +1,11 @@
 use std::collections::HashMap;
 
-use crate::data_storer::*;
-use crate::keybinds::Keybinds;
-use crate::keybinds::load_keybinds;
-use crate::puzzle::*;
-use crate::puzzle_generation::*;
-use crate::render::draw_circle;
+use crate::puzzle::puzzle::*;
+use crate::ui::data_storer::*;
+use crate::ui::keybinds::Keybinds;
+use crate::ui::keybinds::load_keybinds;
+use crate::ui::puzzle_generation::*;
+use crate::ui::render::draw_circle;
 use egui::*;
 
 ///default scale factor
@@ -89,7 +89,7 @@ impl eframe::App for App {
             let rect = ui.available_rect_before_wrap(); //the space the program has to work with
             if !self.preview {
                 //if the puzzle isnt being previewed, render it
-                if let Err(x) = self.puzzle.render(
+                self.puzzle.render(
                     ui,
                     &rect,
                     self.detail,
@@ -97,20 +97,18 @@ impl eframe::App for App {
                     self.scale_factor,
                     self.offset,
                     self.rend_correct,
-                ) {
-                    self.curr_msg = x;
-                }
-            } else {
-                self.puzzle.pieces[2].render(
-                    ui,
-                    &rect,
-                    None,
-                    self.detail,
-                    self.outline_width,
-                    self.scale_factor,
-                    self.offset,
-                    false,
                 );
+                // } else {
+                //     self.puzzle.render(
+                //         ui,
+                //         &rect,
+                //         None,
+                //         self.detail,
+                //         self.outline_width,
+                //         self.scale_factor,
+                //         self.offset,
+                //         false,
+                //     );
                 // match &mut self.puzzle.solved_state {
                 //     Some(p) => {
                 //         for piece in p {
@@ -140,14 +138,14 @@ impl eframe::App for App {
                 self.puzzle.turn_id("B", false, 2);
             }
             ui.checkbox(&mut self.debug, "LOL");
-            ui.label(self.puzzle.intern.dipoles.len().to_string());
-            if ui.button("PIECES").clicked() {
-                for piece in &self.puzzle.pieces {
-                    for arc in &piece.shape.border {
-                        dbg!(arc.boundary);
-                    }
-                }
-            }
+            // ui.label(self.puzzle.intern.dipoles.len().to_string());
+            // if ui.button("PIECES").clicked() {
+            //     for piece in &self.puzzle.pieces {
+            //         for arc in &piece.shape.border {
+            //             dbg!(arc.boundary);
+            //         }
+            //     }
+            // }
             //render the data storer panel -- this stores all of the puzzles that you can load
             match self.data_storer.render_panel(ctx) {
                 Err(()) => {

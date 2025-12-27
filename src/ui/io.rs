@@ -4,7 +4,7 @@ const DEV: bool = true;
 use std::fs::*;
 use std::io::Write;
 
-use crate::puzzle::Puzzle;
+use crate::puzzle::puzzle::Puzzle;
 
 impl Puzzle {
     ///turn the puzzle into a string for saving purposes. just appends 'scramble' and 'solve' nodes to the end
