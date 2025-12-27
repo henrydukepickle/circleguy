@@ -49,7 +49,6 @@ impl PieceShape {
             if arc.circle.approx_eq(&circle, PRECISION) {
                 return dbg!(None);
             }
-            dbg!((arc.cut_by_circle(circle).unwrap().len()));
             arc_pieces.extend(arc.cut_by_circle(circle).unwrap());
         }
         let (mut inside, mut outside) = (Vec::new(), Vec::new());
@@ -60,7 +59,7 @@ impl PieceShape {
                 outside.push(*arc);
             }
         }
-        if dbg!((&outside).is_empty()) || dbg!((&inside).is_empty()) {
+        if ((&outside).is_empty()) || ((&inside).is_empty()) {
             return None;
         }
         let circle_arcs = (self.cut_circle(circle)?);

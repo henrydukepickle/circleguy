@@ -198,7 +198,7 @@ impl Piece {
         } else {
             self.clone()
         };
-        let triangulation = true_piece.triangulate(self.barycenter()?, detail)?; //triangulate the component around its barycenter
+        let triangulation = true_piece.triangulate(true_piece.barycenter()?, detail)?; //triangulate the component around its barycenter
         let mut triangle_vertices: Vec<epaint::Vertex> = Vec::new(); //make a new vector of epaint vertices
         for triangle in triangulation {
             //iterate over the triangles

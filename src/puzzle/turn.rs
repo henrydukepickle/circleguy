@@ -65,7 +65,7 @@ impl Turn {
         }
     }
     pub fn turn_cut_pieceshape(&self, shape: &PieceShape) -> Vec<PieceShape> {
-        match dbg!(shape.in_circle(self.circle)) {
+        match (shape.in_circle(self.circle)) {
             None => {
                 let (i, o) = shape.cut_by_circle(self.circle).unwrap();
                 vec![self.rot_pieceshape(&i), o]

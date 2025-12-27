@@ -31,10 +31,12 @@ impl Arc {
                 Orientation::CCW => ((end - circ.center).angle() - (start - circ.center).angle())
                     .rem_euclid(2.0 * PI),
                 Orientation::CW => {
-                    (2. * PI
-                        - (((start - circ.center).angle() - (end - circ.center).angle())
-                            .rem_euclid(2.0 * PI)))
-                        * -1.
+                    dbg!(
+                        ((2. * PI
+                            - (((end - circ.center).angle() - (start - circ.center).angle())
+                                .rem_euclid(2.0 * PI)))
+                            * -1.)
+                    )
                 }
             }),
         }
@@ -95,14 +97,17 @@ impl Arc {
     }
     //precondition: all of the points lie (properly) on the arc and none are approxeq
     pub fn cut_at(&self, points: Vec<Point>) -> Vec<Self> {
+        if points.is_empty() {
+            return vec![*self];
+        }
         let mut points = points;
         points.sort_by(|a, b| {
             self.circle
                 .comp_points_on_circle(self.start, *a, *b, self.orientation())
         });
-        let mut endpoints = vec![self.start.clone()];
+        let mut endpoints = vec![self.start];
         endpoints.extend(points);
-        endpoints.push(self.end().clone());
+        endpoints.push(self.end());
         let mut arcs = Vec::new();
         for i in 0..(endpoints.len() - 1) {
             if endpoints[i].approx_eq(&endpoints[i + 1], PRECISION) {
@@ -119,7 +124,7 @@ impl Arc {
     }
 
     pub fn cut_by_circle(&self, circle: Circle) -> Option<Vec<Self>> {
-        Some(self.cut_at((dbg!(self.intersect_circle(circle, true)?))))
+        Some(self.cut_at((self.intersect_circle(circle, true)?)))
     }
     //None - crosses
     pub fn in_circle(&self, circle: Circle) -> Option<Contains> {

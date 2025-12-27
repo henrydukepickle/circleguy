@@ -19,7 +19,7 @@ Luna Harran (sonicpineapple)
 Andrew Farkas (HactarCE)
 ";
 ///default puzzle loaded when the program is opened
-const DEFAULT_PUZZLE: &str = "piecetype.kdl";
+const DEFAULT_PUZZLE: &str = "55stars.kdl";
 
 #[derive(Debug, Clone)]
 ///used for running the app. contains all puzzle and view data at runtime
@@ -89,10 +89,9 @@ impl eframe::App for App {
             let rect = ui.available_rect_before_wrap(); //the space the program has to work with
             if !self.preview {
                 //if the puzzle isnt being previewed, render it
-                self.puzzle.pieces[self.debug2].render(
+                self.puzzle.render(
                     ui,
                     &rect,
-                    None,
                     self.detail,
                     self.outline_width,
                     self.scale_factor,
