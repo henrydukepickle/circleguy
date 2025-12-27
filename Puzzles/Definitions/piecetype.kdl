@@ -9,7 +9,7 @@ twists {
     A A 2
     B B 2
 }
-cut A B A B
+//cut A B A B
 color GREEN A !B
 color RED B !A
 color BLUE A B

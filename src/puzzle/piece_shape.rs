@@ -11,7 +11,7 @@ use crate::{
     },
 };
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct PieceShape {
     pub bounds: Vec<OrientedCircle>,
     pub border: Vec<Arc>,
@@ -39,33 +39,31 @@ impl PieceShape {
         };
         let arcs = arc
             .cut_at(points)
-            .iter()
+            .into_iter()
             .filter(|x| self.contains(x.midpoint()) == Contains::Inside);
-        Some((
-            arcs.map(|x| *x).collect(),
-            arcs.map(|x| x.inverse()).collect(),
-        ))
+        Some((arcs.clone().collect(), arcs.map(|x| x.inverse()).collect()))
     }
     fn cut_border_by_circle(&self, circle: Circle) -> Option<(Vec<Arc>, Vec<Arc>)> {
         let mut arc_pieces = Vec::new();
         for arc in &self.border {
             if arc.circle.approx_eq(&circle, PRECISION) {
-                return None;
+                return dbg!(None);
             }
+            dbg!((arc.cut_by_circle(circle).unwrap().len()));
             arc_pieces.extend(arc.cut_by_circle(circle).unwrap());
         }
         let (mut inside, mut outside) = (Vec::new(), Vec::new());
         for arc in &arc_pieces {
-            if circle.contains(arc.midpoint()) == Contains::Inside {
+            if ((circle).contains(((arc).midpoint()))) == Contains::Inside {
                 inside.push(*arc);
             } else {
                 outside.push(*arc);
             }
         }
-        if outside.is_empty() || inside.is_empty() {
+        if dbg!((&outside).is_empty()) || dbg!((&inside).is_empty()) {
             return None;
         }
-        let circle_arcs = self.cut_circle(circle)?;
+        let circle_arcs = (self.cut_circle(circle)?);
         inside.extend(circle_arcs.0);
         outside.extend(circle_arcs.1);
         Some((inside, outside))

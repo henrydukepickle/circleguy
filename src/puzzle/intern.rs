@@ -48,6 +48,7 @@ use crate::puzzle::puzzle::Puzzle;
 impl Puzzle {
     ///intern all the relevant floats in the puzzle into the 2 float pools
     pub fn intern_all(&mut self) {
+        return;
         for piece in &mut self.pieces {
             for arc in &mut piece.shape.border {
                 self.intern.intern_in_place(&mut arc.circle.center.re);

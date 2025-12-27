@@ -1,4 +1,7 @@
-use std::ops::{Add, Mul, Neg, Sub};
+use std::{
+    fmt::Debug,
+    ops::{Add, Mul, Neg, Sub},
+};
 
 use approx_collections::{ApproxEq, ApproxEqZero, ApproxHash};
 
@@ -7,10 +10,16 @@ use crate::PRECISION;
 pub type Point = C64;
 pub type Scalar = f64;
 
-#[derive(Debug, Copy, Clone, PartialEq)]
+#[derive(Copy, Clone, PartialEq)]
 pub struct C64 {
     pub re: f64,
     pub im: f64,
+}
+
+impl Debug for C64 {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(&format!("{} + {}i", self.re, self.im))
+    }
 }
 
 impl Add for C64 {
@@ -28,7 +37,7 @@ impl Mul for C64 {
     fn mul(self, other: Self) -> Self::Output {
         Self {
             re: (self.re * other.re) - (self.im * other.im),
-            im: (self.im * other.re) + (self.re + other.im),
+            im: (self.im * other.re) + (self.re * other.im),
         }
     }
 }

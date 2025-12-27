@@ -38,9 +38,9 @@ impl Puzzle {
         if cut {
             //if cut is true, cut
             for piece in &self.pieces {
-                for possible in turn.turn_cut_piece(piece) {
+                for turned in turn.turn_cut_piece(piece) {
                     //cut each piece
-                    new_pieces.push(x); //add it to the list
+                    new_pieces.push(turned); //add it to the list
                 }
             }
         } else {

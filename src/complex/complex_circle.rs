@@ -1,4 +1,4 @@
-use std::{cmp::Ordering, f64::consts::PI};
+use std::{cmp::Ordering, f64::consts::PI, ops::Neg};
 
 use approx_collections::{ApproxEq, ApproxEqZero};
 
@@ -14,7 +14,7 @@ pub enum Contains {
 
 pub type Circle = ComplexCircle;
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub struct ComplexCircle {
     pub center: Point,
     pub r_sq: Scalar,
@@ -56,7 +56,7 @@ impl ComplexCircle {
             vec![]
         } else {
             let angle = ((circ.r_sq - (self.r_sq + self.center.dist_sq(circ.center)))
-                / (2.0 * self.rad() * d))
+                / (-2.0 * self.rad() * d))
                 .acos();
             let point =
                 self.center + (self.rad() * (circ.center - self.center).normalize().unwrap());
@@ -107,7 +107,7 @@ impl ApproxEq for ComplexCircle {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub struct OrientedCircle {
     pub circ: Circle,
     pub ori: Contains,
@@ -127,5 +127,25 @@ pub fn inside_bounds(bounds: &Vec<OrientedCircle>, point: Point) -> Contains {
         Contains::Border
     } else {
         Contains::Inside
+    }
+}
+
+impl OrientedCircle {
+    pub fn contains(&self, point: Point) -> bool {
+        self.circ.contains(point) == self.ori
+    }
+}
+
+impl Neg for OrientedCircle {
+    type Output = Self;
+    fn neg(self) -> Self::Output {
+        Self {
+            circ: self.circ,
+            ori: match self.ori {
+                Contains::Border => Contains::Border,
+                Contains::Inside => Contains::Outside,
+                Contains::Outside => Contains::Inside,
+            },
+        }
     }
 }

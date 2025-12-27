@@ -1,6 +1,7 @@
 use crate::POOL_PRECISION;
 use crate::complex::arc::*;
 use crate::complex::c64::C64;
+use crate::complex::c64::Point;
 use crate::complex::c64::Scalar;
 use crate::complex::complex_circle::Circle;
 use crate::complex::complex_circle::Contains;
@@ -10,6 +11,7 @@ use crate::puzzle::piece_shape::*;
 use crate::puzzle::puzzle::Puzzle;
 use crate::puzzle::turn::*;
 use crate::ui::io::*;
+use approx_collections::FloatPool;
 use egui::*;
 use kdl::*;
 use std::array;
@@ -21,7 +23,7 @@ const NONE_COLOR: Color32 = Color32::GRAY;
 ///a series of turns that the algorithm should cut along (and then undo)
 type Cut = Vec<Turn>;
 ///a region of space to apply cuts or a coloring to
-type Region = Vec<Circle>;
+type Region = Vec<OrientedCircle>;
 ///a coloring, which is a region along with a color
 type Coloring = (Region, Color32);
 ///a compound of turns
@@ -110,7 +112,7 @@ impl Commands {
 
 ///all the data in a puzzle definition
 struct DefData {
-    circles: HashMap<String, Circle>,
+    circles: HashMap<String, OrientedCircle>,
     twists: HashMap<String, Turn>,
     real_twists: HashMap<String, Turn>,
     colors: HashMap<String, Color32>,
@@ -144,22 +146,13 @@ impl PieceShape {
     ///determines if a pieceshape falls in a region
     fn in_region(&self, region: &Region) -> Result<Option<Contains>, String> {
         //essentially checks if it falls in every circle of the region
-        let mut none = false;
         for circ in region {
-            let cont = self.in_circle(*circ);
-            match cont {
-                None => {
-                    none = true;
-                }
-                Some(Contains::Outside) => return Ok(Some(Contains::Outside)),
-                _ => {}
+            let cont = self.in_circle(circ.circ);
+            if cont != Some(circ.ori) {
+                return Ok(None);
             }
         }
-        if none {
-            Ok(None)
-        } else {
-            Ok(Some(Contains::Inside))
-        }
+        Ok(Some(Contains::Inside))
     }
 }
 
@@ -284,9 +277,9 @@ fn make_basic_puzzle(disks: Vec<Circle>) -> Result<Result<Vec<Piece>, ()>, Strin
             color: NONE_COLOR,
         };
         for old_disk in &old_disks {
-            if let Some(x) = &disk_piece.cut_by_circle(*old_disk)?[1] {
+            if let Some(x) = &disk_piece.cut_by_circle(*old_disk) {
                 //for each already existing disk, cut it by these disks and take the outside one
-                disk_piece = x.clone();
+                disk_piece = x.clone().1;
             }
         }
         old_disks.push(*disk);
@@ -316,16 +309,6 @@ fn strip_number_end(str: &str) -> Option<(String, String)> {
     return match end.is_empty() {
         true => None,
         false => Some((String::from(str.strip_suffix(&end)?), end)),
-    };
-}
-
-///gives a circle with positive orientation
-fn oriented_circle(cent: Blade1, rad: f64, inside: bool) -> Blade3 {
-    let circ = circle(cent, rad);
-    return if (circle_orientation_euclid(circ) == Contains::Outside) == inside {
-        -circ
-    } else {
-        circ
     };
 }
 
@@ -391,15 +374,18 @@ fn parse_node(
             //make and add the circles
             for created_circle in node.children()?.nodes() {
                 let name = created_circle.name().value();
-                let circ = oriented_circle(
-                    point(
-                        parse_value_as_float(created_circle.get("x")?, &ctx).ok()?,
-                        parse_value_as_float(created_circle.get("y")?, &ctx).ok()?,
-                    ),
-                    parse_value_as_float(created_circle.get("r")?, &ctx).ok()?,
-                    true, //parse the parameters of the circle from meval
-                )
-                .rescale_oriented();
+                let circ = OrientedCircle {
+                    circ: Circle {
+                        center: Point {
+                            re: parse_value_as_float(created_circle.get("x")?, &ctx).ok()?,
+                            im: parse_value_as_float(created_circle.get("y")?, &ctx).ok()?,
+                        },
+                        r_sq: parse_value_as_float(created_circle.get("r")?, &ctx)
+                            .ok()?
+                            .powi(2),
+                    },
+                    ori: Contains::Inside,
+                };
                 let name2 = "!".to_string() + name;
                 data.circles.insert(name.to_string(), circ); //add it to the relevant hashmaps for later
                 data.regions.insert(name.to_string(), vec![circ]);
@@ -424,7 +410,9 @@ fn parse_node(
             for disk in node.entries().into_iter() {
                 disks.push(*data.circles.get(disk.value().as_string()?)?);
             }
-            puzzle.pieces = make_basic_puzzle(disks).ok()?.ok()?;
+            puzzle.pieces = make_basic_puzzle(disks.iter().map(|x| x.circ).collect())
+                .ok()?
+                .ok()?;
         }
         Commands::Twists => {
             //add the new twists
@@ -432,9 +420,9 @@ fn parse_node(
                 data.twists.insert(
                     turn.name().value().to_string(),
                     basic_turn(
-                        *data
-                            .circles
-                            .get(turn.entries().get(0)?.value().as_string()?)?,
+                        data.circles
+                            .get(turn.entries().get(0)?.value().as_string()?)?
+                            .circ,
                         -2.0 * PI as f64 / (turn.entries().get(1)?.value().as_integer()? as f64), //make the basic turn
                     )
                     .ok()?,
@@ -448,9 +436,9 @@ fn parse_node(
                     data.real_twists.insert(
                         turn.name().value().to_string(),
                         basic_turn(
-                            *data
-                                .circles
-                                .get(turn.entries().get(0)?.value().as_string()?)?,
+                            data.circles
+                                .get(turn.entries().get(0)?.value().as_string()?)?
+                                .circ,
                             -2.0 * PI as f64
                                 / (turn.entries().get(1)?.value().as_integer()? as f64),
                         )
@@ -461,9 +449,9 @@ fn parse_node(
                     turn.name().value().to_string(), //add the inverse of turn as a basic (1-turn) compound
                     vec![
                         basic_turn(
-                            *data
-                                .circles
-                                .get(turn.entries().get(0)?.value().as_string()?)?,
+                            data.circles
+                                .get(turn.entries().get(0)?.value().as_string()?)?
+                                .circ,
                             -2.0 * PI as f64
                                 / (turn.entries().get(1)?.value().as_integer()? as f64),
                         )
@@ -533,7 +521,7 @@ fn parse_node(
                             for i in 0..number {
                                 //we use the order of the turn here
                                 let mut new_add = add.clone();
-                                new_add.push(i * turn); //for each power of the turn, we add it in the middle of the turn sequence
+                                new_add.push(turn.mult(i as Scalar)); //for each power of the turn, we add it in the middle of the turn sequence
                                 new_adds.push(new_add);
                             }
                         }
@@ -558,7 +546,7 @@ fn parse_node(
             let mut add_seq = Vec::new();
             for turn in &sequence {
                 //execute the turns
-                puzzle.turn(*turn, false).ok()?;
+                puzzle.turn(*turn, false);
                 add_seq.push(turn.clone());
             }
             data.def_stack.push(add_seq);
@@ -610,7 +598,7 @@ fn parse_node(
                 number -= 1;
                 if let Some(turns) = data.def_stack.pop() {
                     for turn in invert_compound_turn(&turns) {
-                        puzzle.turn(turn, false).ok()?;
+                        puzzle.turn(turn, false);
                     }
                 } else {
                     break;
@@ -695,7 +683,7 @@ fn parse_node(
                     },
                 };
                 data.stack.push((twist.clone(), num).clone()); //add these turns to data.stack, *not* data.def_stack
-                puzzle.turn(num * *data.twists.get(&twist)?, false).ok()?;
+                puzzle.turn(data.twists.get(&twist)?.mult(num as f64), false);
             }
         }
         Commands::Scramble => {
@@ -727,7 +715,7 @@ fn parse_node(
                 scramb[i] = val.clone(); //populate the scramble sequence
             }
             for turn in &sequence {
-                puzzle.turn(*turn, false).ok()?; //execute the turns without adding them to the stack
+                puzzle.turn(*turn, false); //execute the turns without adding them to the stack
             }
             data.scramble = Some(scramb);
         }
@@ -773,7 +761,7 @@ pub fn parse_kdl(string: &str) -> Option<Puzzle> {
         stack: Vec::new(),
         scramble: None,
         animation_offset: None,
-        intern: Interner::new(POOL_PRECISION),
+        intern: FloatPool::new(POOL_PRECISION),
         depth: 500,
         solved_state: None,
         solved: false,

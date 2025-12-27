@@ -36,9 +36,9 @@ pub struct App {
     offset: Vec2,            //the offset of the puzzle from the center of the screen (pan)
     cut_on_turn: bool,       //whether or not turns should cut the puzzle
     preview: bool,           //whether the solved state is being previewed
-    rend_correct: bool,      //whether rendering is being done in correct mode or not
     keybinds: Option<Keybinds>,
     debug: bool,
+    debug2: usize,
 }
 impl App {
     ///initialize a new app, using some default settings (from the constants)
@@ -69,7 +69,6 @@ impl App {
             offset: vec2(0.0, 0.0),
             cut_on_turn: false,
             preview: false,
-            rend_correct: false,
             debug: false,
             keybinds: if let Some(kb) = &p_data.keybinds
                 && let Some(gr) = &p_data.keybind_groups
@@ -79,6 +78,7 @@ impl App {
             } else {
                 None
             },
+            debug2: 0,
         }
     }
 }
@@ -89,15 +89,28 @@ impl eframe::App for App {
             let rect = ui.available_rect_before_wrap(); //the space the program has to work with
             if !self.preview {
                 //if the puzzle isnt being previewed, render it
-                self.puzzle.render(
+                self.puzzle.pieces[self.debug2].render(
                     ui,
                     &rect,
+                    None,
                     self.detail,
                     self.outline_width,
                     self.scale_factor,
                     self.offset,
-                    self.rend_correct,
                 );
+                ui.label(
+                    self.puzzle.pieces[self.debug2]
+                        .shape
+                        .border
+                        .len()
+                        .to_string(),
+                );
+                if ui.button("NEXT").clicked() {
+                    self.debug2 += 1;
+                }
+                if ui.button("PREV").clicked() {
+                    self.debug2 -= 1;
+                }
                 // } else {
                 //     self.puzzle.render(
                 //         ui,
@@ -253,8 +266,6 @@ impl eframe::App for App {
             ui.checkbox(&mut self.cut_on_turn, "Cut on turn?");
             //whether the solve state is being previewed
             ui.checkbox(&mut self.preview, "Preview solved state?");
-            //whether the program is rendering in fine mode
-            ui.checkbox(&mut self.rend_correct, "Render in Fine Mode?");
             //display puzzle info
             ui.label(String::from("Name: ") + &self.puzzle.name.clone());
             ui.label(String::from("Authors: ") + &self.puzzle.authors.join(","));

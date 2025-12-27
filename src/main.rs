@@ -1,10 +1,11 @@
-//#![windows_subsystem = "windows"]
-pub mod app;
 pub mod complex;
 pub mod puzzle;
+#[cfg(test)]
+pub mod tests;
 pub mod ui;
-use crate::app::*;
 
+use crate::ui::app::*;
+use approx_collections::Precision;
 ///used for general purpose
 pub const PRECISION: approx_collections::Precision = Precision::new_simple(20);
 ///used for purposes that have been tested to need slightly less precision

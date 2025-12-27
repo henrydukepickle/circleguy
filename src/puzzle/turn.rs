@@ -2,7 +2,7 @@ use crate::{
     complex::{
         arc::Arc,
         c64::{C64, Point, Scalar},
-        complex_circle::{Circle, OrientedCircle},
+        complex_circle::{Circle, Contains, OrientedCircle},
     },
     puzzle::{piece::Piece, piece_shape::PieceShape},
 };
@@ -25,11 +25,11 @@ impl Turn {
     pub fn mult(&self, mult: Scalar) -> Self {
         Self {
             circle: self.circle,
-            rot: Rot::from_angle(self.rot.angle() * mult),
+            rot: (Rot::from_angle(self.rot.angle() * mult)),
         }
     }
     pub fn rot_point(&self, point: Point) -> Point {
-        (rot * (point - self.circle.center)) + self.circle.center
+        (self.rot * (point - self.circle.center)) + self.circle.center
     }
     pub fn rot_circle(&self, circle: Circle) -> Circle {
         Circle {
@@ -65,9 +65,9 @@ impl Turn {
         }
     }
     pub fn turn_cut_pieceshape(&self, shape: &PieceShape) -> Vec<PieceShape> {
-        match shape.in_circle(self.circle) {
+        match dbg!(shape.in_circle(self.circle)) {
             None => {
-                let (i, o) = shape.cut_by_circle(circle).unwrap();
+                let (i, o) = shape.cut_by_circle(self.circle).unwrap();
                 vec![self.rot_pieceshape(&i), o]
             }
             Some(Contains::Inside) | Some(Contains::Border) => {
