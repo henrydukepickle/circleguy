@@ -31,10 +31,10 @@ impl Arc {
                 Orientation::CCW => ((end - circ.center).angle() - (start - circ.center).angle())
                     .rem_euclid(2.0 * PI),
                 Orientation::CW => {
-                    ((2. * PI
+                    (2. * PI
                         - (((end - circ.center).angle() - (start - circ.center).angle())
                             .rem_euclid(2.0 * PI)))
-                        * -1.)
+                        * -1.
                 }
             }),
         }
@@ -122,7 +122,7 @@ impl Arc {
     }
 
     pub fn cut_by_circle(&self, circle: Circle) -> Option<Vec<Self>> {
-        Some(self.cut_at((self.intersect_circle(circle, true)?)))
+        Some(self.cut_at(self.intersect_circle(circle, true)?))
     }
     //None - crosses
     pub fn in_circle(&self, circle: Circle) -> Option<Contains> {

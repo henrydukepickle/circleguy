@@ -53,16 +53,16 @@ impl PieceShape {
         }
         let (mut inside, mut outside) = (Vec::new(), Vec::new());
         for arc in &arc_pieces {
-            if ((circle).contains(((arc).midpoint()))) == Contains::Inside {
+            if ((circle).contains((arc).midpoint())) == Contains::Inside {
                 inside.push(*arc);
             } else {
                 outside.push(*arc);
             }
         }
-        if ((&outside).is_empty()) || ((&inside).is_empty()) {
+        if outside.is_empty() || inside.is_empty() {
             return None;
         }
-        if let Some(circle_arcs) = (self.cut_circle(circle)) {
+        if let Some(circle_arcs) = self.cut_circle(circle) {
             inside.extend(circle_arcs.0);
             outside.extend(circle_arcs.1);
         }

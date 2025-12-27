@@ -3,7 +3,7 @@ use std::{
     ops::{Add, Mul, Neg, Sub},
 };
 
-use approx_collections::{ApproxEq, ApproxEqZero, ApproxHash};
+use approx_collections::{ApproxEq, ApproxEqZero};
 
 use crate::PRECISION;
 

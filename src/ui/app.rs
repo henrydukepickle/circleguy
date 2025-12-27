@@ -37,8 +37,6 @@ pub struct App {
     cut_on_turn: bool,       //whether or not turns should cut the puzzle
     preview: bool,           //whether the solved state is being previewed
     keybinds: Option<Keybinds>,
-    debug: bool,
-    debug2: usize,
 }
 impl App {
     ///initialize a new app, using some default settings (from the constants)
@@ -69,7 +67,6 @@ impl App {
             offset: vec2(0.0, 0.0),
             cut_on_turn: false,
             preview: false,
-            debug: false,
             keybinds: if let Some(kb) = &p_data.keybinds
                 && let Some(gr) = &p_data.keybind_groups
                 && let Some(keybinds) = load_keybinds(&kb, &gr)
@@ -78,7 +75,6 @@ impl App {
             } else {
                 None
             },
-            debug2: 0,
         }
     }
 }
@@ -89,27 +85,30 @@ impl eframe::App for App {
             let rect = ui.available_rect_before_wrap(); //the space the program has to work with
             if !self.preview {
                 //if the puzzle isnt being previewed, render it
-                self.puzzle.render(
+                if let Err(x) = self.puzzle.render(
                     ui,
                     &rect,
                     self.detail,
                     self.outline_width,
                     self.scale_factor,
                     self.offset,
-                );
-                ui.label(
-                    self.puzzle.pieces[self.debug2]
-                        .shape
-                        .border
-                        .len()
-                        .to_string(),
-                );
-                if ui.button("NEXT").clicked() {
-                    self.debug2 += 1;
-                }
-                if ui.button("PREV").clicked() {
-                    self.debug2 -= 1;
-                }
+                ) {
+                    self.curr_msg = x;
+                };
+
+                // ui.label(
+                //     self.puzzle.pieces[self.debug2]
+                //         .shape
+                //         .border
+                //         .len()
+                //         .to_string(),
+                // );
+                // if ui.button("NEXT").clicked() {
+                //     self.debug2 += 1;
+                // }
+                // if ui.button("PREV").clicked() {
+                //     self.debug2 -= 1;
+                // }
                 // } else {
                 //     self.puzzle.render(
                 //         ui,
@@ -144,12 +143,29 @@ impl eframe::App for App {
                 //     }
                 // }
                 //if the puzzle is in preview mode, render all of the pieces of the solved state
+            } else {
+                if let Some(s) = &self.puzzle.solved_state {
+                    for piece in s {
+                        if let Err(x) = piece.render(
+                            ui,
+                            &rect,
+                            None,
+                            self.detail,
+                            self.outline_width,
+                            self.scale_factor,
+                            self.offset,
+                        ) {
+                            self.curr_msg = x;
+                        }
+                    }
+                }
             }
-            if self.debug {
-                self.puzzle.turn_id("A", false, 1);
-                self.puzzle.turn_id("B", false, 2);
-            }
-            ui.checkbox(&mut self.debug, "LOL");
+            // if self.debug {
+            //     self.puzzle.scramble(false);
+            //     self.debug2 += 1;
+            //     dbg!(self.debug2);
+            // }
+            // ui.checkbox(&mut self.debug, "LOL");
             // ui.label(self.puzzle.intern.dipoles.len().to_string());
             // if ui.button("PIECES").clicked() {
             //     for piece in &self.puzzle.pieces {
@@ -197,11 +213,15 @@ impl eframe::App for App {
                 || ui.input(|i| i.key_pressed(egui::Key::Z)))
                 && !self.preview
             {
-                let _ = self.puzzle.undo();
+                if let Err(x) = self.puzzle.undo() {
+                    self.curr_msg = x;
+                }
             }
             //add the scramble button
             if ui.add(egui::Button::new("SCRAMBLE")).clicked() && !self.preview {
-                let _ = self.puzzle.scramble(self.cut_on_turn);
+                if let Err(x) = self.puzzle.scramble(self.cut_on_turn) {
+                    self.curr_msg = x;
+                }
             }
             //add the reset button
             if ui.add(egui::Button::new("RESET")).clicked() && !self.preview {

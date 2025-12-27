@@ -1,5 +1,3 @@
-use approx_collections::FloatPool;
-
 use crate::puzzle::puzzle::Puzzle;
 
 // pub struct DipoleInterner {

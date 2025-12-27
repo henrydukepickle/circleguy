@@ -25,9 +25,9 @@ pub struct RenderingCircle {
 
 pub type RenderingPoint = Pos2;
 
-fn aeq_pos(p1: Pos2, p2: Pos2) -> bool {
-    p1.x.approx_eq(&p2.x, PRECISION) && p1.y.approx_eq(&p2.y, PRECISION)
-}
+// fn aeq_pos(p1: Pos2, p2: Pos2) -> bool {
+//     p1.x.approx_eq(&p2.x, PRECISION) && p1.y.approx_eq(&p2.y, PRECISION)
+// }
 ///the default rendering color
 const DETAIL: f64 = 0.5;
 ///the color of the outlines
@@ -87,18 +87,18 @@ fn from_egui_coords(pos: &Pos2, rect: &Rect, scale_factor: f32, offset: Vec2) ->
 }
 
 ///rotate a point about a point a certain angle
-fn rotate_about(center: Pos2, point: Pos2, angle: f32) -> Pos2 {
-    if aeq_pos(center, point) {
-        return point;
-    }
-    let dist = center.distance(point);
-    let curr_angle = (point - center).angle();
-    let end_angle = angle + curr_angle;
-    return pos2(
-        center.x + (dist * end_angle.cos()),
-        center.y + (dist * end_angle.sin()),
-    );
-}
+// fn rotate_about(center: Pos2, point: Pos2, angle: f32) -> Pos2 {
+//     if aeq_pos(center, point) {
+//         return point;
+//     }
+//     let dist = center.distance(point);
+//     let curr_angle = (point - center).angle();
+//     let end_angle = angle + curr_angle;
+//     return pos2(
+//         center.x + (dist * end_angle.cos()),
+//         center.y + (dist * end_angle.sin()),
+//     );
+// }
 ///get the euclidian center and radius of some cga2d circle
 ///panics if passed a line/imaginary circle
 // fn euc_center_rad(circ: Blade3) -> Result<(Pos2, f32), String> {
@@ -147,9 +147,8 @@ impl Arc {
         for i in 0..=divisions {
             //increment the angle and take points
             points.push(
-                ((start_point)
-                    .rotate_about((self.circle.center), ((inc_angle as f64) * (i as f64))))
-                .to_pos2(),
+                ((start_point).rotate_about(self.circle.center, (inc_angle as f64) * (i as f64)))
+                    .to_pos2(),
             );
         }
         return Ok(points);

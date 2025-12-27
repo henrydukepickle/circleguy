@@ -180,14 +180,14 @@ impl Puzzle {
         //set the pieces to the pieces within the relevant region
         self.pieces = new_pieces;
         for turn in cut {
-            if !self.turn(*turn, true) {
+            if !self.turn(*turn, true)? {
                 return Err(String::from(
                     "Puzzle.cut failed: turn was cut but still bandaged! (1)",
                 ));
             };
         } //perform all the cut turns on the relevant pieces
         for turn in cut.clone().into_iter().rev() {
-            if !self.turn(turn.inverse(), false) {
+            if !self.turn(turn.inverse(), false)? {
                 return Err(String::from(
                     "Puzzle.cut failed: undoing the cut turns ran into bandaging!",
                 ));
@@ -215,7 +215,7 @@ impl Puzzle {
     fn compound_turn(&mut self, compound: &Compound, cut: bool) -> Result<bool, String> {
         for turn in compound {
             //just do all the turns in the compound
-            if !self.turn(*turn, cut) {
+            if !self.turn(*turn, cut)? {
                 return Ok(false);
             };
         }
@@ -546,7 +546,7 @@ fn parse_node(
             let mut add_seq = Vec::new();
             for turn in &sequence {
                 //execute the turns
-                puzzle.turn(*turn, false);
+                puzzle.turn(*turn, false).ok()?;
                 add_seq.push(turn.clone());
             }
             data.def_stack.push(add_seq);
@@ -598,7 +598,7 @@ fn parse_node(
                 number -= 1;
                 if let Some(turns) = data.def_stack.pop() {
                     for turn in invert_compound_turn(&turns) {
-                        puzzle.turn(turn, false);
+                        puzzle.turn(turn, false).ok()?;
                     }
                 } else {
                     break;
@@ -683,7 +683,9 @@ fn parse_node(
                     },
                 };
                 data.stack.push((twist.clone(), num).clone()); //add these turns to data.stack, *not* data.def_stack
-                puzzle.turn(data.twists.get(&twist)?.mult(num as f64), false);
+                puzzle
+                    .turn(data.twists.get(&twist)?.mult(num as f64), false)
+                    .ok()?;
             }
         }
         Commands::Scramble => {
@@ -715,7 +717,7 @@ fn parse_node(
                 scramb[i] = val.clone(); //populate the scramble sequence
             }
             for turn in &sequence {
-                puzzle.turn(*turn, false); //execute the turns without adding them to the stack
+                puzzle.turn(*turn, false).ok()?; //execute the turns without adding them to the stack
             }
             data.scramble = Some(scramb);
         }

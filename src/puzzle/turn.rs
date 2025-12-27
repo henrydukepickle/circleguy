@@ -64,16 +64,16 @@ impl Turn {
             Some(Contains::Outside) => Some(shape.clone()),
         }
     }
-    pub fn turn_cut_pieceshape(&self, shape: &PieceShape) -> Vec<PieceShape> {
-        match (shape.in_circle(self.circle)) {
+    pub fn turn_cut_pieceshape(&self, shape: &PieceShape) -> Result<Vec<PieceShape>, String> {
+        match shape.in_circle(self.circle) {
             None => {
-                let (i, o) = shape.cut_by_circle(self.circle).unwrap();
-                vec![self.rot_pieceshape(&i), o]
+                let (i, o) = shape
+                    .cut_by_circle(self.circle)
+                    .ok_or("Turn.turn_cut_pieceshape failed: shape crossed cut but was not cut!")?;
+                Ok(vec![self.rot_pieceshape(&i), o])
             }
-            Some(Contains::Inside) | Some(Contains::Border) => {
-                vec![self.rot_pieceshape(shape)]
-            }
-            Some(Contains::Outside) => vec![shape.clone()],
+            Some(Contains::Inside) | Some(Contains::Border) => Ok(vec![self.rot_pieceshape(shape)]),
+            Some(Contains::Outside) => Ok(vec![shape.clone()]),
         }
     }
     pub fn turn_piece(&self, piece: &Piece) -> Option<Piece> {
@@ -82,13 +82,14 @@ impl Turn {
             color: piece.color,
         })
     }
-    pub fn turn_cut_piece(&self, piece: &Piece) -> Vec<Piece> {
-        self.turn_cut_pieceshape(&piece.shape)
+    pub fn turn_cut_piece(&self, piece: &Piece) -> Result<Vec<Piece>, String> {
+        Ok(self
+            .turn_cut_pieceshape(&piece.shape)?
             .iter()
             .map(|x| Piece {
                 shape: x.clone(),
                 color: piece.color,
             })
-            .collect()
+            .collect())
     }
 }

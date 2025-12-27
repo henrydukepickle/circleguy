@@ -1,9 +1,6 @@
 #[cfg(not(target_arch = "wasm32"))]
 const DEV: bool = true;
 
-use std::fs::*;
-use std::io::Write;
-
 use crate::puzzle::puzzle::Puzzle;
 
 impl Puzzle {
