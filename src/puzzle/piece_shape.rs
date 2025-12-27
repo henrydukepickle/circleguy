@@ -62,9 +62,10 @@ impl PieceShape {
         if ((&outside).is_empty()) || ((&inside).is_empty()) {
             return None;
         }
-        let circle_arcs = (self.cut_circle(circle)?);
-        inside.extend(circle_arcs.0);
-        outside.extend(circle_arcs.1);
+        if let Some(circle_arcs) = (self.cut_circle(circle)) {
+            inside.extend(circle_arcs.0);
+            outside.extend(circle_arcs.1);
+        }
         Some((inside, outside))
     }
     pub fn cut_by_circle(&self, circle: Circle) -> Option<(PieceShape, PieceShape)> {

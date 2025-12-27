@@ -17,7 +17,7 @@ colors {
 	PURPLE 179 158 181
 	BLUE 179 235 242
 }
-//cut AB52
+cut AB52
 color PURPLE A B
 color RED A !B
 color BLUE B !A

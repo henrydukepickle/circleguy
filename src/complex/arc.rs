@@ -31,12 +31,10 @@ impl Arc {
                 Orientation::CCW => ((end - circ.center).angle() - (start - circ.center).angle())
                     .rem_euclid(2.0 * PI),
                 Orientation::CW => {
-                    dbg!(
-                        ((2. * PI
-                            - (((end - circ.center).angle() - (start - circ.center).angle())
-                                .rem_euclid(2.0 * PI)))
-                            * -1.)
-                    )
+                    ((2. * PI
+                        - (((end - circ.center).angle() - (start - circ.center).angle())
+                            .rem_euclid(2.0 * PI)))
+                        * -1.)
                 }
             }),
         }

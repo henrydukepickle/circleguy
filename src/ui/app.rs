@@ -19,7 +19,7 @@ Luna Harran (sonicpineapple)
 Andrew Farkas (HactarCE)
 ";
 ///default puzzle loaded when the program is opened
-const DEFAULT_PUZZLE: &str = "55stars.kdl";
+const DEFAULT_PUZZLE: &str = "2222flowers_2_color.kdl";
 
 #[derive(Debug, Clone)]
 ///used for running the app. contains all puzzle and view data at runtime
