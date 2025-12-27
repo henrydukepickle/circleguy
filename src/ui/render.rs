@@ -23,11 +23,6 @@ pub struct RenderingCircle {
     pub rad: f32,
 }
 
-pub type RenderingPoint = Pos2;
-
-// fn aeq_pos(p1: Pos2, p2: Pos2) -> bool {
-//     p1.x.approx_eq(&p2.x, PRECISION) && p1.y.approx_eq(&p2.y, PRECISION)
-// }
 ///the default rendering color
 const DETAIL: f64 = 0.5;
 ///the color of the outlines
@@ -86,31 +81,8 @@ fn from_egui_coords(pos: &Pos2, rect: &Rect, scale_factor: f32, offset: Vec2) ->
     );
 }
 
-///rotate a point about a point a certain angle
-// fn rotate_about(center: Pos2, point: Pos2, angle: f32) -> Pos2 {
-//     if aeq_pos(center, point) {
-//         return point;
-//     }
-//     let dist = center.distance(point);
-//     let curr_angle = (point - center).angle();
-//     let end_angle = angle + curr_angle;
-//     return pos2(
-//         center.x + (dist * end_angle.cos()),
-//         center.y + (dist * end_angle.sin()),
-//     );
-// }
-///get the euclidian center and radius of some cga2d circle
-///panics if passed a line/imaginary circle
-// fn euc_center_rad(circ: Blade3) -> Result<(Pos2, f32), String> {
-//     return match circ.unpack() {
-//         Circle::Circle { cx, cy, r, ori: _ } => Ok((pos2(cx as f32, cy as f32), r as f32)),
-//         _ => {
-//             dbg!(circ);
-//             Err("euc_center_rad failed: A line or imaginary circle was passed!".to_string())
-//         }
-//     };
-// }
 impl Point {
+    ///translates a Point to an egui Pos2
     pub fn to_pos2(&self) -> Pos2 {
         pos2(self.re as f32, self.im as f32)
     }
@@ -197,7 +169,7 @@ impl Piece {
         } else {
             self.clone()
         };
-        let triangulation = true_piece.triangulate(true_piece.barycenter()?, detail)?; //triangulate the component around its barycenter
+        let triangulation = true_piece.triangulate(true_piece.barycenter()?, detail)?; //triangulate the piece around its barycenter
         let mut triangle_vertices: Vec<epaint::Vertex> = Vec::new(); //make a new vector of epaint vertices
         for triangle in triangulation {
             //iterate over the triangles
@@ -240,7 +212,7 @@ impl Piece {
         }
         return Ok(avg_points(&points)); //average the midpoints of the arcs
     }
-    ///draw the outline of the component
+    ///draw the outline of the piece
     fn draw_outline(
         &self,
         ui: &mut Ui,
@@ -336,6 +308,7 @@ impl Puzzle {
         }
     }
     ///get the circle hovered by the mouse
+    ///picks amongst the valid turn circles of the puzzle
     pub fn get_hovered(
         &self,
         rect: &Rect,

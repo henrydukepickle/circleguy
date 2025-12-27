@@ -55,7 +55,6 @@ impl Puzzle {
         self.anim_left = 1.0; //set the animation to run
         self.animation_offset = Some(turn.inverse());
         self.intern_all(); //intern everything
-        //dbg!(self.intern_2.len());
         Ok(true)
     }
     ///turns the puzzle around a turn, given by an id. cuts along the turn first if cut is true.
@@ -114,7 +113,7 @@ impl Puzzle {
         self.scramble = Some(scramble); //set the scramble to Some
         Ok(())
     }
-    ///reset the puzzle
+    ///reset the puzzle, using the stored definition
     pub fn reset(&mut self) -> Result<(), String> {
         *self =
             parse_kdl(&self.def).ok_or("Puzzle.reset failed: parsing kdl failed!".to_string())?;

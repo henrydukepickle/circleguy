@@ -95,54 +95,7 @@ impl eframe::App for App {
                 ) {
                     self.curr_msg = x;
                 };
-
-                // ui.label(
-                //     self.puzzle.pieces[self.debug2]
-                //         .shape
-                //         .border
-                //         .len()
-                //         .to_string(),
-                // );
-                // if ui.button("NEXT").clicked() {
-                //     self.debug2 += 1;
-                // }
-                // if ui.button("PREV").clicked() {
-                //     self.debug2 -= 1;
-                // }
-                // } else {
-                //     self.puzzle.render(
-                //         ui,
-                //         &rect,
-                //         None,
-                //         self.detail,
-                //         self.outline_width,
-                //         self.scale_factor,
-                //         self.offset,
-                //         false,
-                //     );
-                // match &mut self.puzzle.solved_state {
-                //     Some(p) => {
-                //         for piece in p {
-                //             if let Err(x) = piece.render(
-                //                 ui,
-                //                 &rect,
-                //                 None,
-                //                 self.detail,
-                //                 self.outline_width,
-                //                 self.scale_factor,
-                //                 self.offset,
-                //                 self.rend_correct,
-                //             ) {
-                //                 self.curr_msg = x;
-                //             }
-                //         }
-                //     }
-                //     None => {
-                //         self.curr_msg =
-                //             String::from("Error in App.update: could not generate puzzle preview!")
-                //     }
-                // }
-                //if the puzzle is in preview mode, render all of the pieces of the solved state
+            //if the puzzle is in preview mode, render all of the pieces of the solved state
             } else {
                 if let Some(s) = &self.puzzle.solved_state {
                     for piece in s {
@@ -160,20 +113,6 @@ impl eframe::App for App {
                     }
                 }
             }
-            // if self.debug {
-            //     self.puzzle.scramble(false);
-            //     self.debug2 += 1;
-            //     dbg!(self.debug2);
-            // }
-            // ui.checkbox(&mut self.debug, "LOL");
-            // ui.label(self.puzzle.intern.dipoles.len().to_string());
-            // if ui.button("PIECES").clicked() {
-            //     for piece in &self.puzzle.pieces {
-            //         for arc in &piece.shape.border {
-            //             dbg!(arc.boundary);
-            //         }
-            //     }
-            // }
             //render the data storer panel -- this stores all of the puzzles that you can load
             match self.data_storer.render_panel(ctx) {
                 Err(()) => {

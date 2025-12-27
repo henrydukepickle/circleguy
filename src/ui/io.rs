@@ -45,11 +45,6 @@ impl Puzzle {
             true => String::new(),
         };
         let real_path = curr_path + path; //add the path to the base path
-        // let mut buffer = OpenOptions::new()
-        //     .write(true)
-        //     .create(true)
-        //     .open(real_path)?; //open the file. if it doesnt exist, create it
-        // buffer.write_all(self.get_puzzle_string().as_bytes())?; //write the data
         fs::write(real_path, self.get_puzzle_string().as_bytes())?;
         Ok(())
     }

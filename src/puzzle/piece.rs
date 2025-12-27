@@ -9,6 +9,7 @@ pub struct Piece {
 }
 
 impl Piece {
+    ///cut a piece by a circle. returns None if no cut was made and otherwise (inside, outside)
     pub fn cut_by_circle(&self, circle: Circle) -> Option<(Piece, Piece)> {
         if let Some((i, o)) = self.shape.cut_by_circle(circle) {
             Some((

@@ -15,20 +15,24 @@ pub enum Contains {
 pub type Circle = ComplexCircle;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
+///circle implemented with complex numbers
 pub struct ComplexCircle {
     pub center: Point,
     pub r_sq: Scalar,
 }
 #[derive(Debug, Clone, Copy, PartialEq)]
+///orientation, used in arcs and some circle operations
 pub enum Orientation {
     CW,
     CCW,
 }
 
 impl ComplexCircle {
+    ///radius
     pub fn rad(&self) -> Scalar {
         self.r_sq.sqrt()
     }
+    ///see if a circle contains a point
     pub fn contains(&self, point: Point) -> Contains {
         let d = self.center.dist_sq(point);
         if d.approx_eq(&self.r_sq, PRECISION) {
@@ -39,40 +43,44 @@ impl ComplexCircle {
             Contains::Outside
         }
     }
+    ///intersect a circle another circle. tangent points are included. circles that are approximately equal return no intersection points.
     pub fn intersect_circle(&self, circ: Self) -> Vec<Point> {
         let d = self.center.dist(circ.center);
         if d.approx_eq_zero(PRECISION) {
-            vec![]
+            vec![] //if the circles have the same center, they dont intersect
         } else if d.approx_eq(&(self.rad() + circ.rad()), PRECISION) {
-            vec![self.center + (self.rad() * (circ.center - self.center).normalize().unwrap())]
+            vec![self.center + (self.rad() * (circ.center - self.center).normalize().unwrap())] //handle the three tangent cases
         } else if (d + self.rad()).approx_eq(&circ.rad(), PRECISION) {
             vec![self.center + (self.rad() * (self.center - circ.center).normalize().unwrap())]
         } else if self.rad().approx_eq(&(circ.rad() + d), PRECISION) {
             vec![self.center + (self.rad() * (circ.center - self.center).normalize().unwrap())]
-        } else if (d > (self.rad() + circ.rad()))
+        } else if (d > (self.rad() + circ.rad())) //handle the proper intersection case
             || (self.rad() > d + circ.rad())
             || (circ.rad() > d + self.rad())
         {
             vec![]
         } else {
             let angle = ((circ.r_sq - (self.r_sq + self.center.dist_sq(circ.center)))
-                / (-2.0 * self.rad() * d))
-                .acos();
+                / (-2.0 * self.rad() * d)) //find the angle of the intersection points, above the line between the circles' centers
+                .acos(); //use the law of cosines
             let point =
-                self.center + (self.rad() * (circ.center - self.center).normalize().unwrap());
+                self.center + (self.rad() * (circ.center - self.center).normalize().unwrap()); //get a point on the first circle, directly between the two centers
             vec![
-                point.rotate_about(self.center, angle),
+                point.rotate_about(self.center, angle), //rotate it both ways by the above angle
                 point.rotate_about(self.center, -angle),
             ]
         }
     }
+    ///rotate a circle around a point according to an angle
     pub fn rotate_about(&self, cent: Point, angle: Scalar) -> Self {
         Self {
             center: self.center.rotate_about(cent, angle),
             r_sq: self.r_sq,
         }
     }
-    //points approx eq to start are minimal.
+    ///compare two points on a circle, with respect to a base and an orientation.
+    ///the 'lesser' one is the one first encountered when travelling along the circle, starting at base, according to the orientation
+    ///points approx eq to base are minimal.
     pub fn comp_points_on_circle(
         &self,
         base: Point,
@@ -108,11 +116,13 @@ impl ApproxEq for ComplexCircle {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
+///circle with an orientation, either Outside or Inside.
 pub struct OrientedCircle {
     pub circ: Circle,
     pub ori: Contains,
 }
 
+///see if a point lies inside a bunch of oriented circles (a CCP representation)
 pub fn inside_bounds(bounds: &Vec<OrientedCircle>, point: Point) -> Contains {
     let mut border = false;
     for circ in bounds {
@@ -131,11 +141,13 @@ pub fn inside_bounds(bounds: &Vec<OrientedCircle>, point: Point) -> Contains {
 }
 
 impl OrientedCircle {
+    ///see if an oriented circle contains a point, properly.
     pub fn contains(&self, point: Point) -> bool {
         self.circ.contains(point) == self.ori
     }
 }
 
+///reverse the orientation
 impl Neg for OrientedCircle {
     type Output = Self;
     fn neg(self) -> Self::Output {

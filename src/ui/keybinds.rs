@@ -7,6 +7,7 @@ pub type Keybinds = HashMap<Key, (String, isize)>;
 pub type Group = HashMap<Key, isize>;
 pub type Groups = HashMap<String, Group>;
 
+///parse a keybind group from a string
 fn parse_group_kdl(kdl: &String) -> Option<Groups> {
     let mut groups = HashMap::new();
     let doc: KdlDocument = kdl.parse().ok()?;
@@ -25,6 +26,7 @@ fn parse_group_kdl(kdl: &String) -> Option<Groups> {
     Some(groups)
 }
 
+///parse keybinds for a puzzle from a string, given the groups
 fn parse_keybinds_kdl(kdl: &String, groups: &Groups) -> Option<Keybinds> {
     let mut binds = Keybinds::new();
     let doc: KdlDocument = kdl.parse().ok()?;
@@ -40,6 +42,7 @@ fn parse_keybinds_kdl(kdl: &String, groups: &Groups) -> Option<Keybinds> {
     Some(binds)
 }
 
+///load the keybinds using the above functions
 pub fn load_keybinds(kdl_binds: &String, kdl_groups: &String) -> Option<Keybinds> {
     parse_keybinds_kdl(kdl_binds, &parse_group_kdl(kdl_groups)?)
 }
