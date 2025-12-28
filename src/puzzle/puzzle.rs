@@ -62,7 +62,11 @@ impl Puzzle {
     ///if the turn was bandaged (and cut was false), returns Ok(false).
     ///if an error was encountered, returns Err(e) where e was the error
     pub fn turn_id(&mut self, id: &str, cut: bool, mult: isize) -> Result<bool, String> {
-        let turn = self.base_turns[id].mult(mult as Scalar);
+        let turn = self
+            .base_turns
+            .get(id)
+            .ok_or("No turn found with ID!".to_string())?
+            .mult(mult as Scalar);
         if !self.turn(turn, cut)? {
             return Ok(false);
         }
@@ -86,7 +90,7 @@ impl Puzzle {
     }
     ///scramble the puzzle 500 moves
     pub fn scramble(&mut self, cut: bool) -> Result<(), String> {
-        //self.reset()?;
+        self.reset()?;
         let mut scramble = array::from_fn(|_| "".to_string()); //used to track the scramble
         let mut h = DefaultHasher::new();
         Instant::now().hash(&mut h);

@@ -146,13 +146,21 @@ impl PieceShape {
     ///determines if a pieceshape falls in a region
     fn in_region(&self, region: &Region) -> Result<Option<Contains>, String> {
         //essentially checks if it falls in every circle of the region
+        let mut inside = true;
         for circ in region {
             let cont = self.in_circle(circ.circ);
-            if cont != Some(circ.ori) {
+            if cont == None {
                 return Ok(None);
             }
+            if cont != Some(circ.ori) {
+                inside = false;
+            }
         }
-        Ok(Some(Contains::Inside))
+        if inside {
+            Ok(Some(Contains::Inside))
+        } else {
+            Ok(Some(Contains::Outside))
+        }
     }
 }
 

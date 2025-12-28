@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use crate::DEFAULT_PUZZLE;
 use crate::puzzle::puzzle::*;
 use crate::ui::data_storer::*;
 use crate::ui::keybinds::Keybinds;
@@ -18,8 +19,6 @@ with major help from:
 Luna Harran (sonicpineapple)
 Andrew Farkas (HactarCE)
 ";
-///default puzzle loaded when the program is opened
-const DEFAULT_PUZZLE: &str = "2222flowers_2_color.kdl";
 
 #[derive(Debug, Clone)]
 ///used for running the app. contains all puzzle and view data at runtime
@@ -128,6 +127,8 @@ impl eframe::App for App {
                             && let Some(keybinds) = load_keybinds(&kb, &gr)
                         {
                             self.keybinds = Some(keybinds);
+                        } else {
+                            self.keybinds = None;
                         }
                     }
                 }

@@ -12,6 +12,8 @@ pub const PRECISION: approx_collections::Precision = Precision::new_simple(20);
 pub const LOW_PRECISION: approx_collections::Precision = Precision::new_simple(16);
 ///used for the float pools from approx
 pub const POOL_PRECISION: approx_collections::Precision = Precision::new(20, 20);
+///default puzzle loaded when the program is opened
+const DEFAULT_PUZZLE: &str = "55stars.kdl";
 
 // When compiling natively:
 #[cfg(not(target_arch = "wasm32"))]

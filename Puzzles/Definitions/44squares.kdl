@@ -1,7 +1,7 @@
 name "Squares"
 author "Henry Pickle"
 vars {
-	d "-0.4"
+	d "-0.5"
 }
 circles {
 	A x="d" y=0.0 r=0.8
@@ -19,4 +19,3 @@ cut AB8
 color GREEN A !B
 color BLUE A B
 color RED B !A
-//twist A' B B B A A' B' A A' //A' B' A A B' B'
