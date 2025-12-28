@@ -1,7 +1,7 @@
 use crate::ui::io::*;
 use kdl::*;
 use std::{cmp::Ordering, collections::HashMap, fs::*};
-pub const TOP: usize = 5;
+pub const TOP: usize = 3;
 #[derive(Debug, Clone)]
 pub struct PuzzleData {
     pub preview: String,

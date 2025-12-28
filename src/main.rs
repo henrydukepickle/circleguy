@@ -1,3 +1,4 @@
+#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 pub mod complex;
 pub mod puzzle;
 #[cfg(test)]
@@ -14,14 +15,29 @@ pub const LOW_PRECISION: approx_collections::Precision = Precision::new_simple(1
 pub const POOL_PRECISION: approx_collections::Precision = Precision::new(20, 20);
 ///default puzzle loaded when the program is opened
 const DEFAULT_PUZZLE: &str = "55stars.kdl";
+///location of the icon
+const ICON_PNG_DATA: &[u8] = include_bytes!("../resources/icon.png");
 
 // When compiling natively:
 #[cfg(not(target_arch = "wasm32"))]
 fn main() -> eframe::Result {
+    //set the icon
+    let icon_data =
+        eframe::icon_data::from_png_bytes(ICON_PNG_DATA).expect("error loading application icon");
+    //set the native options
+    let native_options = eframe::NativeOptions {
+        viewport: egui::ViewportBuilder::default()
+            .with_title("circleguy")
+            .with_app_id("circleguy")
+            .with_icon(icon_data)
+            .with_maximized(true)
+            .with_min_inner_size([400.0, 300.0]),
+        ..Default::default()
+    };
     //run the native as defined in app.rs
     eframe::run_native(
         "circleguy",
-        eframe::NativeOptions::default(),
+        native_options,
         Box::new(|cc| Ok(Box::new(App::new(cc)))),
     )
 }
@@ -69,8 +85,3 @@ fn main() {
         }
     });
 }
-
-// #[cfg(test)]
-// pub mod tests {
-
-// }
