@@ -1,7 +1,7 @@
-use crate::io::*;
+use crate::ui::io::*;
 use kdl::*;
 use std::{cmp::Ordering, collections::HashMap, fs::*};
-pub const TOP: usize = 5;
+pub const TOP: usize = 3;
 #[derive(Debug, Clone)]
 pub struct PuzzleData {
     pub preview: String,
@@ -13,8 +13,6 @@ pub struct PuzzleData {
 ///stores the data for loading puzzles (definitions and basic info for preview)
 pub struct DataStorer {
     pub puzzles: HashMap<String, PuzzleData>,
-    // pub data: Vec<(String, String, Option<String>)>, //puzzle preview string, puzzle data string, keybind string
-    // pub keybind_groups: Option<String>,              //the data in the keybind groups file
     pub prev_data: Vec<PuzzlePrevData>,
     pub top: Vec<(String, usize)>,
     pub sorted_puzzles: Vec<PuzzleData>,
@@ -82,11 +80,12 @@ impl DataStorer {
         kb_group_path: &str,
     ) -> Result<(), ()> {
         self.puzzles = HashMap::new();
+        self.sorted_puzzles = Vec::new();
         let paths = read_dir(def_path).or(Err(()))?.into_iter(); //get the paths to puzzles
         for path in paths {
             let filename = path.or(Err(()))?.file_name().into_string().or(Err(()))?;
             let data = read_file_to_string(&(String::from(def_path) + (&filename))).or(Err(()))?; //get the data from the puzzle
-            let keybind_data = read_file_to_string(&(String::from(kb_path) + (&filename))).ok();
+            let keybind_data = read_file_to_string(&(String::from(kb_path) + (&filename))).ok(); //read the keybind data
             let puzzle_data = PuzzleData {
                 preview: get_preview_string(&data),
                 data: data.clone(),
@@ -105,7 +104,6 @@ impl DataStorer {
         let mut authors: HashMap<String, usize> = HashMap::new();
         for p in &self.prev_data {
             //get the authors by iterating through the loaded puzzles
-            //dbg!(p);
             let a = p.author.clone();
             if authors.contains_key(&a) {
                 //add 1 to the number of puzzles the author has made if they already exist

@@ -1,35 +1,43 @@
-//#![windows_subsystem = "windows"]
-pub mod app;
-pub mod arc;
-pub mod circle_utils;
-pub mod data_storer;
-pub mod intern;
-pub mod io;
-pub mod keybinds;
-pub mod piece;
-pub mod piece_shape;
+#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
+pub mod complex;
 pub mod puzzle;
-pub mod puzzle_generation;
-pub mod render;
-pub mod turn;
-use crate::app::*;
+#[cfg(test)]
+pub mod tests;
+pub mod ui;
 
-use cga2d::*;
-
+use crate::ui::app::*;
+use approx_collections::Precision;
 ///used for general purpose
 pub const PRECISION: approx_collections::Precision = Precision::new_simple(20);
 ///used for purposes that have been tested to need slightly less precision
 pub const LOW_PRECISION: approx_collections::Precision = Precision::new_simple(16);
 ///used for the float pools from approx
-pub const POOL_PRECISION: approx_collections::Precision = Precision::new_simple(26);
+pub const POOL_PRECISION: approx_collections::Precision = Precision::new(20, 20);
+///default puzzle loaded when the program is opened
+const DEFAULT_PUZZLE: &str = "55stars.kdl";
+///location of the icon
+const ICON_PNG_DATA: &[u8] = include_bytes!("../resources/icon.png");
 
 // When compiling natively:
 #[cfg(not(target_arch = "wasm32"))]
 fn main() -> eframe::Result {
+    //set the icon
+    let icon_data =
+        eframe::icon_data::from_png_bytes(ICON_PNG_DATA).expect("error loading application icon");
+    //set the native options
+    let native_options = eframe::NativeOptions {
+        viewport: egui::ViewportBuilder::default()
+            .with_title("circleguy")
+            .with_app_id("circleguy")
+            .with_icon(icon_data)
+            .with_maximized(true)
+            .with_min_inner_size([400.0, 300.0]),
+        ..Default::default()
+    };
     //run the native as defined in app.rs
     eframe::run_native(
         "circleguy",
-        eframe::NativeOptions::default(),
+        native_options,
         Box::new(|cc| Ok(Box::new(App::new(cc)))),
     )
 }
@@ -76,20 +84,4 @@ fn main() {
             }
         }
     });
-}
-
-#[cfg(test)]
-mod tests {
-    use crate::puzzle_generation::load_puzzle_and_def_from_file;
-
-    #[test]
-    fn test_name() {
-        assert_eq!(
-            load_puzzle_and_def_from_file(&"Puzzles/Definitions/666666ring_deep.kdl".to_string())
-                .unwrap()
-                .pieces
-                .len(),
-            301
-        )
-    }
 }
