@@ -1,0 +1,7 @@
+print("hi")
+c = circle(1, 0, 1.4)
+print(c)
+c.repr().print()
+print(c.r)
+print((c + 1).r)
+thing()

@@ -92,7 +92,7 @@ impl DataStorer {
                 keybinds: keybind_data,
                 keybind_groups: read_file_to_string(&kb_group_path.to_string()).ok(),
             }; //parse the data and push it to the DataStorer
-            self.prev_data.push(prev_parse_kdl(&data).ok_or(())?); //also add the data not in string format
+            //self.prev_data.push(prev_parse_kdl(&data).ok_or(())?); //also add the data not in string format
             self.puzzles.insert(filename, puzzle_data.clone());
             self.sorted_puzzles.push(puzzle_data);
         } //sort the puzzle alphabetically by name

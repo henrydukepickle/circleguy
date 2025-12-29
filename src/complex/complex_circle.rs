@@ -29,7 +29,7 @@ pub enum Orientation {
 
 impl ComplexCircle {
     ///radius
-    pub fn rad(&self) -> Scalar {
+    pub fn r(&self) -> Scalar {
         self.r_sq.sqrt()
     }
     ///see if a circle contains a point
@@ -48,23 +48,22 @@ impl ComplexCircle {
         let d = self.center.dist(circ.center);
         if d.approx_eq_zero(PRECISION) {
             vec![] //if the circles have the same center, they dont intersect
-        } else if d.approx_eq(&(self.rad() + circ.rad()), PRECISION) {
-            vec![self.center + (self.rad() * (circ.center - self.center).normalize().unwrap())] //handle the three tangent cases
-        } else if (d + self.rad()).approx_eq(&circ.rad(), PRECISION) {
-            vec![self.center + (self.rad() * (self.center - circ.center).normalize().unwrap())]
-        } else if self.rad().approx_eq(&(circ.rad() + d), PRECISION) {
-            vec![self.center + (self.rad() * (circ.center - self.center).normalize().unwrap())]
-        } else if (d > (self.rad() + circ.rad())) //handle the proper intersection case
-            || (self.rad() > d + circ.rad())
-            || (circ.rad() > d + self.rad())
+        } else if d.approx_eq(&(self.r() + circ.r()), PRECISION) {
+            vec![self.center + (self.r() * (circ.center - self.center).normalize().unwrap())] //handle the three tangent cases
+        } else if (d + self.r()).approx_eq(&circ.r(), PRECISION) {
+            vec![self.center + (self.r() * (self.center - circ.center).normalize().unwrap())]
+        } else if self.r().approx_eq(&(circ.r() + d), PRECISION) {
+            vec![self.center + (self.r() * (circ.center - self.center).normalize().unwrap())]
+        } else if (d > (self.r() + circ.r())) //handle the proper intersection case
+            || (self.r() > d + circ.r())
+            || (circ.r() > d + self.r())
         {
             vec![]
         } else {
             let angle = ((circ.r_sq - (self.r_sq + self.center.dist_sq(circ.center)))
-                / (-2.0 * self.rad() * d)) //find the angle of the intersection points, above the line between the circles' centers
+                / (-2.0 * self.r() * d)) //find the angle of the intersection points, above the line between the circles' centers
                 .acos(); //use the law of cosines
-            let point =
-                self.center + (self.rad() * (circ.center - self.center).normalize().unwrap()); //get a point on the first circle, directly between the two centers
+            let point = self.center + (self.r() * (circ.center - self.center).normalize().unwrap()); //get a point on the first circle, directly between the two centers
             vec![
                 point.rotate_about(self.center, angle), //rotate it both ways by the above angle
                 point.rotate_about(self.center, -angle),

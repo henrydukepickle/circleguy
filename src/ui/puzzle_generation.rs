@@ -6,6 +6,7 @@ use crate::complex::c64::Scalar;
 use crate::complex::complex_circle::Circle;
 use crate::complex::complex_circle::Contains;
 use crate::complex::complex_circle::OrientedCircle;
+use crate::hps::parse_hps;
 use crate::puzzle::piece::*;
 use crate::puzzle::piece_shape::*;
 use crate::puzzle::puzzle::Puzzle;
@@ -259,13 +260,13 @@ fn invert_compound_turn(compound: &Vec<Turn>) -> Vec<Turn> {
     return turns;
 }
 ///makes the shape of a basic puzzle from a base
-fn make_basic_puzzle(disks: Vec<Circle>) -> Result<Result<Vec<Piece>, ()>, String> {
+pub fn make_basic_puzzle(disks: Vec<Circle>) -> Result<Result<Vec<Piece>, ()>, String> {
     let mut pieces = Vec::new();
     let mut old_disks = Vec::new();
     for disk in &disks {
         let start = disk.center
             + C64 {
-                re: disk.rad(),
+                re: disk.r(),
                 im: 0.,
             };
         //for each disk we want to add to the base
@@ -301,7 +302,7 @@ fn make_basic_puzzle(disks: Vec<Circle>) -> Result<Result<Vec<Piece>, ()>, Strin
 ///needs a .kdl at the end, but is a relative path
 pub fn load_puzzle_and_def_from_file(path: &str) -> Option<Puzzle> {
     let contents = read_file_to_string(path).ok()?;
-    return Some(parse_kdl(&contents.clone())?);
+    return Some(parse_hps(&contents.clone())?);
 }
 
 ///strip the number from the end of a string for parsing reasons

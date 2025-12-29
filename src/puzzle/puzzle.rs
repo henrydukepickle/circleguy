@@ -1,4 +1,5 @@
 use crate::complex::c64::Scalar;
+use crate::hps::parse_hps;
 use crate::puzzle::piece::*;
 use crate::puzzle::turn::*;
 use crate::ui::puzzle_generation::parse_kdl;
@@ -120,7 +121,7 @@ impl Puzzle {
     ///reset the puzzle, using the stored definition
     pub fn reset(&mut self) -> Result<(), String> {
         *self =
-            parse_kdl(&self.def).ok_or("Puzzle.reset failed: parsing kdl failed!".to_string())?;
+            parse_hps(&self.def).ok_or("Puzzle.reset failed: parsing kdl failed!".to_string())?;
         Ok(())
     }
 }

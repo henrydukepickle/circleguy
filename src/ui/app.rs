@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
 use crate::DEFAULT_PUZZLE;
+use crate::hps::parse_hps;
 use crate::puzzle::puzzle::*;
 use crate::ui::data_storer::*;
 use crate::ui::keybinds::Keybinds;
@@ -120,7 +121,7 @@ impl eframe::App for App {
                 }
                 Ok(Some(puzzle_data)) => {
                     //if a puzzle is returned (a button is clicked), load it
-                    if let Some(puz) = parse_kdl(&puzzle_data.data) {
+                    if let Some(puz) = parse_hps(&puzzle_data.data) {
                         self.puzzle = puz;
                         if let Some(kb) = puzzle_data.keybinds
                             && let Some(gr) = puzzle_data.keybind_groups

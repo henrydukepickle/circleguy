@@ -35,7 +35,7 @@ pub fn draw_circle(real_circle: Circle, ui: &mut Ui, rect: &Rect, scale_factor: 
     {
         ui.painter().circle_stroke(
             to_egui_coords(real_circle.center.to_pos2(), &rect, scale_factor, offset),
-            real_circle.rad() as f32 * scale_factor * (rect.width() / 1920.0),
+            real_circle.r() as f32 * scale_factor * (rect.width() / 1920.0),
             (10.0, Color32::WHITE),
         );
     }
@@ -101,7 +101,7 @@ impl Arc {
         scale_factor: f32,
         offset_pos: Vec2,
     ) -> Result<(), String> {
-        let size = self.angle_euc().abs() as f32 * self.circle.rad() as f32 * DETAIL_FACTOR as f32; //get the absolute size of the arc, to measure how finely we need to render it
+        let size = self.angle_euc().abs() as f32 * self.circle.r() as f32 * DETAIL_FACTOR as f32; //get the absolute size of the arc, to measure how finely we need to render it
         let divisions = (size * detail * DETAIL as f32).max(2.0) as u16; //find the number of divisions we do for the arc
         let mut coords = Vec::new();
         for pos in self.get_polygon(divisions)? {
@@ -129,7 +129,7 @@ impl Arc {
     }
     ///triangulate the arc with respect to a given center
     fn triangulate(&self, center: Pos2, detail: f32) -> Result<Vec<Vec<Pos2>>, String> {
-        let size = self.angle_euc().abs() as f32 * self.circle.rad() as f32;
+        let size = self.angle_euc().abs() as f32 * self.circle.r() as f32;
         let div = (detail * size * DETAIL as f32).max(2.0) as u16; //get the absolute size and use it to determine the level of detail
         let polygon = self.get_polygon(div)?;
         let mut triangles = Vec::new();
@@ -282,7 +282,7 @@ impl Puzzle {
         let mut correct_id: String = String::from("");
         for turn in &self.base_turns {
             //iterate over the turns to find the closest one
-            let (center, radius) = (turn.1.circle.center.to_pos2(), turn.1.circle.rad() as f32);
+            let (center, radius) = (turn.1.circle.center.to_pos2(), turn.1.circle.r() as f32);
             //compare how close they are
             //ties are broken by the radius, smaller radius gets priority (so that concentric circles work)
             if ((good_pos.distance(center).approx_cmp(&min_dist, PRECISION) == Ordering::Less)
@@ -324,7 +324,7 @@ impl Puzzle {
         let mut correct_turn = None;
         for turn in self.base_turns.clone().values() {
             //this algorithm proceeds very similarly to the process_click algorithm above
-            let (cent, rad) = (turn.circle.center.to_pos2(), turn.circle.rad() as f32);
+            let (cent, rad) = (turn.circle.center.to_pos2(), turn.circle.r() as f32);
             if ((good_pos.distance(cent).approx_cmp(&min_dist, PRECISION) == Ordering::Less)
                 || ((good_pos.distance(cent).approx_eq(&min_dist, PRECISION))
                     && (rad.approx_cmp(&min_rad, PRECISION)) == Ordering::Less))
