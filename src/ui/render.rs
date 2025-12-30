@@ -1,9 +1,9 @@
 use crate::PRECISION;
 use crate::complex::arc::*;
 use crate::complex::c64::C64;
-use crate::complex::c64::Point;
 use crate::complex::complex_circle::Circle;
 use crate::complex::complex_circle::Contains;
+use crate::complex::point::Point;
 use crate::puzzle::piece::*;
 use crate::puzzle::puzzle::*;
 use crate::puzzle::turn::*;
@@ -86,7 +86,7 @@ fn from_egui_coords(pos: &Pos2, rect: &Rect, scale_factor: f32, offset: Vec2) ->
 impl Point {
     ///translates a Point to an egui Pos2
     pub fn to_pos2(&self) -> Pos2 {
-        pos2(self.re as f32, self.im as f32)
+        pos2(self.0.re as f32, self.0.im as f32)
     }
 }
 
@@ -288,10 +288,10 @@ impl Puzzle {
             if ((good_pos.distance(center).approx_cmp(&min_dist, PRECISION) == Ordering::Less)
                 || ((good_pos.distance(center).approx_eq(&min_dist, PRECISION))
                     && (radius.approx_cmp(&min_rad, PRECISION)) == Ordering::Less))
-                && turn.1.circle.contains(C64 {
+                && turn.1.circle.contains(Point(C64 {
                     re: good_pos.x as f64,
                     im: good_pos.y as f64,
-                }) == Contains::Inside
+                })) == Contains::Inside
             {
                 min_dist = good_pos.distance(center);
                 min_rad = radius;

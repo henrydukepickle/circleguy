@@ -2,7 +2,14 @@ use std::{cmp::Ordering, f64::consts::PI, ops::Neg};
 
 use approx_collections::{ApproxEq, ApproxEqZero};
 
-use crate::{PRECISION, complex::c64::Point, complex::c64::Scalar};
+use crate::{
+    PRECISION,
+    complex::{
+        c64::{C64, Scalar},
+        point::Point,
+        vector::Vector,
+    },
+};
 
 #[derive(PartialEq, Clone, Copy, Debug)]
 ///enum for whether one object (usually a circle) 'contains' another object (i.e., a point)
@@ -14,7 +21,7 @@ pub enum Contains {
 
 pub type Circle = ComplexCircle;
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy)]
 ///circle implemented with complex numbers
 pub struct ComplexCircle {
     pub center: Point,
@@ -106,6 +113,13 @@ impl ComplexCircle {
             angle_b.total_cmp(&angle_a)
         }
     }
+    pub fn right_point(&self) -> Point {
+        self.center
+            + Vector(C64 {
+                re: self.r(),
+                im: 0.0,
+            })
+    }
 }
 
 impl ApproxEq for ComplexCircle {
@@ -114,7 +128,7 @@ impl ApproxEq for ComplexCircle {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy)]
 ///circle with an orientation, either Outside or Inside.
 pub struct OrientedCircle {
     pub circ: Circle,

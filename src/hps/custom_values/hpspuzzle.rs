@@ -6,11 +6,11 @@ use crate::puzzle::puzzle::Puzzle;
 
 #[derive(Clone, Debug)]
 pub struct HPSPuzzleData {
-    puzzle: Option<Puzzle>,
+    pub puzzle: Option<Puzzle>,
 }
 
 #[derive(Clone, Debug)]
-pub struct HPSPuzzle(Arc<Mutex<HPSPuzzleData>>);
+pub struct HPSPuzzle(pub Arc<Mutex<HPSPuzzleData>>);
 
 impl TypeOf for HPSPuzzle {
     fn hps_ty() -> hyperpuzzlescript::Type {

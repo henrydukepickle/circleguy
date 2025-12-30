@@ -1,11 +1,12 @@
 use crate::POOL_PRECISION;
 use crate::complex::arc::*;
 use crate::complex::c64::C64;
-use crate::complex::c64::Point;
 use crate::complex::c64::Scalar;
 use crate::complex::complex_circle::Circle;
 use crate::complex::complex_circle::Contains;
 use crate::complex::complex_circle::OrientedCircle;
+use crate::complex::point::Point;
+use crate::complex::rotation::Rotation;
 use crate::hps::hps::parse_hps;
 use crate::puzzle::piece::*;
 use crate::puzzle::piece_shape::*;
@@ -235,7 +236,7 @@ impl Puzzle {
 pub fn basic_turn(circle: Circle, angle: f64) -> Result<Turn, String> {
     Ok(Turn {
         circle,
-        rot: Rot::from_angle(angle),
+        rot: Rotation::from_angle(angle),
     })
 }
 ///multiply a compound (by repetition)
@@ -264,11 +265,7 @@ pub fn make_basic_puzzle(disks: Vec<Circle>) -> Result<Result<Vec<Piece>, ()>, S
     let mut pieces = Vec::new();
     let mut old_disks = Vec::new();
     for disk in &disks {
-        let start = disk.center
-            + C64 {
-                re: disk.r(),
-                im: 0.,
-            };
+        let start = disk.right_point();
         //for each disk we want to add to the base
         let mut disk_piece = Piece {
             //make a new piece that's just a circle
@@ -385,10 +382,10 @@ fn parse_node(
                 let name = created_circle.name().value();
                 let circ = OrientedCircle {
                     circ: Circle {
-                        center: Point {
+                        center: Point(C64 {
                             re: parse_value_as_float(created_circle.get("x")?, &ctx).ok()?,
                             im: parse_value_as_float(created_circle.get("y")?, &ctx).ok()?,
-                        },
+                        }),
                         r_sq: parse_value_as_float(created_circle.get("r")?, &ctx)
                             .ok()?
                             .powi(2),

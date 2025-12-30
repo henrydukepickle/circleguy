@@ -3,13 +3,14 @@ use approx_collections::ApproxEq;
 use crate::{
     PRECISION,
     complex::{
-        c64::{Point, Scalar},
+        c64::Scalar,
         complex_circle::{Circle, Contains, Orientation},
+        point::Point,
     },
 };
 use std::{cmp::Ordering, f64::consts::PI};
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy)]
 ///arc around a circle. can go clockwise or ccw (along the circle)
 pub struct Arc {
     pub circle: Circle,

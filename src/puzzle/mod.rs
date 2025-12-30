@@ -1,3 +1,4 @@
+pub mod color;
 pub mod intern;
 pub mod piece;
 pub mod piece_shape;

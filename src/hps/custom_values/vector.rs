@@ -1,17 +1,17 @@
 use hyperpuzzlescript::{CustomValue, TypeOf};
 
-use crate::complex::{complex_circle::ComplexCircle, point::Point};
+use crate::complex::{complex_circle::ComplexCircle, point::Point, vector::Vector};
 use approx_collections::ApproxEq;
 
-impl TypeOf for Point {
+impl TypeOf for Vector {
     fn hps_ty() -> hyperpuzzlescript::Type {
-        hyperpuzzlescript::Type::Custom("Point")
+        hyperpuzzlescript::Type::Custom("Vector")
     }
 }
 
-impl CustomValue for Point {
+impl CustomValue for Vector {
     fn type_name(&self) -> &'static str {
-        "Point"
+        "Vector"
     }
 
     fn clone_dyn(&self) -> hyperpuzzlescript::BoxDynValue {
@@ -20,9 +20,9 @@ impl CustomValue for Point {
 
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>, is_repr: bool) -> std::fmt::Result {
         if is_repr {
-            write!(f, "Point({}, {})", self.0.re, self.0.im)
+            write!(f, "Vector[{}, {}]", self.0.re, self.0.im)
         } else {
-            write!(f, "({}, {})", self.0.re, self.0.im)
+            write!(f, "[{}, {}]", self.0.re, self.0.im)
         }
     }
 

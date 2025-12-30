@@ -1,19 +1,19 @@
 use crate::{
     complex::{
         arc::Arc,
-        c64::{C64, Point, Scalar},
+        c64::Scalar,
         complex_circle::{Circle, Contains, OrientedCircle},
+        point::Point,
+        rotation::Rotation,
     },
     puzzle::{piece::Piece, piece_shape::PieceShape},
 };
-
-pub type Rot = C64;
 
 #[derive(Clone, Debug, Copy)]
 ///turn of a certain angle around a circle. only points within the circle should be affected.
 pub struct Turn {
     pub circle: Circle,
-    pub rot: Rot, //rotation is stored as a mag-1 complex number
+    pub rot: Rotation, //rotation is stored as a mag-1 complex number
 }
 
 impl Turn {
@@ -28,12 +28,12 @@ impl Turn {
     pub fn mult(&self, mult: Scalar) -> Self {
         Self {
             circle: self.circle,
-            rot: (Rot::from_angle(self.rot.angle() * mult)), //multiply the angle by the scalar and recalculate the number
+            rot: (Rotation::from_angle(self.rot.angle() * mult)), //multiply the angle by the scalar and recalculate the number
         }
     }
     ///rotate a point according to the turn. does not care whether the point is in/out of the circle
     pub fn rot_point(&self, point: Point) -> Point {
-        (self.rot * (point - self.circle.center)) + self.circle.center
+        self.circle.center + (self.rot * (point - self.circle.center))
     }
     ///rotate a circle according to the turn. does not care whether the circle is in/out of the circle
     pub fn rot_circle(&self, circle: Circle) -> Circle {

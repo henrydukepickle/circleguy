@@ -6,12 +6,12 @@ use crate::{
     PRECISION,
     complex::{
         arc::Arc,
-        c64::Point,
         complex_circle::{Circle, Contains, OrientedCircle, inside_bounds},
+        point::Point,
     },
 };
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug)]
 pub struct PieceShape {
     pub bounds: Vec<OrientedCircle>,
     pub border: Vec<Arc>,

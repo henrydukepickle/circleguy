@@ -1,5 +1,6 @@
 use hyperpuzzlescript::{Builtins, FullDiagnostic, hps_fns};
 
+use crate::complex::point::Point;
 use crate::complex::{c64::C64, complex_circle::ComplexCircle};
 use crate::hps::custom_values::circle;
 
@@ -7,7 +8,7 @@ pub fn circleguy_builtins(b: &mut Builtins) -> Result<(), FullDiagnostic> {
     b.set_fns(hps_fns![
             fn circle(cx: f64, cy: f64, r: f64) -> ComplexCircle {
                 ComplexCircle {
-                    center: C64 { re: cx, im: cy },
+                    center: Point(C64 { re: cx, im: cy }),
                     r_sq: r * r,
                 }
             }
