@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use crate::DEFAULT_PUZZLE;
-use crate::hps::parse_hps;
+use crate::hps::hps::parse_hps;
 use crate::puzzle::puzzle::*;
 use crate::ui::data_storer::*;
 use crate::ui::keybinds::Keybinds;

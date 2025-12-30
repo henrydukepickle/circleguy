@@ -1,5 +1,5 @@
 use crate::complex::c64::Scalar;
-use crate::hps::parse_hps;
+use crate::hps::hps::parse_hps;
 use crate::puzzle::piece::*;
 use crate::puzzle::turn::*;
 use crate::ui::puzzle_generation::parse_kdl;

@@ -6,7 +6,7 @@ use crate::complex::c64::Scalar;
 use crate::complex::complex_circle::Circle;
 use crate::complex::complex_circle::Contains;
 use crate::complex::complex_circle::OrientedCircle;
-use crate::hps::parse_hps;
+use crate::hps::hps::parse_hps;
 use crate::puzzle::piece::*;
 use crate::puzzle::piece_shape::*;
 use crate::puzzle::puzzle::Puzzle;
