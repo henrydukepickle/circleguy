@@ -5,7 +5,7 @@ use std::{
 };
 
 use approx_collections::FloatPool;
-use hyperpuzzlescript::{Builtins, CustomValue, FullDiagnostic, TypeOf, hps_fns};
+use hyperpuzzlescript::{Builtins, CustomValue, FullDiagnostic, ListOf, TypeOf, hps_fns};
 
 use crate::{
     complex::complex_circle::OrientedCircle,
@@ -62,10 +62,10 @@ pub fn puzzle_builtins(b: &mut Builtins) -> Result<(), FullDiagnostic> {
         fn add(puz: HPSPuzzle, disk: OrientedCircle) -> () {
             puz.0.lock().unwrap().add_disk(disk.circ);
         }
-        fn add(puz: HPSPuzzle, disks: Vec<OrientedCircle>) -> () {
+        fn add(puz: HPSPuzzle, disks: ListOf<OrientedCircle>) -> () {
             let mut p = puz.0.lock().unwrap();
             for disk in disks {
-                p.add_disk(disk.circ);
+                p.add_disk(disk.0.circ);
             }
         }
         fn add(puz: HPSPuzzle, turn: OrderedTurn, name: String) -> () {
@@ -76,26 +76,29 @@ pub fn puzzle_builtins(b: &mut Builtins) -> Result<(), FullDiagnostic> {
             let name = p.next_turn_name().unwrap();
             p.turns.insert(name, turn);
         }
-        fn add(puz: HPSPuzzle, turns: Vec<OrderedTurn>, names: Vec<String>) -> () {
+        fn add(puz: HPSPuzzle, turns: ListOf<OrderedTurn>, names: ListOf<String>) -> () {
             let mut p = puz.0.lock().unwrap();
             for i in 0..(turns.len()) {
-                p.turns.insert(names[i].clone(), turns[i]);
+                p.turns.insert(names[i].0.clone(), turns[i].0);
             }
         }
-        fn add(puz: HPSPuzzle, turns: Vec<OrderedTurn>) -> () {
+        fn add(puz: HPSPuzzle, turns: ListOf<OrderedTurn>) -> () {
             let mut p = puz.0.lock().unwrap();
             for t in turns {
                 let name = p.next_turn_name().unwrap();
-                p.turns.insert(name, t);
+                p.turns.insert(name, t.0);
             }
         }
-        fn cut(puz: HPSPuzzle, cut: Vec<OrderedTurn>) -> () {
-            puz.0.lock().unwrap().cut(&cut);
+        fn cut(puz: HPSPuzzle, cut: ListOf<OrderedTurn>) -> () {
+            puz.0
+                .lock()
+                .unwrap()
+                .cut(&cut.iter().map(|x| x.0).collect());
         }
-        fn turn(puz: HPSPuzzle, turns: Vec<OrderedTurn>) -> () {
+        fn turn(puz: HPSPuzzle, turns: ListOf<OrderedTurn>) -> () {
             let mut p = puz.0.lock().unwrap();
             for t in turns {
-                p.turn(t, true);
+                p.turn(t.0, true);
             }
         }
         fn turn(puz: HPSPuzzle, turn: OrderedTurn) -> () {
@@ -110,14 +113,17 @@ pub fn puzzle_builtins(b: &mut Builtins) -> Result<(), FullDiagnostic> {
         fn undo_all(puz: HPSPuzzle) -> () {
             puz.0.lock().unwrap().undo_all();
         }
-        fn color(puz: HPSPuzzle, region: Vec<OrientedCircle>, color: Color) -> () {
-            puz.0.lock().unwrap().color(&region, color);
+        fn color(puz: HPSPuzzle, region: ListOf<OrientedCircle>, color: Color) -> () {
+            puz.0
+                .lock()
+                .unwrap()
+                .color(&region.iter().map(|x| x.0).collect(), color);
         }
         fn name(puz: HPSPuzzle, name: String) -> () {
             puz.0.lock().unwrap().name = name;
         }
-        fn authors(puz: HPSPuzzle, authors: Vec<String>) -> () {
-            puz.0.lock().unwrap().authors = authors;
+        fn authors(puz: HPSPuzzle, authors: ListOf<String>) -> () {
+            puz.0.lock().unwrap().authors = authors.iter().map(|x| x.0.clone()).collect();
         }
     ])
 }
