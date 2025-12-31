@@ -68,6 +68,12 @@ pub fn turn_builtins(b: &mut Builtins) -> Result<(), FullDiagnostic> {
                 order: num as usize,
             }
         }
+        fn inverse(turn: OrderedTurn) -> OrderedTurn {
+            turn.inverse()
+        }
+        fn mult(turn: OrderedTurn, mult: i64) -> OrderedTurn {
+            turn.mult(mult as isize)
+        }
         fn sym(ctx: EvalCtx, t: OrderedTurn) -> ListOf<OrderedTurn> {
             let mut orders = ListOf::new();
             for i in 0..(t.order) {
@@ -75,7 +81,7 @@ pub fn turn_builtins(b: &mut Builtins) -> Result<(), FullDiagnostic> {
             }
             orders
         }
-        fn flip(ctx: EvalCtx, turns: ListOf<OrderedTurn>) -> ListOf<OrderedTurn> {
+        fn inverse(ctx: EvalCtx, turns: ListOf<OrderedTurn>) -> ListOf<OrderedTurn> {
             flip_turn_seq(turns.into_iter().map(|x| x.0).collect())
                 .into_iter()
                 .map(|x| (x, ctx.caller_span))
