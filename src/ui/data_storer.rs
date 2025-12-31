@@ -25,13 +25,9 @@ pub struct PuzzlePrevData {
     author: String,
 }
 ///parses the preview data for the puzzle, and puts it in a string
-fn get_preview_string(data: &String) -> String {
-    let data = match prev_parse_kdl(data.as_str()) {
-        //parse the data
-        None => return String::from("Could not parse preview!"),
-        Some(real) => real,
-    };
-    return data.name + ": " + &data.turns.join(","); //make the string
+fn get_preview_string(data: &String) -> Option<String> {
+    let data = prev_parse_kdl(data.as_str())?;
+    Some(data.name + ": " + &data.turns.join(",")) //make the string
 }
 ///parses the preview data for the puzzle from the kdl
 fn prev_parse_kdl(string: &str) -> Option<PuzzlePrevData> {
@@ -87,7 +83,11 @@ impl DataStorer {
             let data = read_file_to_string(&(String::from(def_path) + (&filename))).or(Err(()))?; //get the data from the puzzle
             let keybind_data = read_file_to_string(&(String::from(kb_path) + (&filename))).ok(); //read the keybind data
             let puzzle_data = PuzzleData {
-                preview: get_preview_string(&data),
+                preview: if let Some(x) = get_preview_string(&data) {
+                    x
+                } else {
+                    filename.clone()
+                },
                 data: data.clone(),
                 keybinds: keybind_data,
                 keybind_groups: read_file_to_string(&kb_group_path.to_string()).ok(),
