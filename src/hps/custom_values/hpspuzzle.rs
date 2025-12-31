@@ -1,13 +1,21 @@
-use std::sync::{Arc, Mutex};
+use std::{
+    collections::HashMap,
+    sync::{Arc, Mutex},
+};
 
-use hyperpuzzlescript::{CustomValue, TypeOf};
+use approx_collections::FloatPool;
+use hyperpuzzlescript::{Builtins, CustomValue, FullDiagnostic, TypeOf, hps_fns};
 
-use crate::puzzle::puzzle::Puzzle;
-
-#[derive(Clone, Debug)]
-pub struct HPSPuzzleData {
-    pub puzzle: Option<Puzzle>,
-}
+use crate::{
+    complex::complex_circle::OrientedCircle,
+    hps::custom_values::hpspuzzledata::HPSPuzzleData,
+    puzzle::{
+        color::Color,
+        piece::Piece,
+        puzzle::Puzzle,
+        turn::{OrderedTurn, Turn},
+    },
+};
 
 #[derive(Clone, Debug)]
 pub struct HPSPuzzle(pub Arc<Mutex<HPSPuzzleData>>);
@@ -20,7 +28,7 @@ impl TypeOf for HPSPuzzle {
 
 impl HPSPuzzle {
     pub fn new() -> Self {
-        Self(Arc::new(Mutex::new(HPSPuzzleData { puzzle: None })))
+        Self(Arc::new(Mutex::new(HPSPuzzleData::new())))
     }
 }
 
@@ -44,4 +52,41 @@ impl CustomValue for HPSPuzzle {
     fn eq(&self, other: &hyperpuzzlescript::BoxDynValue) -> Option<bool> {
         None
     }
+}
+
+pub fn puzzle_builtins(b: &mut Builtins) -> Result<(), FullDiagnostic> {
+    b.set_fns(hps_fns![
+        fn add(puz: HPSPuzzle, disk: OrientedCircle) -> () {
+            puz.0.lock().unwrap().add_disk(disk.circ);
+        }
+        fn add(puz: HPSPuzzle, disks: Vec<OrientedCircle>) -> () {
+            for disk in disks {
+                puz.0.lock().unwrap().add_disk(disk.circ);
+            }
+        }
+        fn add(puz: HPSPuzzle, turn: OrderedTurn, name: String) -> () {
+            puz.0.lock().unwrap().turns.insert(name, turn);
+        }
+        fn add(puz: HPSPuzzle, turns: Vec<OrderedTurn>, names: Vec<String>) -> () {
+            for i in 0..(turns.len()) {
+                puz.0
+                    .lock()
+                    .unwrap()
+                    .turns
+                    .insert(names[i].clone(), turns[i]);
+            }
+        }
+        fn cut(puz: HPSPuzzle, cut: Vec<OrderedTurn>) -> () {
+            puz.0.lock().unwrap().cut(&cut);
+        }
+        fn color(puz: HPSPuzzle, region: Vec<OrientedCircle>, color: Color) -> () {
+            puz.0.lock().unwrap().color(&region, color);
+        }
+        fn name(puz: HPSPuzzle, name: String) -> () {
+            puz.0.lock().unwrap().name = name;
+        }
+        fn authors(puz: HPSPuzzle, authors: Vec<String>) -> () {
+            puz.0.lock().unwrap().authors = authors;
+        }
+    ])
 }

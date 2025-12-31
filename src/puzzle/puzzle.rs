@@ -1,8 +1,8 @@
+use crate::POOL_PRECISION;
 use crate::complex::c64::Scalar;
 use crate::hps::hps::parse_hps;
 use crate::puzzle::piece::*;
 use crate::puzzle::turn::*;
-use crate::ui::puzzle_generation::parse_kdl;
 use approx_collections::FloatPool;
 use rand::SeedableRng;
 use rand::prelude::IteratorRandom;
@@ -17,8 +17,7 @@ pub struct Puzzle {
     pub name: String,
     pub authors: Vec<String>,
     pub pieces: Vec<Piece>,
-    pub base_turns: HashMap<String, Turn>,
-    pub turn_orders: HashMap<String, isize>,
+    pub turns: HashMap<String, OrderedTurn>,
     pub stack: Vec<(String, isize)>,
     pub scramble: Option<[String; 500]>,
     pub animation_offset: Option<Turn>, //the turn of the puzzle that the animation is currently doing
@@ -30,11 +29,28 @@ pub struct Puzzle {
     pub def: String,
 }
 impl Puzzle {
+    pub fn default() -> Self {
+        Self {
+            name: String::new(),
+            authors: vec![],
+            pieces: vec![],
+            turns: HashMap::new(),
+            stack: vec![],
+            scramble: None,
+            animation_offset: None,
+            intern: FloatPool::new(POOL_PRECISION),
+            depth: 500,
+            solved_state: None,
+            solved: false,
+            anim_left: 0.0,
+            def: String::new(),
+        }
+    }
     ///turns the puzzle around a turn. cuts along the turn first if cut is true.
     ///if the turn was completed, returns Ok(true)
     ///if the turn was bandaged (and cut was false), returns Ok(false)
     ///if an error was encountered, returns Err(e) where e was the error
-    pub fn turn(&mut self, turn: Turn, cut: bool) -> Result<bool, String> {
+    pub fn turn(&mut self, turn: OrderedTurn, cut: bool) -> Result<bool, String> {
         let mut new_pieces = Vec::new(); //make a list of new pieces to populate
         if cut {
             //if cut is true, cut
@@ -54,7 +70,7 @@ impl Puzzle {
         }
         self.pieces = new_pieces;
         self.anim_left = 1.0; //set the animation to run
-        self.animation_offset = Some(turn.inverse());
+        self.animation_offset = Some(turn.turn.inverse());
         self.intern_all(); //intern everything
         Ok(true)
     }
@@ -64,10 +80,10 @@ impl Puzzle {
     ///if an error was encountered, returns Err(e) where e was the error
     pub fn turn_id(&mut self, id: &str, cut: bool, mult: isize) -> Result<bool, String> {
         let turn = self
-            .base_turns
+            .turns
             .get(id)
             .ok_or("No turn found with ID!".to_string())?
-            .mult(mult as Scalar);
+            .mult(mult);
         if !self.turn(turn, cut)? {
             return Ok(false);
         }
@@ -83,8 +99,8 @@ impl Puzzle {
             return Ok(false);
         }
         let last = &self.stack.pop().unwrap();
-        let last_turn = self.base_turns[&last.0]; //try to find the last turn
-        if !self.turn(last_turn.inverse().mult(last.1 as Scalar), false)? {
+        let last_turn = self.turns[&last.0]; //try to find the last turn
+        if !self.turn(last_turn.inverse().mult(last.1), false)? {
             return Err(String::from("Puzzle.undo failed: undo turn was bandaged!"));
         };
         Ok(true)
@@ -106,12 +122,12 @@ impl Puzzle {
         for i in 0..self.depth {
             //choose a random turn and do it
             let key = self
-                .base_turns
+                .turns
                 .keys()
                 .choose(&mut rng)
                 .ok_or("Puzzle.scramble failed: rng choosing a turn failed!".to_string())?
                 .clone();
-            self.turn(self.base_turns[&key], cut)?;
+            self.turn(self.turns[&key], cut)?;
             scramble[i as usize] = key;
         }
         self.animation_offset = None;

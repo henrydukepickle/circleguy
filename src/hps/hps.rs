@@ -14,17 +14,21 @@ use crate::{
     complex::{c64::C64, complex_circle::ComplexCircle},
     hps::{
         builtins,
-        custom_values::{
-            self,
-            hpspuzzle::{HPSPuzzle, HPSPuzzleData},
-        },
+        custom_values::{self, hpspuzzle::HPSPuzzle, hpspuzzledata::HPSPuzzleData},
     },
     puzzle::puzzle::Puzzle,
-    ui::puzzle_generation::make_basic_puzzle,
+    ui::io::read_file_to_string,
 };
 
+///load a puzzle from a file
+///
+///needs a .hps at the end, but is a relative path
+pub fn load_puzzle_and_def_from_file(path: &str) -> Option<Puzzle> {
+    let contents = read_file_to_string(path).ok()?;
+    return Some(parse_hps(&contents.clone())?);
+}
+
 pub fn parse_hps(hps: &str) -> Option<Puzzle> {
-    dbg!(hps);
     let mut rt = hyperpuzzlescript::Runtime::new();
     let puzzle = HPSPuzzle::new();
     let mut scope = Scope::default();
@@ -53,5 +57,5 @@ pub fn parse_hps(hps: &str) -> Option<Puzzle> {
     //     solved: false,
     //     def: String::new(),
     // })
-    data.puzzle
+    Some(data.to_puzzle())
 }

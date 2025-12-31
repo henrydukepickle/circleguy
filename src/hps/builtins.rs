@@ -1,30 +1,18 @@
-use hyperpuzzlescript::{Builtins, FullDiagnostic, hps_fns};
+use hyperpuzzlescript::{Builtins, FullDiagnostic};
 
-use crate::complex::point::Point;
-use crate::complex::{c64::C64, complex_circle::ComplexCircle};
-use crate::hps::custom_values::circle;
+use crate::hps::custom_values::circle::circle_builtins;
+use crate::hps::custom_values::color::color_builtins;
+use crate::hps::custom_values::hpspuzzle::puzzle_builtins;
+use crate::hps::custom_values::point::point_builtins;
+use crate::hps::custom_values::turn::turn_builtins;
+use crate::hps::custom_values::vector::vector_builtins;
 
 pub fn circleguy_builtins(b: &mut Builtins) -> Result<(), FullDiagnostic> {
-    b.set_fns(hps_fns![
-            fn circle(cx: f64, cy: f64, r: f64) -> ComplexCircle {
-                ComplexCircle {
-                    center: Point(C64 { re: cx, im: cy }),
-                    r_sq: r * r,
-                }
-            }
-            // fn set(circs: Vec<ComplexCircle>) -> () {
-            //     (*state2.lock().unwrap()) = circs.into();
-            // }
-        ])?;
-    // b.set_fns(hps_fns![(
-    //     "+",
-    //     |_, a: ComplexCircle, b: f64| -> ComplexCircle {
-    //         ComplexCircle {
-    //             center: a.center,
-    //             r_sq: a.r_sq + b.abs(),
-    //         }
-    //     }
-    // )])?;
-    b.set_custom_ty::<ComplexCircle>().unwrap();
+    color_builtins(b)?;
+    puzzle_builtins(b)?;
+    vector_builtins(b)?;
+    turn_builtins(b)?;
+    point_builtins(b)?;
+    circle_builtins(b)?;
     Ok(())
 }

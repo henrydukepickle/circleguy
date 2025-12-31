@@ -1,3 +1,17 @@
-c = circle(0, 1, 1)
-list = [c]
-set(list)
+ca = circle(-0.5, 0, 0.8)
+cb = circle(0.5, 0, 0.7)
+a = turn(ca, 5)
+b = turn(cb, 5)
+test = !ca
+#puz.add(ca)
+#puz.add(cb)
+#puz.add(a, "A")
+#puz.add(b, "B")
+cut_seq = []
+for i in 0..32 {
+    cut_seq = cut_seq ++ [a, b]
+}
+#puz.cut(cut_seq)
+#puz.color([ca, !cb], red)
+#puz.color([ca, cb], blue)
+#puz.color([!ca, cb], green)

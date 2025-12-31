@@ -4,6 +4,7 @@ use crate::complex::c64::C64;
 use crate::complex::complex_circle::Circle;
 use crate::complex::complex_circle::Contains;
 use crate::complex::point::Point;
+use crate::puzzle::color::Color;
 use crate::puzzle::piece::*;
 use crate::puzzle::puzzle::*;
 use crate::puzzle::turn::*;
@@ -29,6 +30,37 @@ pub struct RenderingCircle {
 const DETAIL: f64 = 0.5;
 ///the color of the outlines
 const OUTLINE_COLOR: Color32 = Color32::BLACK;
+
+impl Color {
+    pub fn to_egui(&self) -> Color32 {
+        match self {
+            Color::Red => Color32::RED,
+            Color::Green => Color32::GREEN,
+            Color::Blue => Color32::BLUE,
+            Color::Yellow => Color32::YELLOW,
+            Color::Purple => Color32::PURPLE,
+            Color::Gray => Color32::GRAY,
+            Color::Black => Color32::BLACK,
+            Color::Brown => Color32::BROWN,
+            Color::Cyan => Color32::CYAN,
+            Color::White => Color32::WHITE,
+            Color::DarkBlue => Color32::DARK_BLUE,
+            Color::DarkGreen => Color32::DARK_GREEN,
+            Color::DarkGray => Color32::DARK_GRAY,
+            Color::DarkRed => Color32::DARK_RED,
+            Color::LightBlue => Color32::LIGHT_BLUE,
+            Color::LightGray => Color32::LIGHT_GRAY,
+            Color::LightGreen => Color32::LIGHT_GREEN,
+            Color::LightYellow => Color32::LIGHT_YELLOW,
+            Color::LightRed => Color32::LIGHT_RED,
+            Color::Khaki => Color32::KHAKI,
+            Color::Gold => Color32::GOLD,
+            Color::Magenta => Color32::MAGENTA,
+            Color::Orange => Color32::ORANGE,
+            Color::None => Color32::GRAY,
+        }
+    }
+}
 
 ///draws a the circumference of a circle given the coordinates
 pub fn draw_circle(real_circle: Circle, ui: &mut Ui, rect: &Rect, scale_factor: f32, offset: Vec2) {
@@ -181,7 +213,7 @@ impl Piece {
                     let vertex = epaint::Vertex {
                         pos: to_egui_coords(point, rect, scale_factor, offset_pos),
                         uv: pos2(0.0, 0.0),
-                        color: true_piece.color,
+                        color: true_piece.color.to_egui(),
                     };
                     triangle_vertices.push(vertex); //add the nondegenerate triangle vertices
                 }
@@ -280,15 +312,18 @@ impl Puzzle {
         let mut min_dist: f32 = 10000.0;
         let mut min_rad: f32 = 10000.0;
         let mut correct_id: String = String::from("");
-        for turn in &self.base_turns {
+        for turn in &self.turns {
             //iterate over the turns to find the closest one
-            let (center, radius) = (turn.1.circle.center.to_pos2(), turn.1.circle.r() as f32);
+            let (center, radius) = (
+                turn.1.turn.circle.center.to_pos2(),
+                turn.1.turn.circle.r() as f32,
+            );
             //compare how close they are
             //ties are broken by the radius, smaller radius gets priority (so that concentric circles work)
             if ((good_pos.distance(center).approx_cmp(&min_dist, PRECISION) == Ordering::Less)
                 || ((good_pos.distance(center).approx_eq(&min_dist, PRECISION))
                     && (radius.approx_cmp(&min_rad, PRECISION)) == Ordering::Less))
-                && turn.1.circle.contains(Point(C64 {
+                && turn.1.turn.circle.contains(Point(C64 {
                     re: good_pos.x as f64,
                     im: good_pos.y as f64,
                 })) == Contains::Inside
@@ -322,9 +357,12 @@ impl Puzzle {
         let mut min_dist: f32 = 10000.0;
         let mut min_rad: f32 = 10000.0;
         let mut correct_turn = None;
-        for turn in self.base_turns.clone().values() {
+        for turn in self.turns.clone().values() {
             //this algorithm proceeds very similarly to the process_click algorithm above
-            let (cent, rad) = (turn.circle.center.to_pos2(), turn.circle.r() as f32);
+            let (cent, rad) = (
+                turn.turn.circle.center.to_pos2(),
+                turn.turn.circle.r() as f32,
+            );
             if ((good_pos.distance(cent).approx_cmp(&min_dist, PRECISION) == Ordering::Less)
                 || ((good_pos.distance(cent).approx_eq(&min_dist, PRECISION))
                     && (rad.approx_cmp(&min_rad, PRECISION)) == Ordering::Less))
@@ -343,6 +381,7 @@ impl Puzzle {
                 None => return Ok(None),
                 Some(x) => x,
             }
+            .turn
             .circle,
         ));
     }

@@ -1,6 +1,6 @@
-use hyperpuzzlescript::{CustomValue, TypeOf};
+use hyperpuzzlescript::{Builtins, CustomValue, FullDiagnostic, TypeOf, hps_fns};
 
-use crate::complex::{complex_circle::ComplexCircle, point::Point, vector::Vector};
+use crate::complex::{c64::C64, complex_circle::ComplexCircle, point::Point, vector::Vector};
 use approx_collections::ApproxEq;
 
 impl TypeOf for Vector {
@@ -40,4 +40,22 @@ impl CustomValue for Vector {
             _ => None,
         })
     }
+}
+
+pub fn vector_builtins(b: &mut Builtins) -> Result<(), FullDiagnostic> {
+    b.set_fns(hps_fns![
+        fn vector(x: f64, y: f64) -> Vector {
+            Vector(C64 { re: x, im: y })
+        }
+        fn mag(v: Vector) -> f64 {
+            v.mag()
+        }
+    ])?;
+    b.set_fns(hps_fns![
+        ("+", |_, a: Vector, b: Vector| -> Vector { a + b }),
+        ("-", |_, a: Vector, b: Vector| -> Vector { a - b }),
+        ("~", |_, a: Vector| -> Vector { -a }),
+        ("*", |_, a: f64, b: Vector| -> Vector { a * b })
+    ])?;
+    b.set_custom_ty::<Vector>()
 }

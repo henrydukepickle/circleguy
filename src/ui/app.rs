@@ -6,7 +6,6 @@ use crate::puzzle::puzzle::*;
 use crate::ui::data_storer::*;
 use crate::ui::keybinds::Keybinds;
 use crate::ui::keybinds::load_keybinds;
-use crate::ui::puzzle_generation::*;
 use crate::ui::render::draw_circle;
 use egui::*;
 
@@ -56,7 +55,7 @@ impl App {
         Self {
             //return the default app
             data_storer,
-            puzzle: parse_kdl(&p_data.data).unwrap(),
+            puzzle: parse_hps(&p_data.data).unwrap(),
             log_path: String::from("logfile"),
             curr_msg: String::new(),
             animation_speed: ANIMATION_SPEED,
@@ -170,8 +169,10 @@ impl eframe::App for App {
                     //loading, does not work on web
                     #[cfg(not(target_arch = "wasm32"))]
                     if ui.add(egui::Button::new("LOAD LOG")).clicked() {
+                        use crate::hps::hps::load_puzzle_and_def_from_file;
+
                         self.puzzle = load_puzzle_and_def_from_file(
-                            &(String::from("Puzzles/Logs/") + &self.log_path + ".kdl"),
+                            &(String::from("Puzzles/Logs/") + &self.log_path + ".hps"),
                         )
                         .unwrap_or(self.puzzle.clone());
                     }

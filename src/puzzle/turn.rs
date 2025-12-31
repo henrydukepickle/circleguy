@@ -24,11 +24,11 @@ impl Turn {
             rot: self.rot.conj(),
         }
     }
-    ///multiply a turn by a scalar.
+    ///multiply a turn by an integer.
     pub fn mult(&self, mult: Scalar) -> Self {
         Self {
             circle: self.circle,
-            rot: (Rotation::from_angle(self.rot.angle() * mult)), //multiply the angle by the scalar and recalculate the number
+            rot: (Rotation::from_angle(self.rot.angle() * (mult as Scalar))), //multiply the angle by the scalar and recalculate the number
         }
     }
     ///rotate a point according to the turn. does not care whether the point is in/out of the circle
@@ -104,5 +104,35 @@ impl Turn {
                 color: piece.color,
             })
             .collect())
+    }
+}
+#[derive(Debug, Clone, Copy)]
+pub struct OrderedTurn {
+    pub turn: Turn,
+    pub order: usize,
+}
+
+impl OrderedTurn {
+    pub fn inverse(&self) -> Self {
+        Self {
+            turn: self.turn.inverse(),
+            order: self.order,
+        }
+    }
+    pub fn mult(&self, mult: isize) -> Self {
+        Self {
+            turn: self.turn.mult(mult as Scalar),
+            order: if mult == 0 || self.order == 0 {
+                0
+            } else {
+                self.order / (num::integer::gcd(self.order, mult as usize))
+            },
+        }
+    }
+    pub fn turn_piece(&self, piece: &Piece) -> Option<Piece> {
+        self.turn.turn_piece(piece)
+    }
+    pub fn turn_cut_piece(&self, piece: &Piece) -> Result<Vec<Piece>, String> {
+        self.turn.turn_cut_piece(piece)
     }
 }

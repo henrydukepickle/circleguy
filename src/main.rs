@@ -15,7 +15,7 @@ pub const LOW_PRECISION: approx_collections::Precision = Precision::new_simple(1
 ///used for the float pools from approx
 pub const POOL_PRECISION: approx_collections::Precision = Precision::new(20, 20);
 ///default puzzle loaded when the program is opened
-const DEFAULT_PUZZLE: &str = "test.hps";
+const DEFAULT_PUZZLE: &str = "sphenic_tetraxe.hps";
 ///location of the icon
 const ICON_PNG_DATA: &[u8] = include_bytes!("../resources/icon.png");
 
@@ -24,32 +24,32 @@ const ICON_PNG_DATA: &[u8] = include_bytes!("../resources/icon.png");
 fn main() -> eframe::Result {
     use crate::{hps::hps::parse_hps, ui::io::read_file_to_string};
 
-    dbg!(
-        parse_hps(&read_file_to_string("Puzzles/Definitions/test.hps").unwrap())
-            .unwrap()
-            .pieces
-            .len()
-    );
-    //set the icon
-    // let icon_data =
-    //     eframe::icon_data::from_png_bytes(ICON_PNG_DATA).expect("error loading application icon");
-    // //set the native options
-    // let native_options = eframe::NativeOptions {
-    //     viewport: egui::ViewportBuilder::default()
-    //         .with_title("circleguy")
-    //         .with_app_id("circleguy")
-    //         .with_icon(icon_data)
-    //         .with_maximized(true)
-    //         .with_min_inner_size([400.0, 300.0]),
-    //     ..Default::default()
-    // };
-    // //run the native as defined in app.rs
-    // eframe::run_native(
-    //     "circleguy",
-    //     native_options,
-    //     Box::new(|cc| Ok(Box::new(App::new(cc)))),
-    // )
-    Ok(())
+    // dbg!(
+    //     parse_hps(&read_file_to_string("Puzzles/Definitions/test.hps").unwrap())
+    //         .unwrap()
+    //         .pieces
+    //         .len()
+    // );
+    // set the icon
+    let icon_data =
+        eframe::icon_data::from_png_bytes(ICON_PNG_DATA).expect("error loading application icon");
+    //set the native options
+    let native_options = eframe::NativeOptions {
+        viewport: egui::ViewportBuilder::default()
+            .with_title("circleguy")
+            .with_app_id("circleguy")
+            .with_icon(icon_data)
+            .with_maximized(true)
+            .with_min_inner_size([400.0, 300.0]),
+        ..Default::default()
+    };
+    //run the native as defined in app.rs
+    eframe::run_native(
+        "circleguy",
+        native_options,
+        Box::new(|cc| Ok(Box::new(App::new(cc)))),
+    )
+    //Ok(())
 }
 // When compiling to web using trunk:
 #[cfg(target_arch = "wasm32")]

@@ -174,3 +174,9 @@ impl Neg for OrientedCircle {
         }
     }
 }
+
+impl ApproxEq for OrientedCircle {
+    fn approx_eq(&self, other: &Self, prec: approx_collections::Precision) -> bool {
+        self.circ.approx_eq(&other.circ, prec) && self.ori == other.ori
+    }
+}
