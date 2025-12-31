@@ -59,30 +59,30 @@ impl CustomValue for HPSPuzzle {
 
 pub fn puzzle_builtins(b: &mut Builtins) -> Result<(), FullDiagnostic> {
     b.set_fns(hps_fns![
-        fn add(puz: HPSPuzzle, disk: OrientedCircle) -> () {
+        fn add_circle(puz: HPSPuzzle, disk: OrientedCircle) -> () {
             puz.0.lock().unwrap().add_disk(disk.circ);
         }
-        fn add(puz: HPSPuzzle, disks: ListOf<OrientedCircle>) -> () {
+        fn add_circles(puz: HPSPuzzle, disks: ListOf<OrientedCircle>) -> () {
             let mut p = puz.0.lock().unwrap();
             for disk in disks {
                 p.add_disk(disk.0.circ);
             }
         }
-        fn add(puz: HPSPuzzle, turn: OrderedTurn, name: String) -> () {
+        fn add_turn(puz: HPSPuzzle, turn: OrderedTurn, name: String) -> () {
             puz.0.lock().unwrap().turns.insert(name, turn);
         }
-        fn add(puz: HPSPuzzle, turn: OrderedTurn) -> () {
+        fn add_turn(puz: HPSPuzzle, turn: OrderedTurn) -> () {
             let mut p = puz.0.lock().unwrap();
             let name = p.next_turn_name().unwrap();
             p.turns.insert(name, turn);
         }
-        fn add(puz: HPSPuzzle, turns: ListOf<OrderedTurn>, names: ListOf<String>) -> () {
+        fn add_turns(puz: HPSPuzzle, turns: ListOf<OrderedTurn>, names: ListOf<String>) -> () {
             let mut p = puz.0.lock().unwrap();
             for i in 0..(turns.len()) {
                 p.turns.insert(names[i].0.clone(), turns[i].0);
             }
         }
-        fn add(puz: HPSPuzzle, turns: ListOf<OrderedTurn>) -> () {
+        fn add_turns(puz: HPSPuzzle, turns: ListOf<OrderedTurn>) -> () {
             let mut p = puz.0.lock().unwrap();
             for t in turns {
                 let name = p.next_turn_name().unwrap();

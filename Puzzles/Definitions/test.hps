@@ -3,10 +3,10 @@ cb = circle(0.5, 0, 0.7)
 a = turn(ca, 5)
 b = turn(cb, 5)
 test = !ca
-#puz.add(ca)
-#puz.add(cb)
-#puz.add(a, "A")
-#puz.add(b, "B")
+#puz.add_circle(ca)
+#puz.add_circle(cb)
+#puz.add_turn(a, "A")
+#puz.add_turn(b, "B")
 cut_seq = []
 for i in 0..32 {
     cut_seq = cut_seq ++ [a, b]
