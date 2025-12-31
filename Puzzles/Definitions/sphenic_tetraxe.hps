@@ -11,8 +11,8 @@ t4 = turn(c4, 4)
 #puz.add([c1, c2, c3, c4])
 #puz.add([t1, t2, t3, t4], ["A", "B", "C", "D"])
 sym = turn(circle(p, 5), 4)
-for t in sym.orders() {
-    for k in t1.orders() {
+for t in sym.sym() {
+    for k in t1.sym() {
         #puz.cut([t, k, t2])
     } 
 }
