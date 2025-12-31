@@ -35,8 +35,8 @@ impl CustomValue for Point {
         (field, _field_span): hyperpuzzlescript::Spanned<&str>,
     ) -> hyperpuzzlescript::Result<Option<hyperpuzzlescript::ValueData>> {
         Ok(match field {
-            "x" => Some(self.0.re.into()),
-            "y" => Some(self.0.im.into()),
+            "x" | "0" | "re" => Some(self.0.re.into()),
+            "y" | "1" | "im" => Some(self.0.im.into()),
             _ => None,
         })
     }

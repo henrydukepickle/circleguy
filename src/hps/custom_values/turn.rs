@@ -5,7 +5,10 @@ use hyperpuzzlescript::{
 };
 
 use crate::{
-    complex::{complex_circle::OrientedCircle, rotation::Rotation},
+    complex::{
+        complex_circle::{Contains, OrientedCircle},
+        rotation::Rotation,
+    },
     puzzle::turn::{OrderedTurn, Turn},
 };
 
@@ -34,6 +37,23 @@ impl CustomValue for OrderedTurn {
     fn eq(&self, other: &hyperpuzzlescript::BoxDynValue) -> Option<bool> {
         None
     }
+    fn field_get(
+        &self,
+        _self_span: hyperpuzzlescript::Span,
+        (field, _field_span): hyperpuzzlescript::Spanned<&str>,
+    ) -> hyperpuzzlescript::Result<Option<hyperpuzzlescript::ValueData>> {
+        Ok(match field {
+            "circ" | "c" | "circle" => Some(
+                OrientedCircle {
+                    circ: self.turn.circle.into(),
+                    ori: Contains::Inside,
+                }
+                .into(),
+            ),
+            "order" | "ord" | "num" => Some(self.order.into()),
+            _ => None,
+        })
+    }
 }
 
 pub fn turn_builtins(b: &mut Builtins) -> Result<(), FullDiagnostic> {
@@ -47,11 +67,11 @@ pub fn turn_builtins(b: &mut Builtins) -> Result<(), FullDiagnostic> {
                 order: num as usize,
             }
         }
-        fn orders(t: OrderedTurn) -> ListOf<OrderedTurn> {
+        fn sym(ctx: EvalCtx, t: OrderedTurn) -> ListOf<OrderedTurn> {
             let mut orders = ListOf::new();
             for i in 0..(t.order) {
                 //WRONG SPAN BUT IDK
-                orders.push((t.mult(i as isize), BUILTIN_SPAN));
+                orders.push((t.mult(i as isize), ctx.caller_span));
             }
             orders
         }

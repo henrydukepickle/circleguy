@@ -18,13 +18,18 @@ use crate::{
     },
 };
 
+const NAMES: [&str; 26] = [
+    "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S",
+    "T", "U", "V", "W", "X", "Y", "Z",
+];
+
 #[derive(Clone, Debug)]
 pub struct HPSPuzzleData {
     pub name: String,
     pub authors: Vec<String>,
     pub pieces: Vec<Piece>,
     pub turns: HashMap<String, OrderedTurn>,
-    pub stack: Vec<(String, isize)>,
+    pub stack: Vec<OrderedTurn>,
     pub intern: FloatPool,
     pub disks: Vec<ComplexCircle>,
 }
@@ -92,6 +97,7 @@ impl HPSPuzzleData {
             }
         }
         self.pieces = new_pieces;
+        self.stack.push(turn);
         //self.intern_all(); //intern everything
         Ok(true)
     }
@@ -99,10 +105,26 @@ impl HPSPuzzleData {
         for turn in cut {
             self.turn(*turn, true)?;
         }
-        for turn in cut.into_iter().rev() {
-            self.turn(turn.inverse(), false)?;
-        }
+        self.undo_num(cut.len());
         Ok(())
+    }
+    ///returns true if something was there to be undone
+    pub fn undo(&mut self) -> bool {
+        if let Some(t) = self.stack.pop() {
+            self.turn(t.inverse(), false);
+            self.stack.pop();
+            true
+        } else {
+            false
+        }
+    }
+    pub fn undo_num(&mut self, mut num: usize) {
+        while num > 0 && self.undo() {
+            num -= 1;
+        }
+    }
+    pub fn undo_all(&mut self) {
+        while self.undo() {}
     }
     pub fn color(&mut self, region: &Vec<OrientedCircle>, color: Color) {
         for piece in &mut self.pieces {
@@ -110,6 +132,14 @@ impl HPSPuzzleData {
                 piece.color = color;
             }
         }
+    }
+    pub fn next_turn_name(&self) -> Option<String> {
+        for ch in NAMES {
+            if !self.turns.contains_key(ch) {
+                return Some(ch.to_string());
+            }
+        }
+        None
     }
 }
 

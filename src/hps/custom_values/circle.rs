@@ -38,8 +38,8 @@ impl CustomValue for OrientedCircle {
         (field, _field_span): hyperpuzzlescript::Spanned<&str>,
     ) -> hyperpuzzlescript::Result<Option<hyperpuzzlescript::ValueData>> {
         Ok(match field {
-            "c" => Some(self.circ.center.into()),
-            "r" => Some(self.circ.r().into()),
+            "c" | "cent" | "center" => Some(self.circ.center.into()),
+            "r" | "rad" | "radius" => Some(self.circ.r().into()),
             _ => None,
         })
     }
