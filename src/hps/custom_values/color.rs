@@ -28,5 +28,26 @@ impl CustomValue for Color {
 pub fn color_builtins(b: &mut Builtins) -> Result<(), FullDiagnostic> {
     b.set("red", Color::Red)?;
     b.set("green", Color::Green)?;
-    b.set("blue", Color::Blue)
+    b.set("blue", Color::Blue)?;
+    b.set("yellow", Color::Yellow)?;
+    b.set("purple", Color::Purple)?;
+    b.set("gray", Color::Gray)?;
+    b.set("black", Color::Black)?;
+    b.set("brown", Color::Brown)?;
+    b.set("cyan", Color::Cyan)?;
+    b.set("white", Color::White)?;
+    b.set("dark_blue", Color::DarkBlue)?;
+    b.set("dark_green", Color::DarkGreen)?;
+    b.set("dark_gray", Color::DarkRed)?;
+    b.set("dark_red", Color::DarkRed)?;
+    b.set("light_blue", Color::LightBlue)?;
+    b.set("light_gray", Color::LightGray)?;
+    b.set("light_green", Color::LightGreen)?;
+    b.set("light_red", Color::LightRed)?;
+    b.set("light_yellow", Color::LightYellow)?;
+    b.set("khaki", Color::Khaki)?;
+    b.set("gold", Color::Gold)?;
+    b.set("magenta", Color::Magenta)?;
+    b.set("orange", Color::Orange)?;
+    Ok(())
 }

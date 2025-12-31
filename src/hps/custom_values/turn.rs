@@ -1,5 +1,6 @@
 use std::f64::consts::PI;
 
+use egui::Order;
 use hyperpuzzlescript::{
     BUILTIN_SPAN, Builtins, CustomValue, FullDiagnostic, List, ListOf, TypeOf, hps_fns,
 };
@@ -70,11 +71,38 @@ pub fn turn_builtins(b: &mut Builtins) -> Result<(), FullDiagnostic> {
         fn sym(ctx: EvalCtx, t: OrderedTurn) -> ListOf<OrderedTurn> {
             let mut orders = ListOf::new();
             for i in 0..(t.order) {
-                //WRONG SPAN BUT IDK
                 orders.push((t.mult(i as isize), ctx.caller_span));
             }
             orders
         }
+        fn flip(ctx: EvalCtx, turns: ListOf<OrderedTurn>) -> ListOf<OrderedTurn> {
+            flip_turn_seq(turns.into_iter().map(|x| x.0).collect())
+                .into_iter()
+                .map(|x| (x, ctx.caller_span))
+                .collect()
+        }
+        fn mult(ctx: EvalCtx, turns: ListOf<OrderedTurn>, num: i64) -> ListOf<OrderedTurn> {
+            mult_turn_seq(turns.into_iter().map(|x| x.0).collect(), num)
+                .into_iter()
+                .map(|x| (x, ctx.caller_span))
+                .collect()
+        }
     ])?;
     b.set_custom_ty::<OrderedTurn>()
+}
+
+fn flip_turn_seq(turn_seq: Vec<OrderedTurn>) -> Vec<OrderedTurn> {
+    turn_seq.iter().rev().map(|x| x.inverse()).collect()
+}
+
+fn mult_turn_seq(turn_seq: Vec<OrderedTurn>, num: i64) -> Vec<OrderedTurn> {
+    if num == 0 {
+        Vec::new()
+    } else if num > 0 {
+        let mut turns = mult_turn_seq(turn_seq.clone(), num - 1);
+        turns.extend(turn_seq);
+        turns
+    } else {
+        mult_turn_seq(flip_turn_seq(turn_seq), -num)
+    }
 }
