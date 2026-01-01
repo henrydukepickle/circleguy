@@ -9,7 +9,7 @@ use crate::puzzle::piece::*;
 use crate::puzzle::puzzle::*;
 use crate::puzzle::turn::*;
 use crate::ui::data_storer::DataStorer;
-use crate::ui::data_storer::PuzzleData;
+use crate::ui::data_storer::UIPuzzleData;
 use approx_collections::*;
 use egui::FontId;
 use egui::RichText;
@@ -389,7 +389,7 @@ impl Puzzle {
 
 impl DataStorer {
     ///render the data panel on the screen and read input for which button is clicked
-    pub fn render_panel(&mut self, ctx: &egui::Context) -> Result<Option<PuzzleData>, ()> {
+    pub fn render_panel(&mut self, ctx: &egui::Context) -> Result<Option<UIPuzzleData>, ()> {
         let panel = egui::SidePanel::new(egui::panel::Side::Right, "data_panel").resizable(false); //make the new panel
         let mut puzzle_data = None;
         panel.show(ctx, |ui| {

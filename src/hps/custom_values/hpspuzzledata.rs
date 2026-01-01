@@ -13,7 +13,7 @@ use crate::{
         color::Color,
         piece::Piece,
         piece_shape::PieceShape,
-        puzzle::Puzzle,
+        puzzle::{Puzzle, PuzzleData},
         turn::{OrderedTurn, Turn},
     },
 };
@@ -46,21 +46,13 @@ impl HPSPuzzleData {
             disks: vec![],
         }
     }
-    pub fn to_puzzle(&self) -> Puzzle {
-        Puzzle {
+    pub fn to_puzzle_data(&self) -> PuzzleData {
+        PuzzleData {
             name: self.name.clone(),
             authors: self.authors.clone(),
             pieces: self.pieces.clone(),
             turns: self.turns.clone(),
-            stack: vec![],
-            scramble: None,
-            animation_offset: None,
             intern: self.intern.clone(),
-            depth: 500,
-            solved_state: Some(self.pieces.clone()),
-            solved: false,
-            anim_left: 0.0,
-            def: String::new(),
         }
     }
     pub fn add_disk(&mut self, disk: ComplexCircle) -> bool {

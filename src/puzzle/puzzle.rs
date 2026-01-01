@@ -23,27 +23,34 @@ pub struct Puzzle {
     pub animation_offset: Option<Turn>, //the turn of the puzzle that the animation is currently doing
     pub intern: FloatPool,
     pub depth: u16,
-    pub solved_state: Option<Vec<Piece>>,
     pub solved: bool,
     pub anim_left: f32, //the amount of animation left
-    pub def: String,
+    pub data: PuzzleData,
 }
+#[derive(Debug, Clone)]
+pub struct PuzzleData {
+    pub name: String,
+    pub authors: Vec<String>,
+    pub pieces: Vec<Piece>,
+    pub turns: HashMap<String, OrderedTurn>,
+    pub intern: FloatPool,
+}
+
 impl Puzzle {
-    pub fn default() -> Self {
+    pub fn new(data: PuzzleData) -> Self {
         Self {
-            name: String::new(),
-            authors: vec![],
-            pieces: vec![],
-            turns: HashMap::new(),
+            name: data.name.clone(),
+            authors: data.authors.clone(),
+            pieces: data.pieces.clone(),
+            turns: data.turns.clone(),
             stack: vec![],
             scramble: None,
             animation_offset: None,
             intern: FloatPool::new(POOL_PRECISION),
             depth: 500,
-            solved_state: None,
             solved: false,
             anim_left: 0.0,
-            def: String::new(),
+            data: data,
         }
     }
     ///turns the puzzle around a turn. cuts along the turn first if cut is true.
@@ -136,8 +143,7 @@ impl Puzzle {
     }
     ///reset the puzzle, using the stored definition
     pub fn reset(&mut self) -> Result<(), String> {
-        *self =
-            parse_hps(&self.def).ok_or("Puzzle.reset failed: parsing kdl failed!".to_string())?;
+        *self = Puzzle::new(self.data.clone());
         Ok(())
     }
 }

@@ -96,19 +96,17 @@ impl eframe::App for App {
                 };
             //if the puzzle is in preview mode, render all of the pieces of the solved state
             } else {
-                if let Some(s) = &self.puzzle.solved_state {
-                    for piece in s {
-                        if let Err(x) = piece.render(
-                            ui,
-                            &rect,
-                            None,
-                            self.detail,
-                            self.outline_width,
-                            self.scale_factor,
-                            self.offset,
-                        ) {
-                            self.curr_msg = x;
-                        }
+                for piece in &self.puzzle.data.pieces {
+                    if let Err(x) = piece.render(
+                        ui,
+                        &rect,
+                        None,
+                        self.detail,
+                        self.outline_width,
+                        self.scale_factor,
+                        self.offset,
+                    ) {
+                        self.curr_msg = x;
                     }
                 }
             }
@@ -157,25 +155,25 @@ impl eframe::App for App {
                     ui.label("Log File Path");
                     ui.add(egui::TextEdit::singleline(&mut self.log_path));
                     //saving, does not work on web
-                    #[cfg(not(target_arch = "wasm32"))]
-                    if ui.add(egui::Button::new("SAVE")).clicked() {
-                        self.curr_msg = match self.puzzle.write_to_file(
-                            &(String::from("Puzzles/Logs/") + &self.log_path + ".kdl"),
-                        ) {
-                            Ok(()) => String::from("Saved successfully!"),
-                            Err(err) => err.to_string(),
-                        }
-                    }
-                    //loading, does not work on web
-                    #[cfg(not(target_arch = "wasm32"))]
-                    if ui.add(egui::Button::new("LOAD LOG")).clicked() {
-                        use crate::hps::hps::load_puzzle_and_def_from_file;
+                    // #[cfg(not(target_arch = "wasm32"))]
+                    // if ui.add(egui::Button::new("SAVE")).clicked() {
+                    //     self.curr_msg = match self.puzzle.write_to_file(
+                    //         &(String::from("Puzzles/Logs/") + &self.log_path + ".kdl"),
+                    //     ) {
+                    //         Ok(()) => String::from("Saved successfully!"),
+                    //         Err(err) => err.to_string(),
+                    //     }
+                    // }
+                    // //loading, does not work on web
+                    // #[cfg(not(target_arch = "wasm32"))]
+                    // if ui.add(egui::Button::new("LOAD LOG")).clicked() {
+                    //     use crate::hps::hps::load_puzzle_and_def_from_file;
 
-                        self.puzzle = load_puzzle_and_def_from_file(
-                            &(String::from("Puzzles/Logs/") + &self.log_path + ".hps"),
-                        )
-                        .unwrap_or(self.puzzle.clone());
-                    }
+                    //     self.puzzle = load_puzzle_and_def_from_file(
+                    //         &(String::from("Puzzles/Logs/") + &self.log_path + ".hps"),
+                    //     )
+                    //     .unwrap_or(self.puzzle.clone());
+                    // }
                 });
                 //view menu controls view graphics
                 let view_button = default_menu_button("View");

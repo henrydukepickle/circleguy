@@ -3,7 +3,7 @@ use kdl::*;
 use std::{cmp::Ordering, collections::HashMap, fs::*};
 pub const TOP: usize = 3;
 #[derive(Debug, Clone)]
-pub struct PuzzleData {
+pub struct UIPuzzleData {
     pub preview: String,
     pub data: String,
     pub keybinds: Option<String>,
@@ -12,10 +12,10 @@ pub struct PuzzleData {
 #[derive(Debug, Clone)]
 ///stores the data for loading puzzles (definitions and basic info for preview)
 pub struct DataStorer {
-    pub puzzles: HashMap<String, PuzzleData>,
+    pub puzzles: HashMap<String, UIPuzzleData>,
     pub prev_data: Vec<PuzzlePrevData>,
     pub top: Vec<(String, usize)>,
-    pub sorted_puzzles: Vec<PuzzleData>,
+    pub sorted_puzzles: Vec<UIPuzzleData>,
 }
 #[derive(Debug, Clone)]
 ///puzzle preview data
@@ -82,7 +82,7 @@ impl DataStorer {
             let filename = path.or(Err(()))?.file_name().into_string().or(Err(()))?;
             let data = read_file_to_string(&(String::from(def_path) + (&filename))).or(Err(()))?; //get the data from the puzzle
             let keybind_data = read_file_to_string(&(String::from(kb_path) + (&filename))).ok(); //read the keybind data
-            let puzzle_data = PuzzleData {
+            let puzzle_data = UIPuzzleData {
                 preview: if let Some(x) = get_preview_string(&data) {
                     x
                 } else {

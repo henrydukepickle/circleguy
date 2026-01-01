@@ -57,5 +57,5 @@ pub fn parse_hps(hps: &str) -> Option<Puzzle> {
     //     solved: false,
     //     def: String::new(),
     // })
-    Some(data.to_puzzle())
+    Some(Puzzle::new(data.to_puzzle_data()))
 }
