@@ -72,7 +72,7 @@ pub fn circle_builtins(b: &mut Builtins) -> Result<(), FullDiagnostic> {
             }
         }
     ])?;
-    b.set_fns(hps_fns![("!", |_, a: OrientedCircle| -> OrientedCircle {
+    b.set_fns(hps_fns![("~", |_, a: OrientedCircle| -> OrientedCircle {
         -a
     })])?;
     b.set_custom_ty::<OrientedCircle>()

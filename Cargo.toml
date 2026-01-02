@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-hyperpuzzlescript = {git = "https://github.com/HactarCE/hyperspeedcube.git"}
+hyperpuzzlescript = {git = "https://github.com/HactarCE/hyperspeedcube.git", rev = "e03c5343e32bb078974e9c67d78dd4ef66e0bf0d" }
 approx_collections = "3.2.0"
 auto_ops = "0.3.0"
 eframe = "0.32.1"

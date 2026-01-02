@@ -1,18 +1,30 @@
-p = point(0, 0)
-c1 = circle(0.5, 0.5, 0.6)
-a = pi/2
-c2 = c1.rotate(p, a)
-c3 = c2.rotate(p, a)
-c4 = c3.rotate(p, a)
-t1 = turn(c1, 4)
-t2 = turn(c2, 4)
-t3 = turn(c3, 4)
-t4 = turn(c4, 4)
-#puz.add_circles([c1, c2, c3, c4])
-#puz.add_turns([t1, t2, t3, t4], ["A", "B", "C", "D"])
-sym_turn = turn(circle(p, 5), 4)
-for t in sym_turn.sym() {
-    for k in t1.sym() {
-        #puz.cut([t, k, t2])
-    } 
-}
+add_puzzle(
+    name = "Sphenic Tetraxe",
+    authors = ["Henry Pickle"],
+    scramble = 100,
+    build = fn() {
+        p = point(0, 0)
+        c1 = circle(0.5, 0.5, 0.6)
+        a = pi/2
+        c2 = c1.rotate(p, a)
+        c3 = c2.rotate(p, a)
+        c4 = c3.rotate(p, a)
+        t1 = turn(c1, 4)
+        t2 = turn(c2, 4)
+        t3 = turn(c3, 4)
+        t4 = turn(c4, 4)
+        add_circles([c1, c2, c3, c4])
+        add_turns([t1, t2, t3, t4])
+        sym_turn = turn(circle(p, 5), 4)
+        for t in sym_turn.sym() {
+            for k in t1.sym() {
+                cut([t, k, t2])
+            } 
+        }
+        color([c1, ~c2], red)
+        color([c2, ~c3], blue)
+        color([c3, ~c4], green)
+        color([c4, ~c1], yellow)
+    },
+)
+    

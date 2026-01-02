@@ -1,9 +1,11 @@
 use std::collections::HashMap;
+use std::sync::Arc;
+use std::sync::Mutex;
 
 use crate::DEFAULT_PUZZLE;
+use crate::hps::data_storer::*;
 use crate::hps::hps::parse_hps;
 use crate::puzzle::puzzle::*;
-use crate::ui::data_storer::*;
 use crate::ui::keybinds::Keybinds;
 use crate::ui::keybinds::load_keybinds;
 use crate::ui::render::draw_circle;
@@ -20,7 +22,7 @@ Luna Harran (sonicpineapple)
 Andrew Farkas (HactarCE)
 cryofractal";
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 ///used for running the app. contains all puzzle and view data at runtime
 pub struct App {
     data_storer: DataStorer, //stores the data for the puzzles (on the right panel)
@@ -35,27 +37,31 @@ pub struct App {
     offset: Vec2,            //the offset of the puzzle from the center of the screen (pan)
     cut_on_turn: bool,       //whether or not turns should cut the puzzle
     preview: bool,           //whether the solved state is being previewed
-    keybinds: Option<Keybinds>,
+                             //keybinds: Option<Keybinds>,
 }
 impl App {
     ///initialize a new app, using some default settings (from the constants)
     pub fn new(_cc: &eframe::CreationContext<'_>) -> Self {
-        let mut data_storer = DataStorer {
-            puzzles: HashMap::new(),
-            sorted_puzzles: Vec::new(),
-            prev_data: Vec::new(),
-            top: Vec::new(),
-        }; //initialize a new data storer
-        let _ = data_storer.load_puzzles(
-            "Puzzles/Definitions/",
-            "Configs/Keybinds/Puzzles/",
-            "Configs/Keybinds/groups.kdl",
-        );
-        let p_data = &data_storer.puzzles.get(DEFAULT_PUZZLE).unwrap().clone();
+        let mut data_storer = DataStorer::new(); //initialize a new data storer
+        data_storer
+            .load_puzzles(
+                "Puzzles/Definitions/",
+                //"Configs/Keybinds/Puzzles/",
+                //"Configs/Keybinds/groups.kdl",
+            )
+            .unwrap();
+        let p_data = &data_storer
+            .puzzles
+            .lock()
+            .unwrap()
+            .get("Sphenic Tetraxe")
+            .unwrap()
+            .clone();
+        let p = p_data.load(&mut data_storer.rt).unwrap();
         Self {
             //return the default app
-            data_storer,
-            puzzle: parse_hps(&p_data.data).unwrap(),
+            data_storer: data_storer,
+            puzzle: Puzzle::new(p),
             log_path: String::from("logfile"),
             curr_msg: String::new(),
             animation_speed: ANIMATION_SPEED,
@@ -66,14 +72,14 @@ impl App {
             offset: vec2(0.0, 0.0),
             cut_on_turn: false,
             preview: false,
-            keybinds: if let Some(kb) = &p_data.keybinds
-                && let Some(gr) = &p_data.keybind_groups
-                && let Some(keybinds) = load_keybinds(&kb, &gr)
-            {
-                Some(keybinds.clone())
-            } else {
-                None
-            },
+            // keybinds: if let Some(kb) = &p_data.keybinds
+            //     && let Some(gr) = &p_data.keybind_groups
+            //     && let Some(keybinds) = load_keybinds(&kb, &gr)
+            // {
+            //     Some(keybinds.clone())
+            // } else {
+            //     None
+            // },
         }
     }
 }
@@ -118,16 +124,16 @@ impl eframe::App for App {
                 }
                 Ok(Some(puzzle_data)) => {
                     //if a puzzle is returned (a button is clicked), load it
-                    if let Some(puz) = parse_hps(&puzzle_data.data) {
+                    if let puz = Puzzle::new(puzzle_data.load(&mut self.data_storer.rt).unwrap()) {
                         self.puzzle = puz;
-                        if let Some(kb) = puzzle_data.keybinds
-                            && let Some(gr) = puzzle_data.keybind_groups
-                            && let Some(keybinds) = load_keybinds(&kb, &gr)
-                        {
-                            self.keybinds = Some(keybinds);
-                        } else {
-                            self.keybinds = None;
-                        }
+                        // if let Some(kb) = puzzle_data.keybinds
+                        //     && let Some(gr) = puzzle_data.keybind_groups
+                        //     && let Some(keybinds) = load_keybinds(&kb, &gr)
+                        // {
+                        //     self.keybinds = Some(keybinds);
+                        // } else {
+                        //     self.keybinds = None;
+                        // }
                     }
                 }
                 _ => {}
@@ -239,19 +245,19 @@ impl eframe::App for App {
                     ui.label(CREDITS);
                     ui.separator();
                     //display the puzzle contributors
-                    ui.label(RichText::new("Top puzzle contributors:").color(egui::Color32::WHITE));
-                    match self
-                        .data_storer
-                        .get_top_authors::<{ crate::ui::data_storer::TOP }>()
-                    {
-                        //add the labels for the top 5 puzzle contributors
-                        Ok(top) => {
-                            for t in top {
-                                ui.label(format!("{}: {}", t.0, t.1));
-                            }
-                        }
-                        Err(_) => {}
-                    }
+                    // ui.label(RichText::new("Top puzzle contributors:").color(egui::Color32::WHITE));
+                    // match self
+                    //     .data_storer
+                    //     .get_top_authors::<{ crate::ui::data_storer::TOP }>()
+                    // {
+                    //     //add the labels for the top 5 puzzle contributors
+                    //     Ok(top) => {
+                    //         for t in top {
+                    //             ui.label(format!("{}: {}", t.0, t.1));
+                    //         }
+                    //     }
+                    //     Err(_) => {}
+                    // }
                 });
             });
             //UI Section: display puzzle info
@@ -344,27 +350,27 @@ impl eframe::App for App {
                 }
             }
             //keybinds
-            let ev = ctx.input(|i| i.events.clone());
-            for event in ev {
-                if let Event::Key {
-                    key,
-                    physical_key,
-                    pressed,
-                    repeat: _,
-                    modifiers: _,
-                } = event
-                {
-                    let b = if let Some(p) = physical_key { p } else { key };
-                    if pressed
-                        && let Some(k) = &self.keybinds
-                        && let Some((t, m)) = k.get(&b)
-                    {
-                        if let Err(x) = self.puzzle.turn_id(&t, self.cut_on_turn, *m) {
-                            self.curr_msg = x;
-                        }
-                    }
-                }
-            }
+            // let ev = ctx.input(|i| i.events.clone());
+            // for event in ev {
+            //     if let Event::Key {
+            //         key,
+            //         physical_key,
+            //         pressed,
+            //         repeat: _,
+            //         modifiers: _,
+            //     } = event
+            //     {
+            //         let b = if let Some(p) = physical_key { p } else { key };
+            //         if pressed
+            //             && let Some(k) = &self.keybinds
+            //             && let Some((t, m)) = k.get(&b)
+            //         {
+            //             if let Err(x) = self.puzzle.turn_id(&t, self.cut_on_turn, *m) {
+            //                 self.curr_msg = x;
+            //             }
+            //         }
+            //     }
+            // }
             //parse hovering. theres some casework here
             if r.hover_pos().is_some()
                 && !self.preview

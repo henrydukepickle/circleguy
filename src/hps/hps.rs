@@ -6,7 +6,8 @@ use std::{
 
 use approx_collections::{ApproxEq, FloatPool};
 use hyperpuzzlescript::{
-    BUILTIN_SPAN, BoxDynValue, CustomValue, EvalCtx, List, Scope, TypeOf, Value, ValueData, hps_fns,
+    BUILTIN_SPAN, BoxDynValue, CustomValue, EvalCtx, FnOverload, FnType, FnValue, List, Runtime,
+    Scope, TypeOf, Value, ValueData, hps_fns,
 };
 
 use crate::{
@@ -16,23 +17,13 @@ use crate::{
         builtins,
         custom_values::{self, hpspuzzle::HPSPuzzle, hpspuzzledata::HPSPuzzleData},
     },
-    puzzle::puzzle::Puzzle,
-    ui::io::read_file_to_string,
+    puzzle::puzzle::{Puzzle, PuzzleData},
 };
 
-///load a puzzle from a file
-///
-///needs a .hps at the end, but is a relative path
-pub fn load_puzzle_and_def_from_file(path: &str) -> Option<Puzzle> {
-    let contents = read_file_to_string(path).ok()?;
-    return Some(parse_hps(&contents.clone())?);
-}
-
-pub fn parse_hps(hps: &str) -> Option<Puzzle> {
+pub fn parse_hps(hps: &str, rt: &mut Runtime) -> Option<Puzzle> {
     let mut rt = hyperpuzzlescript::Runtime::new();
     let puzzle = HPSPuzzle::new();
     let mut scope = Scope::default();
-    scope.special.puz = puzzle.clone().at(BUILTIN_SPAN);
     rt.builtins = Arc::new(scope);
     // Add base built-ins.
     rt.with_builtins(hyperpuzzlescript::builtins::define_base_in)

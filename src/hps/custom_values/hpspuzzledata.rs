@@ -32,6 +32,28 @@ pub struct HPSPuzzleData {
     pub stack: Vec<OrderedTurn>,
     pub intern: FloatPool,
     pub disks: Vec<ComplexCircle>,
+    pub scramble: usize,
+}
+
+impl HPSPuzzleData {
+    ///intern all the relevant floats in the puzzle into the float pool
+    pub fn intern_all(&mut self) {
+        for piece in &mut self.pieces {
+            for arc in &mut piece.shape.border {
+                self.intern.intern_in_place(&mut arc.circle.center.0.re);
+                self.intern.intern_in_place(&mut arc.circle.center.0.im);
+                self.intern.intern_in_place(&mut arc.circle.r_sq);
+                self.intern.intern_in_place(&mut arc.start.0.re);
+                self.intern.intern_in_place(&mut arc.start.0.im);
+                self.intern.intern_in_place(&mut arc.angle);
+            }
+            for circle in &mut piece.shape.bounds {
+                self.intern.intern_in_place(&mut circle.circ.center.0.re);
+                self.intern.intern_in_place(&mut circle.circ.center.0.im);
+                self.intern.intern_in_place(&mut circle.circ.r_sq);
+            }
+        }
+    }
 }
 
 impl HPSPuzzleData {
@@ -44,6 +66,7 @@ impl HPSPuzzleData {
             stack: vec![],
             intern: FloatPool::new(PRECISION),
             disks: vec![],
+            scramble: 0,
         }
     }
     pub fn to_puzzle_data(&self) -> PuzzleData {
@@ -53,6 +76,7 @@ impl HPSPuzzleData {
             pieces: self.pieces.clone(),
             turns: self.turns.clone(),
             intern: self.intern.clone(),
+            scramble: self.scramble,
         }
     }
     pub fn add_disk(&mut self, disk: ComplexCircle) -> bool {
@@ -68,6 +92,7 @@ impl HPSPuzzleData {
         }
         self.disks.push(disk);
         self.pieces.push(disk_piece);
+        self.intern_all();
         return true;
     }
     pub fn turn(&mut self, turn: OrderedTurn, cut: bool) -> Result<bool, String> {
@@ -90,7 +115,7 @@ impl HPSPuzzleData {
         }
         self.pieces = new_pieces;
         self.stack.push(turn);
-        //self.intern_all(); //intern everything
+        self.intern_all(); //intern everything
         Ok(true)
     }
     pub fn cut(&mut self, cut: &Vec<OrderedTurn>) -> Result<(), String> {

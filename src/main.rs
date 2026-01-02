@@ -10,8 +10,6 @@ use crate::ui::app::*;
 use approx_collections::Precision;
 ///used for general purpose
 pub const PRECISION: approx_collections::Precision = Precision::new_simple(20);
-///used for purposes that have been tested to need slightly less precision
-pub const LOW_PRECISION: approx_collections::Precision = Precision::new_simple(16);
 ///used for the float pools from approx
 pub const POOL_PRECISION: approx_collections::Precision = Precision::new(20, 20);
 ///default puzzle loaded when the program is opened

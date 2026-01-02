@@ -1,4 +1,6 @@
-use hyperpuzzlescript::{Builtins, FullDiagnostic};
+use std::sync::{Arc, Mutex};
+
+use hyperpuzzlescript::{Builtins, FnOverload, FnValue, FullDiagnostic, Runtime, hps_fns};
 
 use crate::hps::custom_values::circle::circle_builtins;
 use crate::hps::custom_values::color::color_builtins;
@@ -6,6 +8,8 @@ use crate::hps::custom_values::hpspuzzle::puzzle_builtins;
 use crate::hps::custom_values::point::point_builtins;
 use crate::hps::custom_values::turn::turn_builtins;
 use crate::hps::custom_values::vector::vector_builtins;
+use crate::hps::data_storer::{DataStorer, PuzzleLoadingData, PuzzlesMap};
+use crate::puzzle::puzzle::Puzzle;
 
 pub fn circleguy_builtins(b: &mut Builtins) -> Result<(), FullDiagnostic> {
     color_builtins(b)?;
@@ -15,4 +19,22 @@ pub fn circleguy_builtins(b: &mut Builtins) -> Result<(), FullDiagnostic> {
     point_builtins(b)?;
     circle_builtins(b)?;
     Ok(())
+}
+pub fn loading_builtins(rt: &mut Runtime, puzzles: PuzzlesMap) -> Result<(), FullDiagnostic> {
+    rt.with_builtins(|b| {
+        b.set_fns(hps_fns![
+            #[kwargs(name: String, authors: Vec<String>, scramble: usize = 500, (build, span): Arc<FnValue>)]
+            fn add_puzzle() -> () {
+                puzzles.lock().unwrap().insert(
+                    name.clone(),
+                    PuzzleLoadingData {
+                        name,
+                        authors,
+                        scramble: scramble as usize,
+                        constructor: (build, span),
+                    },
+                );
+            }
+        ])
+    })
 }

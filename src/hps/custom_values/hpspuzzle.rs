@@ -5,7 +5,8 @@ use std::{
 };
 
 use approx_collections::FloatPool;
-use hyperpuzzlescript::{Builtins, CustomValue, FullDiagnostic, ListOf, TypeOf, hps_fns};
+use egui::mutex::MutexGuard;
+use hyperpuzzlescript::{Builtins, CustomValue, EvalCtx, FullDiagnostic, ListOf, TypeOf, hps_fns};
 
 use crate::{
     complex::complex_circle::OrientedCircle,
@@ -59,71 +60,70 @@ impl CustomValue for HPSPuzzle {
 
 pub fn puzzle_builtins(b: &mut Builtins) -> Result<(), FullDiagnostic> {
     b.set_fns(hps_fns![
-        fn add_circle(puz: HPSPuzzle, disk: OrientedCircle) -> () {
-            puz.0.lock().unwrap().add_disk(disk.circ);
+        fn add_circle(ctx: EvalCtx, disk: OrientedCircle) -> () {
+            puzzle(ctx).add_disk(disk.circ);
         }
-        fn add_circles(puz: HPSPuzzle, disks: ListOf<OrientedCircle>) -> () {
-            let mut p = puz.0.lock().unwrap();
+        fn add_circles(ctx: EvalCtx, disks: ListOf<OrientedCircle>) -> () {
+            let mut p = puzzle(ctx);
             for disk in disks {
                 p.add_disk(disk.0.circ);
             }
         }
-        fn add_turn(puz: HPSPuzzle, turn: OrderedTurn, name: String) -> () {
-            puz.0.lock().unwrap().turns.insert(name, turn);
+        fn add_turn(ctx: EvalCtx, turn: OrderedTurn, name: String) -> () {
+            puzzle(ctx).turns.insert(name, turn);
         }
-        fn add_turn(puz: HPSPuzzle, turn: OrderedTurn) -> () {
-            let mut p = puz.0.lock().unwrap();
+        fn add_turn(ctx: EvalCtx, turn: OrderedTurn) -> () {
+            let mut p = puzzle(ctx);
             let name = p.next_turn_name().unwrap();
             p.turns.insert(name, turn);
         }
-        fn add_turns(puz: HPSPuzzle, turns: ListOf<OrderedTurn>, names: ListOf<String>) -> () {
-            let mut p = puz.0.lock().unwrap();
+        fn add_turns(ctx: EvalCtx, turns: ListOf<OrderedTurn>, names: ListOf<String>) -> () {
+            let mut p = puzzle(ctx);
             for i in 0..(turns.len()) {
                 p.turns.insert(names[i].0.clone(), turns[i].0);
             }
         }
-        fn add_turns(puz: HPSPuzzle, turns: ListOf<OrderedTurn>) -> () {
-            let mut p = puz.0.lock().unwrap();
+        fn add_turns(ctx: EvalCtx, turns: ListOf<OrderedTurn>) -> () {
+            let mut p = puzzle(ctx);
             for t in turns {
                 let name = p.next_turn_name().unwrap();
                 p.turns.insert(name, t.0);
             }
         }
-        fn cut(puz: HPSPuzzle, cut: ListOf<OrderedTurn>) -> () {
-            puz.0
-                .lock()
-                .unwrap()
-                .cut(&cut.iter().map(|x| x.0).collect());
+        fn cut(ctx: EvalCtx, cut: ListOf<OrderedTurn>) -> () {
+            puzzle(ctx).cut(&cut.iter().map(|x| x.0).collect());
         }
-        fn turn(puz: HPSPuzzle, turns: ListOf<OrderedTurn>) -> () {
-            let mut p = puz.0.lock().unwrap();
+        fn turn(ctx: EvalCtx, turns: ListOf<OrderedTurn>) -> () {
+            let mut p = puzzle(ctx);
             for t in turns {
                 p.turn(t.0, true);
             }
         }
-        fn turn(puz: HPSPuzzle, turn: OrderedTurn) -> () {
-            puz.0.lock().unwrap().turn(turn, true);
+        fn turn(ctx: EvalCtx, turn: OrderedTurn) -> () {
+            puzzle(ctx).turn(turn, true);
         }
-        fn undo(puz: HPSPuzzle) -> () {
-            puz.0.lock().unwrap().undo();
+        fn undo(ctx: EvalCtx) -> () {
+            puzzle(ctx).undo();
         }
-        fn undo(puz: HPSPuzzle, num: usize) -> () {
-            puz.0.lock().unwrap().undo_num(num);
+        fn undo(ctx: EvalCtx, num: usize) -> () {
+            puzzle(ctx).undo_num(num);
         }
-        fn undo_all(puz: HPSPuzzle) -> () {
-            puz.0.lock().unwrap().undo_all();
+        fn undo_all(ctx: EvalCtx) -> () {
+            puzzle(ctx).undo_all();
         }
-        fn color(puz: HPSPuzzle, region: ListOf<OrientedCircle>, color: Color) -> () {
-            puz.0
-                .lock()
-                .unwrap()
-                .color(&region.iter().map(|x| x.0).collect(), color);
-        }
-        fn name(puz: HPSPuzzle, name: String) -> () {
-            puz.0.lock().unwrap().name = name;
-        }
-        fn authors(puz: HPSPuzzle, authors: ListOf<String>) -> () {
-            puz.0.lock().unwrap().authors = authors.iter().map(|x| x.0.clone()).collect();
+        fn color(ctx: EvalCtx, region: ListOf<OrientedCircle>, color: Color) -> () {
+            puzzle(ctx).color(&region.iter().map(|x| x.0).collect(), color);
         }
     ])
+}
+
+fn puzzle<'a>(ctx: &'a mut EvalCtx) -> std::sync::MutexGuard<'a, HPSPuzzleData> {
+    ctx.scope
+        .special
+        .puz
+        .as_ref::<HPSPuzzle>()
+        .unwrap()
+        .0
+        .lock()
+        .unwrap()
 }

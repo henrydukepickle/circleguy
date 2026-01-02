@@ -4,12 +4,12 @@ use crate::complex::c64::C64;
 use crate::complex::complex_circle::Circle;
 use crate::complex::complex_circle::Contains;
 use crate::complex::point::Point;
+use crate::hps::data_storer::DataStorer;
+use crate::hps::data_storer::PuzzleLoadingData;
 use crate::puzzle::color::Color;
 use crate::puzzle::piece::*;
 use crate::puzzle::puzzle::*;
 use crate::puzzle::turn::*;
-use crate::ui::data_storer::DataStorer;
-use crate::ui::data_storer::UIPuzzleData;
 use approx_collections::*;
 use egui::FontId;
 use egui::RichText;
@@ -389,25 +389,22 @@ impl Puzzle {
 
 impl DataStorer {
     ///render the data panel on the screen and read input for which button is clicked
-    pub fn render_panel(&mut self, ctx: &egui::Context) -> Result<Option<UIPuzzleData>, ()> {
+    pub fn render_panel(&mut self, ctx: &egui::Context) -> Result<Option<PuzzleLoadingData>, ()> {
         let panel = egui::SidePanel::new(egui::panel::Side::Right, "data_panel").resizable(false); //make the new panel
         let mut puzzle_data = None;
         panel.show(ctx, |ui| {
             ui.label(RichText::new("Puzzles").font(FontId::proportional(20.0)));
             //button to reload the puzzles into the data_storer if they were modifed (doing this every frame is too costly)
             if ui.add(egui::Button::new("Reload Puzzle List")).clicked() {
-                let _ = self.load_puzzles(
-                    "Puzzles/Definitions/",
-                    "Configs/Keybinds/Puzzles/",
-                    "Configs/Keybinds/groups.kdl",
-                );
+                self.reset();
+                let _ = self.load_puzzles("Puzzles/Definitions/");
             }
             ui.separator();
             egui::ScrollArea::vertical().show(ui, |ui| {
-                for puz in &self.sorted_puzzles {
-                    if ui.add(egui::Button::new(puz.preview.clone())).clicked() {
+                for puz in &*self.puzzles.lock().unwrap() {
+                    if ui.add(egui::Button::new(puz.1.name.clone())).clicked() {
                         //make the buttons for each puzzle
-                        puzzle_data = Some(puz.clone());
+                        puzzle_data = Some(puz.1.clone());
                     }
                 }
             })

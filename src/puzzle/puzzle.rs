@@ -34,6 +34,7 @@ pub struct PuzzleData {
     pub pieces: Vec<Piece>,
     pub turns: HashMap<String, OrderedTurn>,
     pub intern: FloatPool,
+    pub scramble: usize,
 }
 
 impl Puzzle {
