@@ -115,11 +115,7 @@ impl PieceShape {
         let mut inside = None; //tracks whether the piece is inside the circle
         for arc in &self.border {
             //iterate over the border arcs. essentially, if all of them are in or out, return Some(in or out), otherwise we return none.
-            let contained = match arc.in_circle(circle) {
-                //match if the arc is in the circle. if it crosses the border, we can immediately return None
-                None => return None,
-                Some(x) => x,
-            };
+            let contained = arc.in_circle(circle)?;
             if let Some(real_inside) = inside {
                 //if the arc has been decided as in or out, check the value of contained against (in or out).
                 if contained != Contains::Border && real_inside != contained {
@@ -135,6 +131,6 @@ impl PieceShape {
             //once all arcs have been iterated, if the value of inside was never set (i.e., all arcs lied on the border) return inside.
             return Some(Contains::Inside);
         }
-        return inside;
+        inside
     }
 }

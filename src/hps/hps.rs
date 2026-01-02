@@ -1,29 +1,25 @@
 use std::{
-    collections::HashMap,
     path::PathBuf,
-    sync::{Arc, Mutex},
+    sync::Arc,
 };
 
-use approx_collections::{ApproxEq, FloatPool};
 use hyperpuzzlescript::{
-    BUILTIN_SPAN, BoxDynValue, CustomValue, EvalCtx, FnOverload, FnType, FnValue, List, Runtime,
-    Scope, TypeOf, Value, ValueData, hps_fns,
+    Runtime,
+    Scope,
 };
 
 use crate::{
-    PRECISION,
-    complex::{c64::C64, complex_circle::ComplexCircle},
     hps::{
         builtins,
-        custom_values::{self, hpspuzzle::HPSPuzzle, hpspuzzledata::HPSPuzzleData},
+        custom_values::hpspuzzle::HPSPuzzle,
     },
-    puzzle::puzzle::{Puzzle, PuzzleData},
+    puzzle::puzzle::Puzzle,
 };
 
-pub fn parse_hps(hps: &str, rt: &mut Runtime) -> Option<Puzzle> {
+pub fn parse_hps(hps: &str, _rt: &mut Runtime) -> Option<Puzzle> {
     let mut rt = hyperpuzzlescript::Runtime::new();
     let puzzle = HPSPuzzle::new();
-    let mut scope = Scope::default();
+    let scope = Scope::default();
     rt.builtins = Arc::new(scope);
     // Add base built-ins.
     rt.with_builtins(hyperpuzzlescript::builtins::define_base_in)

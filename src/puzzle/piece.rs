@@ -1,4 +1,3 @@
-use egui::Color32;
 
 use crate::{
     complex::complex_circle::{Circle, ComplexCircle, Contains, OrientedCircle},

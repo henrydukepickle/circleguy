@@ -1,11 +1,8 @@
 use std::{
-    collections::HashMap,
     sync::{Arc, Mutex},
     usize,
 };
 
-use approx_collections::FloatPool;
-use egui::mutex::MutexGuard;
 use hyperpuzzlescript::{Builtins, CustomValue, EvalCtx, FullDiagnostic, ListOf, TypeOf, hps_fns};
 
 use crate::{
@@ -13,9 +10,7 @@ use crate::{
     hps::custom_values::hpspuzzledata::HPSPuzzleData,
     puzzle::{
         color::Color,
-        piece::Piece,
-        puzzle::Puzzle,
-        turn::{OrderedTurn, Turn},
+        turn::OrderedTurn,
     },
 };
 
@@ -27,6 +22,12 @@ pub struct HPSPuzzle(pub Arc<Mutex<HPSPuzzleData>>);
 impl TypeOf for HPSPuzzle {
     fn hps_ty() -> hyperpuzzlescript::Type {
         hyperpuzzlescript::Type::Custom("Puzzle")
+    }
+}
+
+impl Default for HPSPuzzle {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -53,7 +54,7 @@ impl CustomValue for HPSPuzzle {
         }
     }
 
-    fn eq(&self, other: &hyperpuzzlescript::BoxDynValue) -> Option<bool> {
+    fn eq(&self, _other: &hyperpuzzlescript::BoxDynValue) -> Option<bool> {
         None
     }
 }

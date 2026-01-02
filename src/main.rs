@@ -20,7 +20,7 @@ const ICON_PNG_DATA: &[u8] = include_bytes!("../resources/icon.png");
 // When compiling natively:
 #[cfg(not(target_arch = "wasm32"))]
 fn main() -> eframe::Result {
-    use crate::{hps::hps::parse_hps, ui::io::read_file_to_string};
+    
 
     // dbg!(
     //     parse_hps(&read_file_to_string("Puzzles/Definitions/test.hps").unwrap())

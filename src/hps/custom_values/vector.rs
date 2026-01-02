@@ -1,6 +1,6 @@
 use hyperpuzzlescript::{Builtins, CustomValue, FullDiagnostic, TypeOf, hps_fns};
 
-use crate::complex::{c64::C64, complex_circle::ComplexCircle, point::Point, vector::Vector};
+use crate::complex::{c64::C64, vector::Vector};
 use approx_collections::ApproxEq;
 
 impl TypeOf for Vector {
@@ -15,7 +15,7 @@ impl CustomValue for Vector {
     }
 
     fn clone_dyn(&self) -> hyperpuzzlescript::BoxDynValue {
-        self.clone().into()
+        (*self).into()
     }
 
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>, is_repr: bool) -> std::fmt::Result {

@@ -1,13 +1,6 @@
-use std::collections::HashMap;
-use std::sync::Arc;
-use std::sync::Mutex;
 
-use crate::DEFAULT_PUZZLE;
 use crate::hps::data_storer::*;
-use crate::hps::hps::parse_hps;
 use crate::puzzle::puzzle::*;
-use crate::ui::keybinds::Keybinds;
-use crate::ui::keybinds::load_keybinds;
 use crate::ui::render::draw_circle;
 use egui::*;
 
@@ -60,7 +53,7 @@ impl App {
         let p = p_data.load(&mut data_storer.rt).unwrap();
         Self {
             //return the default app
-            data_storer: data_storer,
+            data_storer,
             puzzle: Puzzle::new(p),
             log_path: String::from("logfile"),
             curr_msg: String::new(),
@@ -186,24 +179,24 @@ impl eframe::App for App {
                 view_button.ui(ui, |ui| {
                     //outline width slider
                     ui.add(
-                        egui::Slider::new(&mut self.outline_width, (0.0)..=(10.0))
+                        egui::Slider::new(&mut self.outline_width, (0.0)..=10.0)
                             .text("Outline Width"),
                     );
                     //detail slider
-                    ui.add(egui::Slider::new(&mut self.detail, (1.0)..=(100.0)).text("Detail"));
+                    ui.add(egui::Slider::new(&mut self.detail, (1.0)..=100.0).text("Detail"));
                     //animation speed slider
                     ui.add(
-                        egui::Slider::new(&mut self.animation_speed, (1.0)..=(25.0))
+                        egui::Slider::new(&mut self.animation_speed, (1.0)..=25.0)
                             .text("Animation Speed"),
                     );
                     //rending size (zoom) slider
                     ui.add(
-                        egui::Slider::new(&mut self.scale_factor, (10.0)..=(5000.0))
+                        egui::Slider::new(&mut self.scale_factor, (10.0)..=5000.0)
                             .text("Rendering Size"),
                     );
                     //panning sliders
-                    ui.add(egui::Slider::new(&mut self.offset.y, (-2.0)..=(2.0)).text("Move Y"));
-                    ui.add(egui::Slider::new(&mut self.offset.x, (-2.0)..=(2.0)).text("Move X"));
+                    ui.add(egui::Slider::new(&mut self.offset.y, (-2.0)..=2.0).text("Move Y"));
+                    ui.add(egui::Slider::new(&mut self.offset.x, (-2.0)..=2.0).text("Move X"));
                     //preview solved state toggle
                     ui.checkbox(&mut self.preview, "Preview solved state?");
                     //cut on turn toggle
@@ -220,11 +213,10 @@ impl eframe::App for App {
                         let _ = self.puzzle.scramble(self.cut_on_turn);
                     }
                     //reset button
-                    if ui.add(egui::Button::new("Reset")).clicked() && !self.preview {
-                        if self.puzzle.reset().is_err() {
+                    if ui.add(egui::Button::new("Reset")).clicked() && !self.preview
+                        && self.puzzle.reset().is_err() {
                             self.curr_msg = String::from("Reset failed!")
                         };
-                    }
                 });
                 //puzzle menu controls puzzle operations
                 let puzzle_button = default_menu_button("Puzzle");
@@ -337,8 +329,7 @@ impl eframe::App for App {
             if r.clicked_by(egui::PointerButton::Secondary)
                 && !self.preview
                 && let Some(pointer) = r.interact_pointer_pos()
-            {
-                if let Err(x) = self.puzzle.process_click(
+                && let Err(x) = self.puzzle.process_click(
                     &rect,
                     pointer,
                     false,
@@ -348,7 +339,6 @@ impl eframe::App for App {
                 ) {
                     self.curr_msg = x;
                 }
-            }
             //keybinds
             // let ev = ctx.input(|i| i.events.clone());
             // for event in ev {
@@ -393,8 +383,7 @@ impl eframe::App for App {
                     && !ui.input(|i| i.modifiers.command_only())
                     && !self.preview
                     && let Some(pointer) = r.hover_pos()
-                {
-                    if let Err(x) = self.puzzle.process_click(
+                    && let Err(x) = self.puzzle.process_click(
                         &rect,
                         pointer,
                         scroll > 0,
@@ -404,14 +393,13 @@ impl eframe::App for App {
                     ) {
                         self.curr_msg = x;
                     }
-                }
             }
             //if the middle mouse button is being pressed, pan the camera
             if r.dragged_by(egui::PointerButton::Middle) {
                 let delta = r.drag_delta();
                 let good_delta = vec2(
                     delta.x / self.scale_factor,
-                    -1.0 * (delta.y / self.scale_factor),
+                    -(delta.y / self.scale_factor),
                 );
                 self.offset += good_delta;
             }

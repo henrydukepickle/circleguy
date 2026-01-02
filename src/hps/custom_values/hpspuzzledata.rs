@@ -1,7 +1,6 @@
 use std::{collections::HashMap, f64::consts::PI};
 
 use approx_collections::FloatPool;
-use egui::Color32;
 
 use crate::{
     PRECISION,
@@ -13,8 +12,8 @@ use crate::{
         color::Color,
         piece::Piece,
         piece_shape::PieceShape,
-        puzzle::{Puzzle, PuzzleData},
-        turn::{OrderedTurn, Turn},
+        puzzle::PuzzleData,
+        turn::OrderedTurn,
     },
 };
 
@@ -56,6 +55,12 @@ impl HPSPuzzleData {
     }
 }
 
+impl Default for HPSPuzzleData {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl HPSPuzzleData {
     pub fn new() -> Self {
         Self {
@@ -84,16 +89,14 @@ impl HPSPuzzleData {
         for old_disk in &self.disks {
             if let Some((_, o)) = disk_piece.cut_by_circle(*old_disk) {
                 disk_piece = o;
-            } else {
-                if disk_piece.in_circle(*old_disk) != Some(Contains::Outside) {
-                    return false;
-                }
+            } else if disk_piece.in_circle(*old_disk) != Some(Contains::Outside) {
+                return false;
             }
         }
         self.disks.push(disk);
         self.pieces.push(disk_piece);
         self.intern_all();
-        return true;
+        true
     }
     pub fn turn(&mut self, turn: OrderedTurn, cut: bool) -> Result<bool, String> {
         let mut new_pieces = Vec::new(); //make a list of new pieces to populate
@@ -164,7 +167,7 @@ fn full_circle_piece(circ: ComplexCircle) -> Piece {
     Piece {
         shape: PieceShape {
             bounds: vec![OrientedCircle {
-                circ: circ,
+                circ,
                 ori: Contains::Inside,
             }],
             border: vec![Arc {

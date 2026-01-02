@@ -1,4 +1,4 @@
-use hyperpuzzlescript::{Builtins, CustomValue, FullDiagnostic, TypeOf, builtins};
+use hyperpuzzlescript::{Builtins, CustomValue, FullDiagnostic, TypeOf};
 
 use crate::puzzle::color::Color;
 
@@ -13,10 +13,10 @@ impl CustomValue for Color {
     }
 
     fn clone_dyn(&self) -> hyperpuzzlescript::BoxDynValue {
-        self.clone().into()
+        (*self).into()
     }
 
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>, is_repr: bool) -> std::fmt::Result {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>, _is_repr: bool) -> std::fmt::Result {
         write!(f, "test")
     }
 

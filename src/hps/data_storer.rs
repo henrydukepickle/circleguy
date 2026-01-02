@@ -1,7 +1,7 @@
 use crate::{
     hps::{
         builtins::{circleguy_builtins, loading_builtins},
-        custom_values::{hpspuzzle::HPSPuzzle, hpspuzzledata::HPSPuzzleData},
+        custom_values::hpspuzzle::HPSPuzzle,
     },
     puzzle::puzzle::PuzzleData,
     ui::io::*,
@@ -10,12 +10,10 @@ use hyperpuzzlescript::{
     BUILTIN_SPAN, CustomValue, EvalCtx, FnValue, FullDiagnostic, List, Map, Runtime, Scope,
     Spanned, builtins::define_base_in,
 };
-use kdl::*;
 use std::{
-    cmp::Ordering,
     collections::HashMap,
     fs::*,
-    path::{Path, PathBuf},
+    path::Path,
     sync::{Arc, Mutex},
 };
 pub const TOP: usize = 3;
@@ -118,12 +116,18 @@ impl PuzzleLoadingData {
 //     return Some(data);
 // }
 
+impl Default for DataStorer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl DataStorer {
     pub fn new() -> Self {
         let mut rt = Runtime::new();
         rt.with_builtins(define_base_in).unwrap();
         rt.with_builtins(circleguy_builtins).unwrap();
-        let mut puzzles = HashMap::new();
+        let puzzles = HashMap::new();
         let puzzles_arc = Arc::new(Mutex::new(puzzles));
         let mut ds = Self {
             puzzles: puzzles_arc.clone(),
@@ -169,11 +173,11 @@ impl DataStorer {
     //     Ok(())
     // }
     pub fn load_puzzles(&mut self, def_path: &str) -> Result<(), ()> {
-        let paths = read_dir(def_path).or(Err(()))?.into_iter();
+        let paths = read_dir(def_path).or(Err(()))?;
         for path in paths {
             let filename = path.or(Err(()))?.file_name().into_string().or(Err(()))?;
             let data = read_file_to_string(&(String::from(def_path) + (&filename))).or(Err(()))?;
-            self.rt.modules.add_file(&Path::new(&filename), data);
+            self.rt.modules.add_file(Path::new(&filename), data);
             self.rt.exec_all_files();
         }
         Ok(())

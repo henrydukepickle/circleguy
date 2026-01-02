@@ -3,9 +3,8 @@ use std::{
     ops::{Add, Mul, Neg, Sub},
 };
 
-use approx_collections::{ApproxEq, ApproxEqZero};
+use approx_collections::ApproxEq;
 
-use crate::PRECISION;
 
 pub type Scalar = f64;
 

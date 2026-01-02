@@ -1,6 +1,4 @@
 use crate::POOL_PRECISION;
-use crate::complex::c64::Scalar;
-use crate::hps::hps::parse_hps;
 use crate::puzzle::piece::*;
 use crate::puzzle::turn::*;
 use approx_collections::FloatPool;
@@ -51,7 +49,7 @@ impl Puzzle {
             depth: 500,
             solved: false,
             anim_left: 0.0,
-            data: data,
+            data,
         }
     }
     ///turns the puzzle around a turn. cuts along the turn first if cut is true.

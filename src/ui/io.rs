@@ -62,12 +62,11 @@ pub fn read_file_to_string(path: &str) -> std::io::Result<String> {
                 .into_string()
                 .unwrap()
                 .split("circleguy.exe")
-                .into_iter()
                 .collect::<Vec<&str>>()[0],
         ),
         true => String::new(),
     };
-    std::fs::read_to_string(curr_path + &path) //read to a string
+    std::fs::read_to_string(curr_path + path) //read to a string
 }
 
 #[cfg(target_arch = "wasm32")]

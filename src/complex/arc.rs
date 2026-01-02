@@ -36,10 +36,9 @@ impl Arc {
                 Orientation::CCW => ((end - circ.center).angle() - (start - circ.center).angle())
                     .rem_euclid(2.0 * PI),
                 Orientation::CW => {
-                    (2. * PI
+                    -(2. * PI
                         - (((end - circ.center).angle() - (start - circ.center).angle())
                             .rem_euclid(2.0 * PI)))
-                        * -1.
                 }
             }),
         }
@@ -96,11 +95,11 @@ impl Arc {
         for int in &intersects {
             match self.contains_point(*int) {
                 Contains::Inside => {
-                    inter.push(int.clone());
+                    inter.push(*int);
                 }
                 Contains::Border => {
                     if !proper {
-                        inter.push(int.clone());
+                        inter.push(*int);
                     }
                 }
                 Contains::Outside => {}
@@ -129,9 +128,9 @@ impl Arc {
             //make the new arcs from the points. exclude arcs that would have the same start and endpoint
             if !endpoints[i].approx_eq(&endpoints[i + 1], PRECISION) {
                 arcs.push(Self::from_endpoints(
-                    self.circle.clone(),
-                    endpoints[i].clone(),
-                    endpoints[i + 1].clone(),
+                    self.circle,
+                    endpoints[i],
+                    endpoints[i + 1],
                     self.orientation(),
                 ));
             }

@@ -66,7 +66,7 @@ impl Color {
 pub fn draw_circle(real_circle: Circle, ui: &mut Ui, rect: &Rect, scale_factor: f32, offset: Vec2) {
     {
         ui.painter().circle_stroke(
-            to_egui_coords(real_circle.center.to_pos2(), &rect, scale_factor, offset),
+            to_egui_coords(real_circle.center.to_pos2(), rect, scale_factor, offset),
             real_circle.r() as f32 * scale_factor * (rect.width() / 1920.0),
             (10.0, Color32::WHITE),
         );
@@ -81,7 +81,7 @@ fn almost_degenerate(triangle: &Vec<Pos2>, leniency: f32) -> bool {
     if close < leniency {
         return true;
     }
-    return false;
+    false
 }
 
 ///averages (takes the barycenter) of a vec of points
@@ -92,27 +92,27 @@ fn avg_points(points: &Vec<Pos2>) -> Pos2 {
         pos.x += point.x / n;
         pos.y += point.y / n;
     }
-    return pos;
+    pos
 }
 
 ///translates from cga2d coords to egui coords
 fn to_egui_coords(pos: Pos2, rect: &Rect, scale_factor: f32, offset: Vec2) -> Pos2 {
-    return pos2(
-        ((pos.x + offset.x) as f32) * (scale_factor * rect.width() / 1920.0)
+    pos2(
+        (pos.x + offset.x) * (scale_factor * rect.width() / 1920.0)
             + (rect.width() / 2.0)
             + rect.min.x,
-        -1.0 * ((pos.y + offset.y) as f32) * (scale_factor * rect.width() / 1920.0)
+        -(pos.y + offset.y) * (scale_factor * rect.width() / 1920.0)
             + (rect.height() / 2.0)
             + rect.min.y,
-    );
+    )
 }
 
 ///translates from egui coords to cga2d coords
 fn from_egui_coords(pos: &Pos2, rect: &Rect, scale_factor: f32, offset: Vec2) -> Pos2 {
-    return pos2(
+    pos2(
         ((pos.x - (rect.width() / 2.0)) * (1920.0 / (scale_factor * rect.width()))) - offset.x,
         ((pos.y - (rect.height() / 2.0)) * (-1920.0 / (scale_factor * rect.width()))) - offset.y,
-    );
+    )
 }
 
 impl Point {
@@ -133,7 +133,7 @@ impl Arc {
         scale_factor: f32,
         offset_pos: Vec2,
     ) -> Result<(), String> {
-        let size = self.angle_euc().abs() as f32 * self.circle.r() as f32 * DETAIL_FACTOR as f32; //get the absolute size of the arc, to measure how finely we need to render it
+        let size = self.angle_euc().abs() * self.circle.r() as f32 * DETAIL_FACTOR as f32; //get the absolute size of the arc, to measure how finely we need to render it
         let divisions = (size * detail * DETAIL as f32).max(2.0) as u16; //find the number of divisions we do for the arc
         let mut coords = Vec::new();
         for pos in self.get_polygon(divisions)? {
@@ -157,11 +157,11 @@ impl Arc {
                     .to_pos2(),
             );
         }
-        return Ok(points);
+        Ok(points)
     }
     ///triangulate the arc with respect to a given center
     fn triangulate(&self, center: Pos2, detail: f32) -> Result<Vec<Vec<Pos2>>, String> {
-        let size = self.angle_euc().abs() as f32 * self.circle.r() as f32;
+        let size = self.angle_euc().abs() * self.circle.r() as f32;
         let div = (detail * size * DETAIL as f32).max(2.0) as u16; //get the absolute size and use it to determine the level of detail
         let polygon = self.get_polygon(div)?;
         let mut triangles = Vec::new();
@@ -199,7 +199,7 @@ impl Piece {
         };
         let true_piece = if let Some(twist) = true_offset {
             //turn the piece around the offset
-            twist.turn_piece(&self).unwrap_or(self.clone())
+            twist.turn_piece(self).unwrap_or(self.clone())
         } else {
             self.clone()
         };
@@ -233,7 +233,7 @@ impl Piece {
             //triangulate each arc by the center
             triangles.extend(arc.triangulate(center, detail)?);
         }
-        return Ok(triangles);
+        Ok(triangles)
     }
     ///get the barycenter of the piece based on the arcs for triangulation
     fn barycenter(&self) -> Result<Pos2, String> {
@@ -244,7 +244,7 @@ impl Piece {
         if points.is_empty() {
             return Ok(self.shape.border[0].circle.center.to_pos2());
         }
-        return Ok(avg_points(&points)); //average the midpoints of the arcs
+        Ok(avg_points(&points)) //average the midpoints of the arcs
     }
     ///draw the outline of the piece
     fn draw_outline(
@@ -274,12 +274,10 @@ impl Puzzle {
         scale_factor: f32,
         offset: Vec2,
     ) -> Result<(), String> {
-        let proper_offset = if let Some(off) = self.animation_offset {
-            //get the offset from the animation_offset and anim_left
-            Some(off.mult(self.anim_left as f64))
-        } else {
-            None
-        };
+        //get the offset from the animation_offset and anim_left
+        let proper_offset = self
+            .animation_offset
+            .map(|off| off.mult(self.anim_left as f64));
         for piece in &self.pieces {
             //render each piece
             piece.render(
@@ -376,14 +374,14 @@ impl Puzzle {
         if min_rad == 10000.0 {
             return Ok(None);
         }
-        return Ok(Some(
+        Ok(Some(
             match correct_turn {
                 None => return Ok(None),
                 Some(x) => x,
             }
             .turn
             .circle,
-        ));
+        ))
     }
 }
 

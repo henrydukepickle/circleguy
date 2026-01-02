@@ -1,8 +1,7 @@
 use std::f64::consts::PI;
 
-use egui::Order;
 use hyperpuzzlescript::{
-    BUILTIN_SPAN, Builtins, CustomValue, FullDiagnostic, List, ListOf, TypeOf, hps_fns,
+    Builtins, CustomValue, FullDiagnostic, ListOf, TypeOf, hps_fns,
 };
 
 use crate::{
@@ -24,7 +23,7 @@ impl CustomValue for OrderedTurn {
     }
 
     fn clone_dyn(&self) -> hyperpuzzlescript::BoxDynValue {
-        self.clone().into()
+        (*self).into()
     }
 
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>, is_repr: bool) -> std::fmt::Result {
@@ -35,7 +34,7 @@ impl CustomValue for OrderedTurn {
         }
     }
 
-    fn eq(&self, other: &hyperpuzzlescript::BoxDynValue) -> Option<bool> {
+    fn eq(&self, _other: &hyperpuzzlescript::BoxDynValue) -> Option<bool> {
         None
     }
     fn field_get(
@@ -46,7 +45,7 @@ impl CustomValue for OrderedTurn {
         Ok(match field {
             "circ" | "c" | "circle" => Some(
                 OrientedCircle {
-                    circ: self.turn.circle.into(),
+                    circ: self.turn.circle,
                     ori: Contains::Inside,
                 }
                 .into(),

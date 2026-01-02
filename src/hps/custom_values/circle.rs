@@ -18,7 +18,7 @@ impl CustomValue for OrientedCircle {
     }
 
     fn clone_dyn(&self) -> hyperpuzzlescript::BoxDynValue {
-        self.clone().into()
+        (*self).into()
     }
 
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>, is_repr: bool) -> std::fmt::Result {
