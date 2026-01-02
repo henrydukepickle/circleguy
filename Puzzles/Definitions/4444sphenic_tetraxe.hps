@@ -16,8 +16,8 @@ add_puzzle(
         add_circles([c1, c2, c3, c4])
         add_turns([t1, t2, t3, t4])
         sym_turn = turn(circle(p, 5), 4)
-        for t in sym_turn.sym() {
-            for k in t1.sym() {
+        for t in sym_turn.powers() {
+            for k in t1.powers() {
                 cut([t, k, t2])
             } 
         }

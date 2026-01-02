@@ -1,4 +1,4 @@
-
+use crate::DEFAULT_PUZZLE;
 use crate::hps::data_storer::*;
 use crate::puzzle::puzzle::*;
 use crate::ui::render::draw_circle;
@@ -35,7 +35,7 @@ pub struct App {
 impl App {
     ///initialize a new app, using some default settings (from the constants)
     pub fn new(_cc: &eframe::CreationContext<'_>) -> Self {
-        let mut data_storer = DataStorer::new(); //initialize a new data storer
+        let mut data_storer = DataStorer::new().unwrap(); //initialize a new data storer
         data_storer
             .load_puzzles(
                 "Puzzles/Definitions/",
@@ -47,7 +47,7 @@ impl App {
             .puzzles
             .lock()
             .unwrap()
-            .get("Sphenic Tetraxe")
+            .get(DEFAULT_PUZZLE)
             .unwrap()
             .clone();
         let p = p_data.load(&mut data_storer.rt).unwrap();
@@ -117,17 +117,18 @@ impl eframe::App for App {
                 }
                 Ok(Some(puzzle_data)) => {
                     //if a puzzle is returned (a button is clicked), load it
-                    if let puz = Puzzle::new(puzzle_data.load(&mut self.data_storer.rt).unwrap()) {
-                        self.puzzle = puz;
-                        // if let Some(kb) = puzzle_data.keybinds
-                        //     && let Some(gr) = puzzle_data.keybind_groups
-                        //     && let Some(keybinds) = load_keybinds(&kb, &gr)
-                        // {
-                        //     self.keybinds = Some(keybinds);
-                        // } else {
-                        //     self.keybinds = None;
-                        // }
+                    match puzzle_data.load(&mut self.data_storer.rt) {
+                        Ok(puz_data) => self.puzzle = Puzzle::new(puz_data),
+                        Err(diag) => self.curr_msg = diag.msg.to_string(),
                     }
+                    // if let Some(kb) = puzzle_data.keybinds
+                    //     && let Some(gr) = puzzle_data.keybind_groups
+                    //     && let Some(keybinds) = load_keybinds(&kb, &gr)
+                    // {
+                    //     self.keybinds = Some(keybinds);
+                    // } else {
+                    //     self.keybinds = None;
+                    // }
                 }
                 _ => {}
             }
@@ -213,10 +214,12 @@ impl eframe::App for App {
                         let _ = self.puzzle.scramble(self.cut_on_turn);
                     }
                     //reset button
-                    if ui.add(egui::Button::new("Reset")).clicked() && !self.preview
-                        && self.puzzle.reset().is_err() {
-                            self.curr_msg = String::from("Reset failed!")
-                        };
+                    if ui.add(egui::Button::new("Reset")).clicked()
+                        && !self.preview
+                        && self.puzzle.reset().is_err()
+                    {
+                        self.curr_msg = String::from("Reset failed!")
+                    };
                 });
                 //puzzle menu controls puzzle operations
                 let puzzle_button = default_menu_button("Puzzle");
@@ -336,9 +339,10 @@ impl eframe::App for App {
                     self.scale_factor,
                     self.offset,
                     self.cut_on_turn,
-                ) {
-                    self.curr_msg = x;
-                }
+                )
+            {
+                self.curr_msg = x;
+            }
             //keybinds
             // let ev = ctx.input(|i| i.events.clone());
             // for event in ev {
@@ -390,17 +394,15 @@ impl eframe::App for App {
                         self.scale_factor,
                         self.offset,
                         self.cut_on_turn,
-                    ) {
-                        self.curr_msg = x;
-                    }
+                    )
+                {
+                    self.curr_msg = x;
+                }
             }
             //if the middle mouse button is being pressed, pan the camera
             if r.dragged_by(egui::PointerButton::Middle) {
                 let delta = r.drag_delta();
-                let good_delta = vec2(
-                    delta.x / self.scale_factor,
-                    -(delta.y / self.scale_factor),
-                );
+                let good_delta = vec2(delta.x / self.scale_factor, -(delta.y / self.scale_factor));
                 self.offset += good_delta;
             }
             //if ctrl scrolling, zoom

@@ -3,15 +3,12 @@ use std::{
     usize,
 };
 
-use hyperpuzzlescript::{Builtins, CustomValue, EvalCtx, FullDiagnostic, ListOf, TypeOf, hps_fns};
+use hyperpuzzlescript::{Builtins, CustomValue, Error, EvalCtx, FullDiagnostic, TypeOf, hps_fns};
 
 use crate::{
     complex::complex_circle::OrientedCircle,
     hps::custom_values::hpspuzzledata::HPSPuzzleData,
-    puzzle::{
-        color::Color,
-        turn::OrderedTurn,
-    },
+    puzzle::{color::Color, turn::OrderedTurn},
 };
 
 // pub struct HPSPuzzleConstructor(Box<dyn FnMut(HPSPuzzle) -> ()>);
@@ -64,56 +61,93 @@ pub fn puzzle_builtins(b: &mut Builtins) -> Result<(), FullDiagnostic> {
         fn add_circle(ctx: EvalCtx, disk: OrientedCircle) -> () {
             puzzle(ctx).add_disk(disk.circ);
         }
-        fn add_circles(ctx: EvalCtx, disks: ListOf<OrientedCircle>) -> () {
+        fn add_circles(ctx: EvalCtx, disks: Vec<OrientedCircle>) -> () {
             let mut p = puzzle(ctx);
             for disk in disks {
-                p.add_disk(disk.0.circ);
+                p.add_disk(disk.circ);
             }
         }
         fn add_turn(ctx: EvalCtx, turn: OrderedTurn, name: String) -> () {
             puzzle(ctx).turns.insert(name, turn);
         }
         fn add_turn(ctx: EvalCtx, turn: OrderedTurn) -> () {
+            let s = ctx.caller_span;
             let mut p = puzzle(ctx);
-            let name = p.next_turn_name().unwrap();
+            let name = p.next_turn_name().ok_or(
+                Error::User("No more automatic names left. Please manually assign name!".into())
+                    .at(s),
+            )?;
             p.turns.insert(name, turn);
         }
-        fn add_turns(ctx: EvalCtx, turns: ListOf<OrderedTurn>, names: ListOf<String>) -> () {
+        fn add_turns(ctx: EvalCtx, turns: Vec<OrderedTurn>, names: Vec<String>) -> () {
+            let s = ctx.caller_span;
             let mut p = puzzle(ctx);
+            if turns.len() != names.len() {
+                return Err(Error::User("Inequal number of turns and names passed.".into()).at(s));
+            }
             for i in 0..(turns.len()) {
-                p.turns.insert(names[i].0.clone(), turns[i].0);
+                p.turns.insert(names[i].clone(), turns[i]);
             }
         }
-        fn add_turns(ctx: EvalCtx, turns: ListOf<OrderedTurn>) -> () {
+        fn add_turns(ctx: EvalCtx, turns: Vec<OrderedTurn>) -> () {
+            let s = ctx.caller_span;
             let mut p = puzzle(ctx);
             for t in turns {
-                let name = p.next_turn_name().unwrap();
-                p.turns.insert(name, t.0);
+                let name = p.next_turn_name().ok_or(
+                    Error::User(
+                        "No more automatic names left. Please manually assign name!".into(),
+                    )
+                    .at(s),
+                )?;
+                p.turns.insert(name, t);
             }
         }
-        fn cut(ctx: EvalCtx, cut: ListOf<OrderedTurn>) -> () {
-            puzzle(ctx).cut(&cut.iter().map(|x| x.0).collect());
+        fn cut(ctx: EvalCtx, cut: Vec<OrderedTurn>) -> () {
+            let s = ctx.caller_span;
+            puzzle(ctx)
+                .cut(&cut)
+                .or(Err(Error::Internal("Internal error when cutting!").at(s)))?;
         }
-        fn turn(ctx: EvalCtx, turns: ListOf<OrderedTurn>) -> () {
+        fn cut(ctx: EvalCtx, region: Vec<OrientedCircle>, cut: Vec<OrderedTurn>) -> () {
+            let s = ctx.caller_span;
+            puzzle(ctx)
+                .cut_region(&region, &cut)
+                .or(Err(Error::Internal("Internal error when cutting!").at(s)))?;
+        }
+        fn turn(ctx: EvalCtx, turns: Vec<OrderedTurn>) -> () {
+            let s = ctx.caller_span;
             let mut p = puzzle(ctx);
             for t in turns {
-                p.turn(t.0, true);
+                p.turn(t, true)
+                    .or(Err(Error::Internal("Internal error when turning!").at(s)))?;
             }
         }
         fn turn(ctx: EvalCtx, turn: OrderedTurn) -> () {
-            puzzle(ctx).turn(turn, true);
+            let s = ctx.caller_span;
+            puzzle(ctx)
+                .turn(turn, true)
+                .or(Err(Error::Internal("Internal error when turning!").at(s)))?;
         }
         fn undo(ctx: EvalCtx) -> () {
-            puzzle(ctx).undo();
+            let s = ctx.caller_span;
+            puzzle(ctx)
+                .undo()
+                .or(Err(Error::Internal("Internal error when undoing!").at(s)))?;
         }
         fn undo(ctx: EvalCtx, num: usize) -> () {
-            puzzle(ctx).undo_num(num);
+            let s = ctx.caller_span;
+            puzzle(ctx)
+                .undo_num(num)
+                .or(Err(Error::Internal("Internal error when undoing!").at(s)))?;
         }
         fn undo_all(ctx: EvalCtx) -> () {
-            puzzle(ctx).undo_all();
+            let s = ctx.caller_span;
+            puzzle(ctx)
+                .undo_all()
+                .or(Err(Error::Internal("Internal error when undoing!").at(s)))?;
         }
-        fn color(ctx: EvalCtx, region: ListOf<OrientedCircle>, color: Color) -> () {
-            puzzle(ctx).color(&region.iter().map(|x| x.0).collect(), color);
+        fn color(ctx: EvalCtx, region: Vec<OrientedCircle>, color: Color) -> () {
+            puzzle(ctx).color(&region, color);
         }
     ])
 }

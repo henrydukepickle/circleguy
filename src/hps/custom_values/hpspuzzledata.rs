@@ -9,11 +9,7 @@ use crate::{
         complex_circle::{ComplexCircle, Contains, OrientedCircle},
     },
     puzzle::{
-        color::Color,
-        piece::Piece,
-        piece_shape::PieceShape,
-        puzzle::PuzzleData,
-        turn::OrderedTurn,
+        color::Color, piece::Piece, piece_shape::PieceShape, puzzle::PuzzleData, turn::OrderedTurn,
     },
 };
 
@@ -125,26 +121,48 @@ impl HPSPuzzleData {
         for turn in cut {
             self.turn(*turn, true)?;
         }
-        self.undo_num(cut.len());
+        self.undo_num(cut.len())?;
+        Ok(())
+    }
+    pub fn cut_region(
+        &mut self,
+        region: &Vec<OrientedCircle>,
+        cut: &Vec<OrderedTurn>,
+    ) -> Result<(), String> {
+        let mut in_pieces = vec![];
+        let mut out_pieces = vec![];
+        for piece in &self.pieces {
+            let in_r = piece.in_region(region);
+            if in_r {
+                in_pieces.push(piece.clone());
+            } else {
+                out_pieces.push(piece.clone());
+            }
+        }
+        self.pieces = in_pieces;
+        self.cut(cut)?;
+        self.pieces.extend(out_pieces);
         Ok(())
     }
     ///returns true if something was there to be undone
-    pub fn undo(&mut self) -> bool {
+    pub fn undo(&mut self) -> Result<bool, String> {
         if let Some(t) = self.stack.pop() {
-            self.turn(t.inverse(), false);
+            self.turn(t.inverse(), false)?;
             self.stack.pop();
-            true
+            Ok(true)
         } else {
-            false
+            Ok(false)
         }
     }
-    pub fn undo_num(&mut self, mut num: usize) {
-        while num > 0 && self.undo() {
+    pub fn undo_num(&mut self, mut num: usize) -> Result<(), String> {
+        while num > 0 && self.undo()? {
             num -= 1;
         }
+        Ok(())
     }
-    pub fn undo_all(&mut self) {
-        while self.undo() {}
+    pub fn undo_all(&mut self) -> Result<(), String> {
+        while self.undo()? {}
+        Ok(())
     }
     pub fn color(&mut self, region: &Vec<OrientedCircle>, color: Color) {
         for piece in &mut self.pieces {

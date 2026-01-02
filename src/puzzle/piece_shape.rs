@@ -61,7 +61,7 @@ impl PieceShape {
                 return None;
             }
             //cut the arc and store the pieces
-            arc_pieces.extend(arc.cut_by_circle(circle).unwrap());
+            arc_pieces.extend(arc.cut_by_circle(circle)?);
         }
         //the arcs in the inside and outside pieces
         let (mut inside, mut outside) = (Vec::new(), Vec::new());

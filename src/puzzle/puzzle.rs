@@ -101,15 +101,15 @@ impl Puzzle {
     ///Ok(false) means that the stack was empty
     ///Err(e) means that an error was encountered
     pub fn undo(&mut self) -> Result<bool, String> {
-        if self.stack.is_empty() {
-            return Ok(false);
+        if let Some(last) = &self.stack.pop() {
+            let last_turn = self.turns[&last.0]; //try to find the last turn
+            if !self.turn(last_turn.inverse().mult(last.1), false)? {
+                return Err(String::from("Puzzle.undo failed: undo turn was bandaged!"));
+            };
+            Ok(true)
+        } else {
+            Ok(false)
         }
-        let last = &self.stack.pop().unwrap();
-        let last_turn = self.turns[&last.0]; //try to find the last turn
-        if !self.turn(last_turn.inverse().mult(last.1), false)? {
-            return Err(String::from("Puzzle.undo failed: undo turn was bandaged!"));
-        };
-        Ok(true)
     }
     ///scramble the puzzle 500 moves
     pub fn scramble(&mut self, cut: bool) -> Result<(), String> {

@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use hyperpuzzlescript::{Builtins, FnValue, FullDiagnostic, Runtime, hps_fns};
+use hyperpuzzlescript::{Builtins, Error, FnValue, FullDiagnostic, Runtime, hps_fns};
 
 use crate::hps::custom_values::circle::circle_builtins;
 use crate::hps::custom_values::color::color_builtins;
@@ -23,8 +23,12 @@ pub fn loading_builtins(rt: &mut Runtime, puzzles: PuzzlesMap) -> Result<(), Ful
     rt.with_builtins(|b| {
         b.set_fns(hps_fns![
             #[kwargs(name: String, authors: Vec<String>, scramble: usize = 500, (build, span): Arc<FnValue>)]
-            fn add_puzzle() -> () {
-                puzzles.lock().unwrap().insert(
+            fn add_puzzle(ctx: EvalCtx) -> () {
+                let mut p = puzzles.lock().unwrap();
+                if p.contains_key(&name) {
+                    return Err(Error::User("Error: duplicate puzzle names!".into()).at(ctx.caller_span));
+                }
+                p.insert(
                     name.clone(),
                     PuzzleLoadingData {
                         name,

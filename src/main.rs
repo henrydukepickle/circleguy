@@ -13,15 +13,13 @@ pub const PRECISION: approx_collections::Precision = Precision::new_simple(20);
 ///used for the float pools from approx
 pub const POOL_PRECISION: approx_collections::Precision = Precision::new(20, 20);
 ///default puzzle loaded when the program is opened
-const DEFAULT_PUZZLE: &str = "sphenic_tetraxe.hps";
+const DEFAULT_PUZZLE: &str = "Stars";
 ///location of the icon
 const ICON_PNG_DATA: &[u8] = include_bytes!("../resources/icon.png");
 
 // When compiling natively:
 #[cfg(not(target_arch = "wasm32"))]
 fn main() -> eframe::Result {
-    
-
     // dbg!(
     //     parse_hps(&read_file_to_string("Puzzles/Definitions/test.hps").unwrap())
     //         .unwrap()

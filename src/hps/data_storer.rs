@@ -116,17 +116,11 @@ impl PuzzleLoadingData {
 //     return Some(data);
 // }
 
-impl Default for DataStorer {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
 impl DataStorer {
-    pub fn new() -> Self {
+    pub fn new() -> Result<Self, FullDiagnostic> {
         let mut rt = Runtime::new();
-        rt.with_builtins(define_base_in).unwrap();
-        rt.with_builtins(circleguy_builtins).unwrap();
+        rt.with_builtins(define_base_in)?;
+        rt.with_builtins(circleguy_builtins)?;
         let puzzles = HashMap::new();
         let puzzles_arc = Arc::new(Mutex::new(puzzles));
         let mut ds = Self {
@@ -135,10 +129,11 @@ impl DataStorer {
             rt,
         };
         loading_builtins(&mut ds.rt, puzzles_arc.clone()).unwrap();
-        ds
+        Ok(ds)
     }
-    pub fn reset(&mut self) {
-        *self = Self::new();
+    pub fn reset(&mut self) -> Result<(), FullDiagnostic> {
+        *self = Self::new()?;
+        Ok(())
     }
     // #[cfg(not(target_arch = "wasm32"))]
     // ///load the puzzle definitions into the DataStorer

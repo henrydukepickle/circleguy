@@ -1,4 +1,4 @@
-use hyperpuzzlescript::{Builtins, CustomValue, FullDiagnostic, TypeOf, hps_fns};
+use hyperpuzzlescript::{Builtins, CustomValue, Error, FullDiagnostic, TypeOf, hps_fns};
 
 use crate::complex::{c64::C64, vector::Vector};
 use approx_collections::ApproxEq;
@@ -49,6 +49,11 @@ pub fn vector_builtins(b: &mut Builtins) -> Result<(), FullDiagnostic> {
         }
         fn mag(v: Vector) -> f64 {
             v.mag()
+        }
+        fn normalize(ctx: EvalCtx, v: Vector) -> Vector {
+            v.normalize().ok_or(
+                Error::User("Error: zero vector cannot be normalized!".into()).at(ctx.caller_span),
+            )?
         }
     ])?;
     b.set_fns(hps_fns![

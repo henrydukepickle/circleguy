@@ -1,0 +1,42 @@
+add_puzzle(
+    name = "Sphenic Triaxe Oriented",
+    authors = ["Henry Pickle"],
+    scramble = 100,
+    build = fn() {
+        lc = circle(-0.5, 0.0, sqrt(3)/3)
+        rc = circle(0.5, 0.0, sqrt(3)/3)
+        tc = circle(0.0, sqrt(3)/2, sqrt(3)/3)
+        lt = turn(lc, 6)
+        rt = turn(rc, 6)
+        tt = turn(tc, 6)
+        add_circles([lc, rc, tc])
+        add_turns([lt, rt, tt])
+        sym = turn(circle(0, sqrt(3)/6, 10), 3)
+        inner = circle(-0.5, 0, 0.5)
+        //standard cuts
+        for s in sym.powers() {
+            for l in lt.powers() {
+                cut([s, l, rt])
+            }
+        }
+        //orientation cuts
+        for s in sym.powers() {
+            turn(s)
+            cut([lc, tc], [turn(inner, 2)])
+            undo()
+        }
+        //standard coloring
+        color([lc, ~rc], red)
+        color([rc, ~tc], blue)
+        color([tc, ~lc], green)
+        //coloring the small pieces
+        r = [~inner, tc, lc]
+        color(r, green)
+        turn(sym)
+        color(r, red)
+        turn(sym)
+        color(r, blue)
+        undo_all()
+    },
+)
+    

@@ -390,23 +390,36 @@ impl DataStorer {
     pub fn render_panel(&mut self, ctx: &egui::Context) -> Result<Option<PuzzleLoadingData>, ()> {
         let panel = egui::SidePanel::new(egui::panel::Side::Right, "data_panel").resizable(false); //make the new panel
         let mut puzzle_data = None;
-        panel.show(ctx, |ui| {
-            ui.label(RichText::new("Puzzles").font(FontId::proportional(20.0)));
-            //button to reload the puzzles into the data_storer if they were modifed (doing this every frame is too costly)
-            if ui.add(egui::Button::new("Reload Puzzle List")).clicked() {
-                self.reset();
-                let _ = self.load_puzzles("Puzzles/Definitions/");
-            }
-            ui.separator();
-            egui::ScrollArea::vertical().show(ui, |ui| {
-                for puz in &*self.puzzles.lock().unwrap() {
-                    if ui.add(egui::Button::new(puz.1.name.clone())).clicked() {
-                        //make the buttons for each puzzle
-                        puzzle_data = Some(puz.1.clone());
+        panel
+            .show(ctx, |ui| {
+                ui.label(RichText::new("Puzzles").font(FontId::proportional(20.0)));
+                //button to reload the puzzles into the data_storer if they were modifed (doing this every frame is too costly)
+                if ui.add(egui::Button::new("Reload Puzzle List")).clicked() {
+                    if let Err(x) = self.reset() {
+                        return Err(x);
                     }
+                    let _ = self.load_puzzles("Puzzles/Definitions/");
                 }
+                ui.separator();
+                Ok(egui::ScrollArea::vertical().show(ui, |ui| {
+                    let puzzles_real = self.puzzles.lock().unwrap();
+                    let mut names = puzzles_real.keys().collect::<Vec<&String>>();
+                    names.sort();
+                    for name in names {
+                        let puz = if let Some(x) = puzzles_real.get(name) {
+                            x
+                        } else {
+                            return;
+                        };
+                        if ui.add(egui::Button::new(puz.name.clone())).clicked() {
+                            //make the buttons for each puzzle
+                            puzzle_data = Some(puz.clone());
+                        }
+                    }
+                }))
             })
-        });
+            .inner
+            .or(Err(()))?;
         Ok(puzzle_data)
     }
 }

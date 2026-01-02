@@ -1,8 +1,6 @@
 use std::f64::consts::PI;
 
-use hyperpuzzlescript::{
-    Builtins, CustomValue, FullDiagnostic, ListOf, TypeOf, hps_fns,
-};
+use hyperpuzzlescript::{Builtins, CustomValue, FullDiagnostic, ListOf, TypeOf, hps_fns};
 
 use crate::{
     complex::{
@@ -73,21 +71,21 @@ pub fn turn_builtins(b: &mut Builtins) -> Result<(), FullDiagnostic> {
         fn mult(turn: OrderedTurn, mult: i64) -> OrderedTurn {
             turn.mult(mult as isize)
         }
-        fn sym(ctx: EvalCtx, t: OrderedTurn) -> ListOf<OrderedTurn> {
+        fn powers(ctx: EvalCtx, t: OrderedTurn) -> ListOf<OrderedTurn> {
             let mut orders = ListOf::new();
             for i in 0..(t.order) {
                 orders.push((t.mult(i as isize), ctx.caller_span));
             }
             orders
         }
-        fn inverse(ctx: EvalCtx, turns: ListOf<OrderedTurn>) -> ListOf<OrderedTurn> {
-            flip_turn_seq(turns.into_iter().map(|x| x.0).collect())
+        fn inverse(ctx: EvalCtx, turns: Vec<OrderedTurn>) -> ListOf<OrderedTurn> {
+            flip_turn_seq(turns)
                 .into_iter()
                 .map(|x| (x, ctx.caller_span))
                 .collect()
         }
-        fn mult(ctx: EvalCtx, turns: ListOf<OrderedTurn>, num: i64) -> ListOf<OrderedTurn> {
-            mult_turn_seq(turns.into_iter().map(|x| x.0).collect(), num)
+        fn mult(ctx: EvalCtx, turns: Vec<OrderedTurn>, num: i64) -> ListOf<OrderedTurn> {
+            mult_turn_seq(turns, num)
                 .into_iter()
                 .map(|x| (x, ctx.caller_span))
                 .collect()
