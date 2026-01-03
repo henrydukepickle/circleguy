@@ -47,10 +47,14 @@ impl Puzzle {
             animation_offset: None,
             intern: FloatPool::new(POOL_PRECISION),
             depth: 500,
-            solved: false,
+            solved: true,
             anim_left: 0.0,
             data,
         }
+    }
+    ///checks if self is solved and updates self.is_solved accordingly
+    pub fn check(&mut self) {
+        self.solved = self.is_solved();
     }
     ///turns the puzzle around a turn. cuts along the turn first if cut is true.
     ///if the turn was completed, returns Ok(true)
@@ -78,6 +82,7 @@ impl Puzzle {
         self.anim_left = 1.0; //set the animation to run
         self.animation_offset = Some(turn.turn.inverse());
         self.intern_all(); //intern everything
+        self.solved = false;
         Ok(true)
     }
     ///turns the puzzle around a turn, given by an id. cuts along the turn first if cut is true.

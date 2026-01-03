@@ -1,6 +1,6 @@
 add_puzzle(
     name = "Sphenic Triaxe Oriented",
-    authors = ["Henry Pickle"],
+    authors = ["Henry Pickle", "HactarCE"],
     scramble = 100,
     build = fn() {
         lc = circle(-0.5, 0.0, sqrt(3)/3)
@@ -22,7 +22,7 @@ add_puzzle(
         //orientation cuts
         for s in sym.powers() {
             turn(s)
-            cut([lc, tc], [turn(inner, 2)])
+            cut([lc, tc], [turn(inner, 1)])
             undo()
         }
         //standard coloring

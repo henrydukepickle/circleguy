@@ -164,3 +164,11 @@ impl Arc {
         }
     }
 }
+
+impl ApproxEq for Arc {
+    fn approx_eq(&self, other: &Self, prec: approx_collections::Precision) -> bool {
+        self.angle.approx_eq(&other.angle, prec)
+            && self.circle.approx_eq(&other.circle, prec)
+            && self.start.approx_eq(&other.start, prec)
+    }
+}

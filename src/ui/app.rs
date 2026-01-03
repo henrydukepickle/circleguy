@@ -225,13 +225,13 @@ impl eframe::App for App {
                 let puzzle_button = default_menu_button("Puzzle");
                 puzzle_button.ui(ui, |ui| {
                     //undo button, also performed using the z key
-                    if (ui.add(egui::Button::new("Undo Move")).clicked()
-                        || ui.input(|i: &InputState| i.key_pressed(egui::Key::Z)))
-                        && !self.preview
-                    {
+                    if (ui.add(egui::Button::new("Undo Move")).clicked()) && !self.preview {
                         let _ = self.puzzle.undo();
                     }
                     ui.checkbox(&mut self.cut_on_turn, "Cut on turn?");
+                    if ui.add(egui::Button::new("Check Solved")).clicked() {
+                        self.puzzle.check();
+                    }
                 });
                 //credits menu displays credits (bugged?)
                 let credits_button = default_menu_button("Credits");
@@ -342,6 +342,9 @@ impl eframe::App for App {
                 )
             {
                 self.curr_msg = x;
+            }
+            if ui.input(|i: &InputState| i.key_pressed(egui::Key::Z)) {
+                let _ = self.puzzle.undo();
             }
             //keybinds
             // let ev = ctx.input(|i| i.events.clone());

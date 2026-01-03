@@ -1,6 +1,6 @@
 add_puzzle(
     name = "Sphenic Tetraxe",
-    authors = ["Henry Pickle"],
+    authors = ["Henry Pickle", "Dror Bar-Natan"],
     scramble = 100,
     build = fn() {
         p = point(0, 0)

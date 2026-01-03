@@ -60,7 +60,11 @@ pub fn turn_builtins(b: &mut Builtins) -> Result<(), FullDiagnostic> {
             OrderedTurn {
                 turn: Turn {
                     circle: c.circ,
-                    rot: Rotation::from_angle((-2.0 * PI) / (num as f64)),
+                    rot: Rotation::from_angle(if num == 0 {
+                        0.0
+                    } else {
+                        (-2.0 * PI) / (num as f64)
+                    }),
                 },
                 order: num as usize,
             }
