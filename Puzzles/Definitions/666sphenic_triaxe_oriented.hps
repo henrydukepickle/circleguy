@@ -10,7 +10,7 @@ add_puzzle(
         rt = turn(rc, 6)
         tt = turn(tc, 6)
         add_circles([lc, rc, tc])
-        add_turns([lt, rt, tt])
+        add_turns([lt, rt, tt], ["L", "R", "U"])
         sym = turn(circle(0, sqrt(3)/6, 10), 3)
         inner = circle(-0.5, 0, 0.5)
         //standard cuts

@@ -4,7 +4,6 @@ use crate::puzzle::turn::*;
 use approx_collections::FloatPool;
 use rand::SeedableRng;
 use rand::prelude::IteratorRandom;
-use std::array;
 use std::collections::HashMap;
 use std::hash::DefaultHasher;
 use std::hash::Hash;
@@ -17,13 +16,14 @@ pub struct Puzzle {
     pub pieces: Vec<Piece>,
     pub turns: HashMap<String, OrderedTurn>,
     pub stack: Vec<(String, isize)>,
-    pub scramble: Option<[String; 500]>,
+    pub scramble: Option<Vec<String>>,
     pub animation_offset: Option<Turn>, //the turn of the puzzle that the animation is currently doing
     pub intern: FloatPool,
     pub depth: u16,
     pub solved: bool,
     pub anim_left: f32, //the amount of animation left
     pub data: PuzzleData,
+    pub keybinds: HashMap<egui::Key, (String, isize)>,
 }
 #[derive(Debug, Clone)]
 pub struct PuzzleData {
@@ -32,7 +32,8 @@ pub struct PuzzleData {
     pub pieces: Vec<Piece>,
     pub turns: HashMap<String, OrderedTurn>,
     pub intern: FloatPool,
-    pub scramble: usize,
+    pub depth: usize,
+    pub keybinds: HashMap<egui::Key, (String, isize)>,
 }
 
 impl Puzzle {
@@ -49,6 +50,7 @@ impl Puzzle {
             depth: 500,
             solved: true,
             anim_left: 0.0,
+            keybinds: data.keybinds.clone(),
             data,
         }
     }
@@ -119,7 +121,7 @@ impl Puzzle {
     ///scramble the puzzle 500 moves
     pub fn scramble(&mut self, cut: bool) -> Result<(), String> {
         self.reset()?;
-        let mut scramble = array::from_fn(|_| "".to_string()); //used to track the scramble
+        let mut scramble = Vec::new();
         let mut h = DefaultHasher::new();
         Instant::now().hash(&mut h);
         let bytes = h.finish().to_ne_bytes();
@@ -130,7 +132,7 @@ impl Puzzle {
                 .try_into()
                 .expect("error casting [[u8; 8]; 4] to [u8; 32]"),
         );
-        for i in 0..self.depth {
+        for _ in 0..self.depth {
             //choose a random turn and do it
             let key = self
                 .turns
@@ -139,7 +141,7 @@ impl Puzzle {
                 .ok_or("Puzzle.scramble failed: rng choosing a turn failed!".to_string())?
                 .clone();
             self.turn(self.turns[&key], cut)?;
-            scramble[i as usize] = key;
+            scramble.push(key);
         }
         self.animation_offset = None;
         self.scramble = Some(scramble); //set the scramble to Some

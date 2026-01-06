@@ -8,7 +8,7 @@ add_puzzle(
         lt = turn(lc, 5)
         rt = turn(rc, 5)
         add_circles([lc, rc])
-        add_turns([lt, rt])
+        add_turns([lt, rt], ["L", "R"])
         cut([lt, rt].mult(32))
         color([lc, ~rc], red)
         color([lc, rc], blue)

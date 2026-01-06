@@ -30,7 +30,6 @@ pub struct App {
     offset: Vec2,            //the offset of the puzzle from the center of the screen (pan)
     cut_on_turn: bool,       //whether or not turns should cut the puzzle
     preview: bool,           //whether the solved state is being previewed
-                             //keybinds: Option<Keybinds>,
 }
 impl App {
     ///initialize a new app, using some default settings (from the constants)
@@ -43,6 +42,7 @@ impl App {
                 //"Configs/Keybinds/groups.kdl",
             )
             .unwrap();
+        let _ = data_storer.load_keybinds("Configs/keybinds.kdl");
         let p_data = &data_storer
             .puzzles
             .lock()
@@ -50,7 +50,12 @@ impl App {
             .get(DEFAULT_PUZZLE)
             .unwrap()
             .clone();
-        let p = p_data.load(&mut data_storer.rt).unwrap();
+        let p = p_data
+            .load(
+                &mut data_storer.rt,
+                data_storer.keybinds.get_keybinds_for_puzzle(&p_data.name),
+            )
+            .unwrap();
         Self {
             //return the default app
             data_storer,
@@ -117,7 +122,12 @@ impl eframe::App for App {
                 }
                 Ok(Some(puzzle_data)) => {
                     //if a puzzle is returned (a button is clicked), load it
-                    match puzzle_data.load(&mut self.data_storer.rt) {
+                    match puzzle_data.load(
+                        &mut self.data_storer.rt,
+                        self.data_storer
+                            .keybinds
+                            .get_keybinds_for_puzzle(&puzzle_data.name),
+                    ) {
                         Ok(puz_data) => self.puzzle = Puzzle::new(puz_data),
                         Err(diag) => self.curr_msg = diag.msg.to_string(),
                     }
@@ -155,25 +165,21 @@ impl eframe::App for App {
                     ui.label("Log File Path");
                     ui.add(egui::TextEdit::singleline(&mut self.log_path));
                     //saving, does not work on web
-                    // #[cfg(not(target_arch = "wasm32"))]
-                    // if ui.add(egui::Button::new("SAVE")).clicked() {
-                    //     self.curr_msg = match self.puzzle.write_to_file(
-                    //         &(String::from("Puzzles/Logs/") + &self.log_path + ".kdl"),
-                    //     ) {
-                    //         Ok(()) => String::from("Saved successfully!"),
-                    //         Err(err) => err.to_string(),
-                    //     }
-                    // }
+                    #[cfg(not(target_arch = "wasm32"))]
+                    if ui.add(egui::Button::new("SAVE")).clicked() {
+                        self.curr_msg = match self.data_storer.save(&self.log_path, &self.puzzle) {
+                            Ok(()) => String::from("Saved successfully!"),
+                            Err(err) => err.to_string(),
+                        }
+                    }
                     // //loading, does not work on web
-                    // #[cfg(not(target_arch = "wasm32"))]
-                    // if ui.add(egui::Button::new("LOAD LOG")).clicked() {
-                    //     use crate::hps::hps::load_puzzle_and_def_from_file;
-
-                    //     self.puzzle = load_puzzle_and_def_from_file(
-                    //         &(String::from("Puzzles/Logs/") + &self.log_path + ".hps"),
-                    //     )
-                    //     .unwrap_or(self.puzzle.clone());
-                    // }
+                    #[cfg(not(target_arch = "wasm32"))]
+                    if ui.add(egui::Button::new("LOAD LOG")).clicked() {
+                        self.puzzle = self
+                            .data_storer
+                            .load_save(&self.log_path)
+                            .unwrap_or(self.puzzle.clone());
+                    }
                 });
                 //view menu controls view graphics
                 let view_button = default_menu_button("View");
@@ -347,27 +353,27 @@ impl eframe::App for App {
                 let _ = self.puzzle.undo();
             }
             //keybinds
-            // let ev = ctx.input(|i| i.events.clone());
-            // for event in ev {
-            //     if let Event::Key {
-            //         key,
-            //         physical_key,
-            //         pressed,
-            //         repeat: _,
-            //         modifiers: _,
-            //     } = event
-            //     {
-            //         let b = if let Some(p) = physical_key { p } else { key };
-            //         if pressed
-            //             && let Some(k) = &self.keybinds
-            //             && let Some((t, m)) = k.get(&b)
-            //         {
-            //             if let Err(x) = self.puzzle.turn_id(&t, self.cut_on_turn, *m) {
-            //                 self.curr_msg = x;
-            //             }
-            //         }
-            //     }
-            // }
+            let ev = ctx.input(|i| i.events.clone());
+            for event in ev {
+                if let Event::Key {
+                    key,
+                    physical_key,
+                    pressed,
+                    repeat: _,
+                    modifiers: _,
+                } = event
+                {
+                    let b = if let Some(p) = physical_key { p } else { key };
+                    if pressed
+                        && let Some((t, m)) = self.puzzle.keybinds.get(&b).cloned()
+                        && self.puzzle.turns.contains_key(&t)
+                    {
+                        if let Err(x) = self.puzzle.turn_id(&t, self.cut_on_turn, m) {
+                            self.curr_msg = x;
+                        }
+                    }
+                }
+            }
             //parse hovering. theres some casework here
             if r.hover_pos().is_some()
                 && !self.preview

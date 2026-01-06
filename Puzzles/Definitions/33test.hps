@@ -1,12 +1,13 @@
 add_puzzle(
-    name = "Squares",
+    name = "Test",
     authors = ["Henry Pickle"],
     scramble = 500,
     build = fn() {
-        lc = circle(-0.5, 0.0, 0.8)
-        rc = circle(0.5, 0.0, 0.8)
-        lt = turn(lc, 4)
-        rt = turn(rc, 4)
+        r = 1
+        lc = circle(-0.5, 0.0, r)
+        rc = circle(0.5, 0.0, r)
+        lt = turn(lc, 3)
+        rt = turn(rc, 3)
         add_circles([lc, rc])
         add_turns([lt, rt], ["L", "R"])
         cut([lt, rt].mult(32))

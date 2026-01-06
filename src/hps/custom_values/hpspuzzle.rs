@@ -70,15 +70,15 @@ pub fn puzzle_builtins(b: &mut Builtins) -> Result<(), FullDiagnostic> {
         fn add_turn(ctx: EvalCtx, turn: OrderedTurn, name: String) -> () {
             puzzle(ctx).turns.insert(name, turn);
         }
-        fn add_turn(ctx: EvalCtx, turn: OrderedTurn) -> () {
-            let s = ctx.caller_span;
-            let mut p = puzzle(ctx);
-            let name = p.next_turn_name().ok_or(
-                Error::User("No more automatic names left. Please manually assign name!".into())
-                    .at(s),
-            )?;
-            p.turns.insert(name, turn);
-        }
+        // fn add_turn(ctx: EvalCtx, turn: OrderedTurn) -> () {
+        //     let s = ctx.caller_span;
+        //     let mut p = puzzle(ctx);
+        //     let name = p.next_turn_name().ok_or(
+        //         Error::User("No more automatic names left. Please manually assign name!".into())
+        //             .at(s),
+        //     )?;
+        //     p.turns.insert(name, turn);
+        // }
         fn add_turns(ctx: EvalCtx, turns: Vec<OrderedTurn>, names: Vec<String>) -> () {
             let s = ctx.caller_span;
             let mut p = puzzle(ctx);
@@ -89,19 +89,19 @@ pub fn puzzle_builtins(b: &mut Builtins) -> Result<(), FullDiagnostic> {
                 p.turns.insert(names[i].clone(), turns[i]);
             }
         }
-        fn add_turns(ctx: EvalCtx, turns: Vec<OrderedTurn>) -> () {
-            let s = ctx.caller_span;
-            let mut p = puzzle(ctx);
-            for t in turns {
-                let name = p.next_turn_name().ok_or(
-                    Error::User(
-                        "No more automatic names left. Please manually assign name!".into(),
-                    )
-                    .at(s),
-                )?;
-                p.turns.insert(name, t);
-            }
-        }
+        // fn add_turns(ctx: EvalCtx, turns: Vec<OrderedTurn>) -> () {
+        //     let s = ctx.caller_span;
+        //     let mut p = puzzle(ctx);
+        //     for t in turns {
+        //         let name = p.next_turn_name().ok_or(
+        //             Error::User(
+        //                 "No more automatic names left. Please manually assign name!".into(),
+        //             )
+        //             .at(s),
+        //         )?;
+        //         p.turns.insert(name, t);
+        //     }
+        // }
         fn cut(ctx: EvalCtx, cut: Vec<OrderedTurn>) -> () {
             let s = ctx.caller_span;
             puzzle(ctx)

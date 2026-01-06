@@ -9,7 +9,7 @@ add_puzzle(
         lt = turn(lc, 6)
         rt = turn(rc, 6)
         add_circles([lc, rc])
-        add_turns([lt, rt])
+        add_turns([lt, rt], ["L", "R"])
         sym = turn(circle(0, 0, 10), 2)
         for t in sym.powers() {
             for a in lt.powers() {

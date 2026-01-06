@@ -13,10 +13,10 @@ use crate::{
     },
 };
 
-const NAMES: [&str; 26] = [
-    "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S",
-    "T", "U", "V", "W", "X", "Y", "Z",
-];
+// const NAMES: [&str; 26] = [
+//     "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S",
+//     "T", "U", "V", "W", "X", "Y", "Z",
+// ];
 
 #[derive(Clone, Debug)]
 pub struct HPSPuzzleData {
@@ -77,7 +77,8 @@ impl HPSPuzzleData {
             pieces: self.pieces.clone(),
             turns: self.turns.clone(),
             intern: self.intern.clone(),
-            scramble: self.scramble,
+            depth: self.scramble,
+            keybinds: HashMap::new(),
         }
     }
     pub fn add_disk(&mut self, disk: ComplexCircle) -> bool {
@@ -171,14 +172,14 @@ impl HPSPuzzleData {
             }
         }
     }
-    pub fn next_turn_name(&self) -> Option<String> {
-        for ch in NAMES {
-            if !self.turns.contains_key(ch) {
-                return Some(ch.to_string());
-            }
-        }
-        None
-    }
+    // pub fn next_turn_name(&self) -> Option<String> {
+    //     for ch in NAMES {
+    //         if !self.turns.contains_key(ch) {
+    //             return Some(ch.to_string());
+    //         }
+    //     }
+    //     None
+    // }
 }
 
 fn full_circle_piece(circ: ComplexCircle) -> Piece {
