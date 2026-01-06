@@ -4,7 +4,3 @@ binds {
     j R 1
     k R -1
 }
-override Squares {
-    d L 2
-    f L 2
-}
