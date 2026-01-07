@@ -19,7 +19,7 @@ add_puzzle(
         for t in sym_turn.powers() {
             for k in t1.powers() {
                 cut([t, k, t2])
-            } 
+            }
         }
         color([c1, ~c2], red)
         color([c2, ~c3], blue)
@@ -27,4 +27,3 @@ add_puzzle(
         color([c4, ~c1], yellow)
     },
 )
-    

@@ -16,4 +16,3 @@ add_puzzle(
         color([~lc, rc], green)
     },
 )
-    
