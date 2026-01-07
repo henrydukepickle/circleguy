@@ -1,5 +1,5 @@
 add_puzzle(
-    name = "Test",
+    name = "Mandorla",
     authors = ["Henry Pickle"],
     scramble = 500,
     build = fn() {
