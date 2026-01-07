@@ -18,7 +18,7 @@ add_puzzle(
         sym = turn(circle(0.05, 0.0, 10.0), 2)
         add_circles([c1, c2, c3, c4])
         add_turns([t1, t2, t3, t4], ["UR", "UL", "DL", "DR"])
-        for s in sym.powers() {    
+        for s in sym.powers() {
             for t in t1.powers() {
                 turn([s, t])
                 cut([t2, t3])

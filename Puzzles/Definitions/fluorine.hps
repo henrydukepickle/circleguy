@@ -1,0 +1,29 @@
+add_puzzle(
+    name = "Fluorine",
+    authors = ["Henry Pickle", "cryofractal"],
+    scramble = 500,
+    build = fn() {
+        lc = circle(-0.5, 0.0, 0.8)
+        rc = circle(0.5, 0.0, 0.6)
+        lt = turn(lc, 9)
+        rt = turn(rc, 3)
+        add_circles([lc, rc])
+        add_turns([lt, rt], ["L", "R"])
+        for t in lt.powers() {
+            cut([t, rt])
+        }
+        for t in rt.powers() {
+            cut([t, lt, rt])
+        }
+        for t in rt.powers() {
+            cut([t, lt.inverse(), rt])
+        }
+        color([], gray)
+        color([rc], blue)
+        turn(lt.mult(3))
+        color([rc], blue)
+        turn(lt.mult(3))
+        color([rc], blue)
+        undo_all()
+    },
+)

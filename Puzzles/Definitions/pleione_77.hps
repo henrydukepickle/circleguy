@@ -1,0 +1,17 @@
+add_puzzle(
+    name = "Pleione (77)",
+    authors = ["cryofractal"],
+    scramble = 500,
+    build = fn() {
+        lc = circle(-0.5, 0.0, 0.55)
+        rc = circle(0.5, 0.0, 0.784829316947)
+        lt = turn(lc, 7)
+        rt = turn(rc, 7)
+        add_circles([lc, rc])
+        add_turns([lt, rt], ["L", "R"])
+        cut([lt, rt].mult(19))
+        color([lc, ~rc], red)
+        color([lc, rc], blue)
+        color([~lc, rc], green)
+    },
+)
