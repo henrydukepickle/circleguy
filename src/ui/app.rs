@@ -266,8 +266,8 @@ impl eframe::App for App {
                 .default_pos((10.0, 40.0))
                 .auto_sized()
                 .show(ctx, |ui| {
-                    ui.label(String::from("Name: ") + &self.puzzle.name.clone());
-                    ui.label(String::from("Authors: ") + &self.puzzle.authors.join(","));
+                    ui.label(String::from("Name: ") + &self.puzzle.name);
+                    ui.label(String::from("Authors: ") + &self.puzzle.authors.join(", "));
                     ui.label(self.puzzle.pieces.len().to_string() + " pieces");
                 });
             //UI Section: Bottom left area

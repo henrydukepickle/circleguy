@@ -1,0 +1,30 @@
+add_puzzle(
+    name = "Flowers 2 Color",
+    authors = ["Henry Pickle"],
+    scramble = 500,
+    build = fn() {
+        lc = circle(0.5, 0.0, 1)
+        rc = circle(-0.5, 0.0, 1)
+        uc = circle(0.0, 0.5, 1)
+        dc = circle(0.0, -0.5, 1)
+        lt = turn(lc, 4)
+        rt = turn(rc, 4)
+        ut = turn(uc, 4)
+        dt = turn(dc, 4)
+        add_circles([lc, rc, uc, dc])
+        add_turns([lt, rt, ut, dt], ["L", "R", "U", "D"])
+        sym_turn = turn(circle(0, 0, 10), 4)
+        for t in sym_turn.powers() {
+            for r in rt.mult(2).powers() {
+                for u in ut.mult(2).powers() {
+                    for l in lt.mult(2).powers() {
+                        cut([t, r, u, l] ++ [r,u].mult(5))
+                    }
+                }
+            }
+        }
+        color([], gray)
+        color([rc, tc, lc, rc], red)
+    },
+)
+    

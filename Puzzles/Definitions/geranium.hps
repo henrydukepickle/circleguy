@@ -1,0 +1,37 @@
+add_puzzle(
+    name = "Geranium",
+    authors = ["Henry Pickle"],
+    scramble = 1500,
+    build = fn() {
+        p = point(0, 0)
+        c1 = circle(0.5, 0, 0.7)
+        a = 2 * pi/5
+        c2 = c1.rotate(p, a)
+        c3 = c2.rotate(p, a)
+        c4 = c3.rotate(p, a)
+        c5 = c4.rotate(p, a)
+        t1 = turn(c1, 10)
+        t2 = turn(c2, 10)
+        t3 = turn(c3, 10)
+        t4 = turn(c4, 10)
+        t5 = turn(c5, 10)
+        add_circles([c1, c2, c3, c4, c5])
+        add_turns([t1, t2, t3, t4, t5], ["R", "U", "UL", "DL", "D"])
+        sym_turn = turn(circle(p, 5), 5)
+        for t in sym_turn.powers() {
+            turn(t)
+            cut([t1.mult(-3), t3.mult(3), t1.mult(3), t3.mult(-3), t4])
+            cut([t1.mult(3), t4.mult(-3), t1.mult(-3), t4.mult(3), t3]) 
+            cut([t1.mult(-4), t4.mult(-3), t1, t3])
+            cut([t1.mult(4), t3.mult(3), t1.inverse(), t4])
+            cut([t1.inverse(), t4.mult(-3), t1, t3])
+            undo_all()
+        }
+        color([c1, ~c2], blue)
+        color([c2, ~c3], green)
+        color([c3, ~c4], purple)
+        color([c4, ~c5], yellow)
+        color([c5, ~c1], red)
+    },
+)
+    

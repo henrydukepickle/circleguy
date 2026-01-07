@@ -38,7 +38,7 @@ pub fn color_builtins(b: &mut Builtins) -> Result<(), FullDiagnostic> {
     b.set("white", Color::White)?;
     b.set("dark_blue", Color::DarkBlue)?;
     b.set("dark_green", Color::DarkGreen)?;
-    b.set("dark_gray", Color::DarkRed)?;
+    b.set("dark_gray", Color::DarkGray)?;
     b.set("dark_red", Color::DarkRed)?;
     b.set("light_blue", Color::LightBlue)?;
     b.set("light_gray", Color::LightGray)?;
