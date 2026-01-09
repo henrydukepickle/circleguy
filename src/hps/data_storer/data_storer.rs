@@ -2,10 +2,9 @@ use crate::{
     hps::{
         builtins::{circleguy_builtins, loading_builtins},
         custom_values::hpspuzzle::HPSPuzzle,
-        data_storer::{keybind_data::KeybindData, puzzle_io::PuzzleIOData},
+        data_storer::{io::*, keybind_data::KeybindData, puzzle_io::PuzzleIOData},
     },
     puzzle::puzzle::{Puzzle, PuzzleData},
-    ui::io::*,
 };
 use hyperpuzzlescript::{
     BUILTIN_SPAN, CustomValue, EvalCtx, FnValue, FullDiagnostic, List, Map, Runtime, Scope,
