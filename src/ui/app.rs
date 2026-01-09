@@ -1,7 +1,8 @@
-use crate::DEFAULT_PUZZLE;
 use crate::hps::data_storer::*;
 use crate::puzzle::puzzle::*;
+use crate::puzzle::render_piece::RenderPiece;
 use crate::ui::render::draw_circle;
+use crate::{DEFAULT_PUZZLE, DETAIL};
 use egui::*;
 
 ///default scale factor
@@ -25,11 +26,11 @@ pub struct App {
     animation_speed: f64,    //speed at which animations happen
     last_frame_time: web_time::Instant, //the absolute time at which the last frame happened
     outline_width: f32,      //the width of the outlines
-    detail: f32,             //the detail of rendering
     scale_factor: f32,       //the scale factor (zoom)
     offset: Vec2,            //the offset of the puzzle from the center of the screen (pan)
     cut_on_turn: bool,       //whether or not turns should cut the puzzle
     preview: bool,           //whether the solved state is being previewed
+    solved_pieces: Vec<RenderPiece>,
 }
 impl App {
     ///initialize a new app, using some default settings (from the constants)
@@ -56,6 +57,11 @@ impl App {
                 data_storer.keybinds.get_keybinds_for_puzzle(&p_data.name),
             )
             .unwrap();
+        let solved_pieces = p
+            .pieces
+            .iter()
+            .map(|x| x.clone().triangulate(DETAIL))
+            .collect();
         Self {
             //return the default app
             data_storer,
@@ -65,11 +71,11 @@ impl App {
             animation_speed: ANIMATION_SPEED,
             last_frame_time: web_time::Instant::now(),
             outline_width: 5.0,
-            detail: 50.0,
             scale_factor: SCALE_FACTOR,
             offset: vec2(0.0, 0.0),
             cut_on_turn: false,
             preview: false,
+            solved_pieces,
             // keybinds: if let Some(kb) = &p_data.keybinds
             //     && let Some(gr) = &p_data.keybind_groups
             //     && let Some(keybinds) = load_keybinds(&kb, &gr)
@@ -91,7 +97,6 @@ impl eframe::App for App {
                 if let Err(x) = self.puzzle.render(
                     ui,
                     &rect,
-                    self.detail,
                     self.outline_width,
                     self.scale_factor,
                     self.offset,
@@ -99,22 +104,20 @@ impl eframe::App for App {
                     self.curr_msg = x;
                 };
                 //if the puzzle is in preview mode, render all of the pieces of the solved state
+            } else {
+                for piece in &self.solved_pieces {
+                    if let Err(x) = piece.render(
+                        ui,
+                        &rect,
+                        None,
+                        self.outline_width,
+                        self.scale_factor,
+                        self.offset,
+                    ) {
+                        self.curr_msg = x;
+                    }
+                }
             }
-            // else {
-            //     for piece in &self.puzzle.data.pieces {
-            //         if let Err(x) = piece.render(
-            //             ui,
-            //             &rect,
-            //             None,
-            //             self.detail,
-            //             self.outline_width,
-            //             self.scale_factor,
-            //             self.offset,
-            //         ) {
-            //             self.curr_msg = x;
-            //         }
-            //     }
-            // }
             //render the data storer panel -- this stores all of the puzzles that you can load
             match self.data_storer.render_panel(ctx) {
                 Err(()) => {
@@ -190,8 +193,6 @@ impl eframe::App for App {
                         egui::Slider::new(&mut self.outline_width, (0.0)..=10.0)
                             .text("Outline Width"),
                     );
-                    //detail slider
-                    ui.add(egui::Slider::new(&mut self.detail, (1.0)..=100.0).text("Detail"));
                     //animation speed slider
                     ui.add(
                         egui::Slider::new(&mut self.animation_speed, (1.0)..=25.0)

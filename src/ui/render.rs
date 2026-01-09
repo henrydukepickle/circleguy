@@ -1,5 +1,4 @@
 use crate::PRECISION;
-use crate::complex::arc::*;
 use crate::complex::c64::C64;
 use crate::complex::complex_circle::Circle;
 use crate::complex::complex_circle::Contains;
@@ -7,7 +6,6 @@ use crate::complex::point::Point;
 use crate::hps::data_storer::DataStorer;
 use crate::hps::data_storer::PuzzleLoadingData;
 use crate::puzzle::color::Color;
-use crate::puzzle::piece::*;
 use crate::puzzle::puzzle::*;
 use crate::puzzle::render_piece::RenderPiece;
 use crate::puzzle::render_piece::Triangulation;
@@ -22,7 +20,6 @@ use egui::{
     pos2,
 };
 use std::cmp::*;
-use std::f64::consts::PI;
 
 pub struct RenderingCircle {
     pub cent: Pos2,
@@ -73,17 +70,6 @@ pub fn draw_circle(real_circle: Circle, ui: &mut Ui, rect: &Rect, scale_factor: 
             (10.0, Color32::WHITE),
         );
     }
-}
-
-///averages (takes the barycenter) of a vec of points
-fn avg_points(points: &Vec<Pos2>) -> Pos2 {
-    let n = points.len() as f32;
-    let mut pos = pos2(0.0, 0.0);
-    for point in points {
-        pos.x += point.x / n;
-        pos.y += point.y / n;
-    }
-    pos
 }
 
 impl Point {
@@ -209,7 +195,6 @@ impl RenderPiece {
         ui: &mut Ui,
         rect: &Rect,
         offset: Option<Turn>,
-        detail: f32,
         outline_size: f32,
         scale_factor: f32,
         offset_pos: Vec2,
@@ -285,7 +270,6 @@ impl Puzzle {
         &self,
         ui: &mut Ui,
         rect: &Rect,
-        detail: f32,
         outline_width: f32,
         scale_factor: f32,
         offset: Vec2,
@@ -296,15 +280,7 @@ impl Puzzle {
             .map(|off| off.mult(self.anim_left as f64));
         for piece in &self.pieces {
             //render each piece
-            piece.render(
-                ui,
-                rect,
-                proper_offset,
-                detail,
-                outline_width,
-                scale_factor,
-                offset,
-            )?;
+            piece.render(ui, rect, proper_offset, outline_width, scale_factor, offset)?;
         }
         Ok(())
     }

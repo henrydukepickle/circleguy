@@ -4,13 +4,8 @@ use approx_collections::ApproxEq;
 
 use crate::{
     PRECISION,
-    complex::{arc::Arc, c64::C64, complex_circle::Contains, point::Point, rotation::Rotation},
-    puzzle::{
-        color::Color,
-        piece::Piece,
-        piece_shape::PieceShape,
-        turn::{OrderedTurn, Turn},
-    },
+    complex::{arc::Arc, c64::C64, complex_circle::Contains, point::Point},
+    puzzle::{piece::Piece, piece_shape::PieceShape, turn::Turn},
 };
 
 const DETAIL_SCALE: f64 = 0.5;
