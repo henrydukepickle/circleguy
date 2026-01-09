@@ -14,7 +14,7 @@ const DETAIL_SCALE: f64 = 0.5;
 const DETAIL_FACTOR: f64 = 3.0;
 
 ///leniency for degenerate triangles
-const LENIENCY: f64 = 0.1;
+const LENIENCY: f64 = 0.01;
 
 pub struct Component {
     pub shape: Vec<Arc>,
