@@ -8,36 +8,48 @@ use crate::{
     puzzle::{piece::Piece, piece_shape::PieceShape, turn::Turn},
 };
 
-const DETAIL_SCALE: f64 = 0.5;
-
 ///the amount more detailed the outlines are than the interiors
 const DETAIL_FACTOR: f64 = 3.0;
 
 ///leniency for degenerate triangles
 const LENIENCY: f64 = 0.01;
 
+///component for rendering
 pub struct Component {
     pub shape: Vec<Arc>,
 }
 
 #[derive(Debug, Clone)]
+///triangulation for rendering
 pub struct Triangulation {
     pub inside: Vec<[Point; 3]>,
     pub border: Vec<TriangulatedArc>,
 }
 
+///triangulated arc (duh)
 pub type TriangulatedArc = Vec<Point>;
 
 #[derive(Debug, Clone)]
+///piece that has been triangulated
 pub struct RenderPiece {
     pub piece: Piece,
     pub triangulations: Vec<Triangulation>,
 }
 
+///make triangles from the border points, given a center
 pub fn make_triangles(points: Vec<Point>, center: Point) -> Vec<[Point; 3]> {
+    ///take in a triangle and return if its 'almost degenerate' within some leniency (i.e. its points are 'almost colinear')
+    fn almost_degenerate(triangle: &[Point; 3], leniency: f64) -> bool {
+        let angle_1 = (triangle[1] - triangle[0]).angle() - (triangle[1] - triangle[2]).angle(); //get the relevant (smallest/largest) angle of the triangle, by construction
+        let close = angle_1.abs().min((PI - angle_1).abs()); //find how close it is to either extreme (0 or PI)
+        if close < leniency {
+            return true;
+        }
+        false
+    }
     let mut triangles = Vec::new();
     for i in 0..(points.len() - 1) {
-        let t = [center, points[i], points[i + 1]];
+        let t = [center, points[i], points[i + 1]]; //add adjacent points along with the center
         if !almost_degenerate(&t, LENIENCY) {
             triangles.push(t);
         }
@@ -45,17 +57,8 @@ pub fn make_triangles(points: Vec<Point>, center: Point) -> Vec<[Point; 3]> {
     triangles
 }
 
-///take in a triangle and return if its 'almost degenerate' within some leniency (i.e. its points are 'almost colinear')
-fn almost_degenerate(triangle: &[Point; 3], leniency: f64) -> bool {
-    let angle_1 = (triangle[1] - triangle[0]).angle() - (triangle[1] - triangle[2]).angle(); //get the relevant (smallest/largest) angle of the triangle, by construction
-    let close = angle_1.abs().min((PI - angle_1).abs()); //find how close it is to either extreme (0 or PI)
-    if close < leniency {
-        return true;
-    }
-    false
-}
-
 impl Arc {
+    ///get the polygon of an arc according to a detail and the arcs size
     pub fn get_polygon(&self, detail: f64) -> Vec<Point> {
         let divisions = (self.circle.r() * self.angle.abs() * detail).max(2.0) as usize;
         let mut points = Vec::new();
@@ -69,19 +72,21 @@ impl Arc {
     }
 }
 impl Component {
+    ///triangulate all the arcs in a component around the estimated barycenter
     pub fn triangulate_component(&self, detail: f64) -> Triangulation {
         let mut triangles = Vec::new();
         let mut borders = Vec::new();
         let bary = self.barycenter();
         for arc in &self.shape {
-            triangles.extend(make_triangles(arc.get_polygon(detail * DETAIL_SCALE), bary));
-            borders.push(arc.get_polygon(detail * DETAIL_SCALE * DETAIL_FACTOR));
+            triangles.extend(make_triangles(arc.get_polygon(detail), bary));
+            borders.push(arc.get_polygon(detail * DETAIL_FACTOR));
         }
         Triangulation {
             inside: triangles,
             border: borders,
         }
     }
+    ///estimate the barycenter by averaging the midpoints of all the arcs
     pub fn barycenter(&self) -> Point {
         let mut center = Point(C64 { re: 0.0, im: 0.0 });
         let n = self.shape.len() as f64;
@@ -94,6 +99,7 @@ impl Component {
 }
 
 impl PieceShape {
+    ///calculate the components of the pieceshape. if calculating the components fails (usually due to tangent arcs), just gives the whole piece
     pub fn calculate_components(&self) -> Vec<Component> {
         fn find_next_arc(start: Point, arcs: &mut Vec<Arc>) -> Option<Arc> {
             let mut index = None;
@@ -142,6 +148,7 @@ impl PieceShape {
 }
 
 impl Piece {
+    ///triangulate the piece to get a RenderPiece
     pub fn triangulate(self, detail: f64) -> RenderPiece {
         RenderPiece {
             triangulations: self
@@ -155,6 +162,7 @@ impl Piece {
     }
 }
 
+///rotate a list of triangulations according to a turn
 pub fn rot_triangulations(tri: Vec<Triangulation>, turn: Turn) -> Vec<Triangulation> {
     tri.iter()
         .map(|x| Triangulation {
@@ -173,6 +181,7 @@ pub fn rot_triangulations(tri: Vec<Triangulation>, turn: Turn) -> Vec<Triangulat
 }
 
 impl Turn {
+    ///equivalent to turn_piece
     pub fn turn_render_piece(&self, piece: &RenderPiece) -> Option<RenderPiece> {
         let (shape, triangles) = if piece.piece.shape.in_circle(self.circle)? != Contains::Outside {
             (
@@ -190,6 +199,7 @@ impl Turn {
             triangulations: triangles,
         })
     }
+    ///equivalent to turn_cut_piece. retriangulates
     pub fn turn_cut_render_piece(
         &self,
         piece: &RenderPiece,

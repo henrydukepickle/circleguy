@@ -95,61 +95,8 @@ impl Point {
     }
 }
 
-// impl Arc {
-//     ///draws an arc (the outline) in OUTLINE_COLOR, according to the parameters passed
-//     fn draw(
-//         &self,
-//         ui: &mut Ui,
-//         rect: &Rect,
-//         detail: f32,
-//         width: f32,
-//         scale_factor: f32,
-//         offset_pos: Vec2,
-//     ) -> Result<(), String> {
-//         let size = self.angle_euc().abs() * self.circle.r() as f32 * DETAIL_FACTOR as f32; //get the absolute size of the arc, to measure how finely we need to render it
-//         let divisions = (size * detail * DETAIL as f32).max(2.0) as u16; //find the number of divisions we do for the arc
-//         let mut coords = Vec::new();
-//         for pos in self.get_polygon(divisions)? {
-//             //divide up the arc into a polygon and convert to egui
-//             coords.push(to_egui_coords(pos, rect, scale_factor, offset_pos));
-//         }
-//         ui.painter() //paint the path along the polygon
-//             .add(PathShape::line(coords, Stroke::new(width, OUTLINE_COLOR)));
-//         Ok(())
-//     }
-// ///gets the polygon representation of an arc for rendering its outline and for triangulation
-// fn get_polygon(&self, divisions: u16) -> Result<Vec<Pos2>, String> {
-//     let mut points: Vec<Pos2> = Vec::new();
-//     let start_point = self.start;
-//     let angle = self.angle_euc(); //take the angle of the arc
-//     let inc_angle = angle / (divisions as f32);
-//     for i in 0..=divisions {
-//         //increment the angle and take points
-//         points.push(
-//             ((start_point).rotate_about(self.circle.center, (inc_angle as f64) * (i as f64)))
-//                 .to_pos2(),
-//         );
-//     }
-//     Ok(points)
-// }
-// ///triangulate the arc with respect to a given center
-// fn triangulate(&self, center: Pos2, detail: f32) -> Result<Vec<Vec<Pos2>>, String> {
-//     let size = self.angle_euc().abs() * self.circle.r() as f32;
-//     let div = (detail * size * DETAIL as f32).max(2.0) as u16; //get the absolute size and use it to determine the level of detail
-//     let polygon = self.get_polygon(div)?;
-//     let mut triangles = Vec::new();
-//     for i in 0..(polygon.len() - 1) {
-//         //use the polygon to divide into triangles
-//         triangles.push(vec![center, polygon[i], polygon[i + 1]]);
-//     }
-//     Ok(triangles)
-// }
-// ///get the euclidian angle of the arc. clockwise arcs are negative by convention
-// fn angle_euc(&self) -> f32 {
-//     self.angle as f32
-// }
-//}
 impl Triangulation {
+    ///render the triangulation, according to a detail and a color. includes outlines
     pub fn render(
         &self,
         ui: &mut Ui,
@@ -227,42 +174,6 @@ impl RenderPiece {
         }
         Ok(())
     }
-    //returns a list of triangles for rendering
-    // fn triangulate(&self, center: Pos2, detail: f32) -> Result<Vec<Vec<Pos2>>, String> {
-    //     let mut triangles = Vec::new();
-    //     for arc in &self.shape.border {
-    //         //triangulate each arc by the center
-    //         triangles.extend(arc.triangulate(center, detail)?);
-    //     }
-    //     Ok(triangles)
-    // }
-    // ///get the barycenter of the piece based on the arcs for triangulation
-    // fn barycenter(&self) -> Result<Pos2, String> {
-    //     let mut points = Vec::new();
-    //     for arc in &self.shape.border {
-    //         points.push(arc.midpoint().to_pos2())
-    //     }
-    //     if points.is_empty() {
-    //         return Ok(self.shape.border[0].circle.center.to_pos2());
-    //     }
-    //     Ok(avg_points(&points)) //average the midpoints of the arcs
-    // }
-    // ///draw the outline of the piece
-    // fn draw_outline(
-    //     &self,
-    //     ui: &mut Ui,
-    //     rect: &Rect,
-    //     detail: f32,
-    //     outline_size: f32,
-    //     scale_factor: f32,
-    //     offset_pos: Vec2,
-    // ) -> Result<(), String> {
-    //     for arc in &self.shape.border {
-    //         //draw the outline of each arc
-    //         arc.draw(ui, rect, detail, outline_size, scale_factor, offset_pos)?;
-    //     }
-    //     Ok(())
-    // }
 }
 impl Puzzle {
     ///render the puzzle, including outlines

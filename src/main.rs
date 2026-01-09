@@ -17,17 +17,11 @@ const DEFAULT_PUZZLE: &str = "Stars";
 ///location of the icon
 const ICON_PNG_DATA: &[u8] = include_bytes!("../resources/icon.png");
 ///detail of rendering
-pub const DETAIL: f64 = 50.0;
+pub const DETAIL: f64 = 25.0;
 
 // When compiling natively:
 #[cfg(not(target_arch = "wasm32"))]
 fn main() -> eframe::Result {
-    // dbg!(
-    //     parse_hps(&read_file_to_string("Puzzles/Definitions/test.hps").unwrap())
-    //         .unwrap()
-    //         .pieces
-    //         .len()
-    // );
     // set the icon
     let icon_data =
         eframe::icon_data::from_png_bytes(ICON_PNG_DATA).expect("error loading application icon");
@@ -47,7 +41,6 @@ fn main() -> eframe::Result {
         native_options,
         Box::new(|cc| Ok(Box::new(App::new(cc)))),
     )
-    //Ok(())
 }
 // When compiling to web using trunk:
 #[cfg(target_arch = "wasm32")]

@@ -107,6 +107,7 @@ impl Turn {
     }
 }
 #[derive(Debug, Clone, Copy)]
+//turn that stores its order
 pub struct OrderedTurn {
     pub turn: Turn,
     pub order: usize,
