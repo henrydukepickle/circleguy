@@ -28,7 +28,7 @@ the body of the block is the same format as the body of the `binds` block.
 
 # Puzzle Definition Format
 
-puzzle definitions are written in the hyperpuzzlescript (hps) language. for broad documentation about hps, see (documentation not written yet). this section will document the types and functions unique to circleguy.
+puzzle definitions are written in the hyperpuzzlescript (hps) language. for broad documentation about hps, see [the hps docs](https://github.com/HactarCE/Hyperspeedcube/tree/main/crates/hyperpuzzlescript#learn-hyperpuzzlescript-in-y-minutes). this section will document the types and functions unique to circleguy.
 
 ## Types
 
