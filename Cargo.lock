@@ -743,6 +743,7 @@ dependencies = [
  "eframe",
  "egui",
  "getrandom 0.3.4",
+ "hcegui",
  "hyperpuzzlescript",
  "include_dir",
  "kdl",
@@ -1755,6 +1756,14 @@ name = "hashbrown"
 version = "0.16.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "841d1cc9bed7f9236f321df977030373f4a4163ae1a7dbfe1a51a2c1a51d9100"
+
+[[package]]
+name = "hcegui"
+version = "0.1.1"
+source = "git+https://github.com/HactarCE/hcegui?rev=e84e306e64300582af93c1e04adbea3817df2f7f#e84e306e64300582af93c1e04adbea3817df2f7f"
+dependencies = [
+ "egui",
+]
 
 [[package]]
 name = "heck"

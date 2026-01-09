@@ -9,6 +9,18 @@ use crate::hps::custom_values::point::point_builtins;
 use crate::hps::custom_values::turn::turn_builtins;
 use crate::hps::custom_values::vector::vector_builtins;
 use crate::hps::data_storer::data_storer::{PuzzleLoadingData, PuzzlesMap};
+use hyperpuzzlescript::builtins::*;
+
+pub fn circleguy_hps_builtins(b: &mut Builtins) -> Result<(), FullDiagnostic> {
+    assertions::define_in(b)?;
+    collections::define_in(b)?;
+    math::define_in(b)?;
+    operators::define_in(b)?;
+    output::define_in(b)?;
+    strings::define_in(b)?;
+    types::define_in(b)?;
+    Ok(())
+}
 
 pub fn circleguy_builtins(b: &mut Builtins) -> Result<(), FullDiagnostic> {
     color_builtins(b)?;

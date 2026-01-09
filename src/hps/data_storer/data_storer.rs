@@ -1,14 +1,13 @@
 use crate::{
     hps::{
-        builtins::{circleguy_builtins, loading_builtins},
+        builtins::{circleguy_builtins, circleguy_hps_builtins, loading_builtins},
         custom_values::hpspuzzle::HPSPuzzle,
         data_storer::{io::*, keybind_data::KeybindData, puzzle_io::PuzzleIOData},
     },
     puzzle::puzzle::{Puzzle, PuzzleData},
 };
 use hyperpuzzlescript::{
-    BUILTIN_SPAN, CustomValue, EvalCtx, FnValue, FullDiagnostic, List, Map, Runtime, Scope,
-    Spanned, builtins::define_base_in,
+    BUILTIN_SPAN, CustomValue, EvalCtx, FnValue, FullDiagnostic, List, Map, Runtime, Scope, Spanned,
 };
 use std::{
     collections::HashMap,
@@ -74,7 +73,7 @@ impl PuzzleLoadingData {
 impl DataStorer {
     pub fn new(exp: bool) -> Result<Self, FullDiagnostic> {
         let mut rt = Runtime::new();
-        rt.with_builtins(define_base_in)?;
+        rt.with_builtins(circleguy_hps_builtins)?;
         rt.with_builtins(circleguy_builtins)?;
         let puzzles = HashMap::new();
         let puzzles_arc = Arc::new(Mutex::new(puzzles));

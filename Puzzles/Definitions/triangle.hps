@@ -17,18 +17,18 @@ add_puzzle(
         add_turns([lt, rt, ut], ["L", "R", "U"])
 
         sym_turn = turn(circle(o, 3), 3)
-        for t in sym_turn.sym() {
-            for k in a.sym() {
-                #puz.cut([t, k, rt])
+        for t in sym_turn.powers() {
+            for k in lt.powers() {
+                cut([t, k, rt])
             }
         }
 
-        color([ca, ~cb, ~cc], red)
-        color([~ca, cb, ~cc], green)
-        color([~ca, ~cb, cc], blue)
-        color([ca, cb, cc], black)
-        color([ca, ~cb, cc], magenta)
-        color([~ca, cb, cc], cyan)
-        color([ca, cb, ~cc], yellow)
+        color([lc, ~rc, ~uc], red)
+        color([~lc, rc, ~uc], green)
+        color([~lc, ~rc, uc], blue)
+        color([lc, rc, uc], white)
+        color([lc, ~rc, uc], magenta)
+        color([~lc, rc, uc], cyan)
+        color([lc, rc, ~uc], yellow)
     }
 )
