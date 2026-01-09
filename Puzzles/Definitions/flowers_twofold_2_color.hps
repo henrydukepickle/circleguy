@@ -24,7 +24,7 @@ add_puzzle(
             }
         }
         color([], gray)
-        color([rc, tc, lc, rc], red)
+        color([dc, uc, lc, rc], red)
     },
 )
     

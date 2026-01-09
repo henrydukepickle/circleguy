@@ -18,13 +18,13 @@ add_puzzle(
             for r in rt.mult(2).powers() {
                 for u in ut.mult(2).powers() {
                     for l in lt.mult(2).powers() {
-                        cut([t, r, u, l] ++ [r,u].mult(5))
+                        cut([t, r, u, l] ++ [rt.mult(2),ut.mult(2)].mult(5))
                     }
                 }
             }
         }
         color([], gray)
-        color([rc, tc, lc, rc], red)
+        color([dc, uc, lc, rc], red)
     },
 )
     

@@ -34,7 +34,7 @@ pub struct App {
 impl App {
     ///initialize a new app, using some default settings (from the constants)
     pub fn new(_cc: &eframe::CreationContext<'_>) -> Self {
-        let mut data_storer = DataStorer::new().unwrap(); //initialize a new data storer
+        let mut data_storer = DataStorer::new(false).unwrap(); //initialize a new data storer
         data_storer
             .load_puzzles(
                 "Puzzles/Definitions/",
@@ -98,22 +98,23 @@ impl eframe::App for App {
                 ) {
                     self.curr_msg = x;
                 };
-            //if the puzzle is in preview mode, render all of the pieces of the solved state
-            } else {
-                for piece in &self.puzzle.data.pieces {
-                    if let Err(x) = piece.render(
-                        ui,
-                        &rect,
-                        None,
-                        self.detail,
-                        self.outline_width,
-                        self.scale_factor,
-                        self.offset,
-                    ) {
-                        self.curr_msg = x;
-                    }
-                }
+                //if the puzzle is in preview mode, render all of the pieces of the solved state
             }
+            // else {
+            //     for piece in &self.puzzle.data.pieces {
+            //         if let Err(x) = piece.render(
+            //             ui,
+            //             &rect,
+            //             None,
+            //             self.detail,
+            //             self.outline_width,
+            //             self.scale_factor,
+            //             self.offset,
+            //         ) {
+            //             self.curr_msg = x;
+            //         }
+            //     }
+            // }
             //render the data storer panel -- this stores all of the puzzles that you can load
             match self.data_storer.render_panel(ctx) {
                 Err(()) => {
@@ -353,23 +354,25 @@ impl eframe::App for App {
                 let _ = self.puzzle.undo();
             }
             //keybinds
-            let ev = ctx.input(|i| i.events.clone());
-            for event in ev {
-                if let Event::Key {
-                    key,
-                    physical_key,
-                    pressed,
-                    repeat: _,
-                    modifiers: _,
-                } = event
-                {
-                    let b = if let Some(p) = physical_key { p } else { key };
-                    if pressed
-                        && let Some((t, m)) = self.puzzle.keybinds.get(&b).cloned()
-                        && self.puzzle.turns.contains_key(&t)
+            if ui.ctx().memory(|x| x.focused().is_none()) {
+                let ev = ctx.input(|i| i.events.clone());
+                for event in ev {
+                    if let Event::Key {
+                        key,
+                        physical_key,
+                        pressed,
+                        repeat: _,
+                        modifiers: _,
+                    } = event
                     {
-                        if let Err(x) = self.puzzle.turn_id(&t, self.cut_on_turn, m) {
-                            self.curr_msg = x;
+                        let b = if let Some(p) = physical_key { p } else { key };
+                        if pressed
+                            && let Some((t, m)) = self.puzzle.keybinds.get(&b).cloned()
+                            && self.puzzle.turns.contains_key(&t)
+                        {
+                            if let Err(x) = self.puzzle.turn_id(&t, self.cut_on_turn, m) {
+                                self.curr_msg = x;
+                            }
                         }
                     }
                 }

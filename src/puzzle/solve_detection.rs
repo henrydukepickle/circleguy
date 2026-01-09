@@ -19,7 +19,10 @@ pub fn same_pieces(first: &Vec<Piece>, second: &Vec<Piece>) -> bool {
 
 impl Puzzle {
     pub fn is_solved(&self) -> bool {
-        same_pieces(&self.pieces, &self.data.pieces)
+        same_pieces(
+            &self.pieces.iter().map(|x| x.piece.clone()).collect(),
+            &self.data.pieces,
+        )
     }
 }
 

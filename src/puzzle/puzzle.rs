@@ -1,5 +1,7 @@
+use crate::DETAIL;
 use crate::POOL_PRECISION;
 use crate::puzzle::piece::*;
+use crate::puzzle::render_piece::RenderPiece;
 use crate::puzzle::turn::*;
 use approx_collections::FloatPool;
 use rand::SeedableRng;
@@ -13,7 +15,7 @@ use std::time::Instant;
 pub struct Puzzle {
     pub name: String,
     pub authors: Vec<String>,
-    pub pieces: Vec<Piece>,
+    pub pieces: Vec<RenderPiece>,
     pub turns: HashMap<String, OrderedTurn>,
     pub stack: Vec<(String, isize)>,
     pub scramble: Option<Vec<String>>,
@@ -41,7 +43,11 @@ impl Puzzle {
         Self {
             name: data.name.clone(),
             authors: data.authors.clone(),
-            pieces: data.pieces.clone(),
+            pieces: data
+                .pieces
+                .iter()
+                .map(|x| x.clone().triangulate(DETAIL))
+                .collect(),
             turns: data.turns.clone(),
             stack: vec![],
             scramble: None,
@@ -67,14 +73,14 @@ impl Puzzle {
         if cut {
             //if cut is true, cut
             for piece in &self.pieces {
-                for turned in turn.turn_cut_piece(piece)? {
+                for turned in turn.turn.turn_cut_render_piece(piece, DETAIL)? {
                     //cut each piece
                     new_pieces.push(turned); //add it to the list
                 }
             }
         } else {
             for piece in &self.pieces {
-                new_pieces.push(match turn.turn_piece(piece) {
+                new_pieces.push(match turn.turn.turn_render_piece(piece) {
                     None => return Ok(false),
                     Some(x) => x,
                 }); //otherwise, just turn each piece

@@ -1,0 +1,18 @@
+add_puzzle(
+    name = "Heptagons Big",
+    authors = ["ysinx", "Henry Pickle"],
+    scramble = 5000,
+    experimental = true,
+    build = fn() {
+        lc = circle(-0.5, 0.0, 0.879)
+        rc = circle(0.5, 0.0, 0.702)
+        lt = turn(lc, 7)
+        rt = turn(rc, 7)
+        add_circles([lc, rc])
+        add_turns([lt, rt], ["L", "R"])
+        cut([lt, rt].mult(550))
+        color([lc, ~rc], red)
+        color([lc, rc], blue)
+        color([~lc, rc], green)
+    },
+)

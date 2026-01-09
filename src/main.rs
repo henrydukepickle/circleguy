@@ -16,6 +16,8 @@ pub const POOL_PRECISION: approx_collections::Precision = Precision::new(20, 20)
 const DEFAULT_PUZZLE: &str = "Stars";
 ///location of the icon
 const ICON_PNG_DATA: &[u8] = include_bytes!("../resources/icon.png");
+///detail of rendering
+pub const DETAIL: f64 = 50.0;
 
 // When compiling natively:
 #[cfg(not(target_arch = "wasm32"))]

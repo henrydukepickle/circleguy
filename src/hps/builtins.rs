@@ -19,24 +19,30 @@ pub fn circleguy_builtins(b: &mut Builtins) -> Result<(), FullDiagnostic> {
     circle_builtins(b)?;
     Ok(())
 }
-pub fn loading_builtins(rt: &mut Runtime, puzzles: PuzzlesMap) -> Result<(), FullDiagnostic> {
+pub fn loading_builtins(
+    rt: &mut Runtime,
+    puzzles: PuzzlesMap,
+    exp: bool,
+) -> Result<(), FullDiagnostic> {
     rt.with_builtins(|b| {
         b.set_fns(hps_fns![
-            #[kwargs(name: String, authors: Vec<String>, scramble: usize = 500, (build, span): Arc<FnValue>)]
+            #[kwargs(name: String, authors: Vec<String>, scramble: usize = 500, (build, span): Arc<FnValue>, experimental: bool = false)]
             fn add_puzzle(ctx: EvalCtx) -> () {
-                let mut p = puzzles.lock().unwrap();
-                if p.contains_key(&name) {
-                    return Err(Error::User("Error: duplicate puzzle names!".into()).at(ctx.caller_span));
+                if !experimental || exp {
+                    let mut p = puzzles.lock().unwrap();
+                    if p.contains_key(&name) {
+                        return Err(Error::User("Error: duplicate puzzle names!".into()).at(ctx.caller_span));
+                    }
+                    p.insert(
+                        name.clone(),
+                        PuzzleLoadingData {
+                            name,
+                            authors,
+                            scramble: scramble as usize,
+                            constructor: (build, span),
+                        },
+                    );
                 }
-                p.insert(
-                    name.clone(),
-                    PuzzleLoadingData {
-                        name,
-                        authors,
-                        scramble: scramble as usize,
-                        constructor: (build, span),
-                    },
-                );
             }
         ])
     })

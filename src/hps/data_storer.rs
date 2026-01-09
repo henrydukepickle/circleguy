@@ -280,7 +280,7 @@ impl PuzzleIOData {
 }
 
 impl DataStorer {
-    pub fn new() -> Result<Self, FullDiagnostic> {
+    pub fn new(exp: bool) -> Result<Self, FullDiagnostic> {
         let mut rt = Runtime::new();
         rt.with_builtins(define_base_in)?;
         rt.with_builtins(circleguy_builtins)?;
@@ -292,11 +292,11 @@ impl DataStorer {
             rt,
             keybinds: KeybindData::new(),
         };
-        loading_builtins(&mut ds.rt, puzzles_arc.clone()).unwrap();
+        loading_builtins(&mut ds.rt, puzzles_arc.clone(), exp).unwrap();
         Ok(ds)
     }
-    pub fn reset(&mut self) -> Result<(), FullDiagnostic> {
-        *self = Self::new()?;
+    pub fn reset(&mut self, exp: bool) -> Result<(), FullDiagnostic> {
+        *self = Self::new(exp)?;
         Ok(())
     }
     // #[cfg(not(target_arch = "wasm32"))]

@@ -1,0 +1,18 @@
+add_puzzle(
+    name = "Mimosa",
+    authors = ["Andrei Erashkevich", "Henry Pickle"],
+    scramble = 500,
+    build = fn() {
+        lc = circle(-0.5, 0.0, 1.2)
+        rc = circle(0.5, 0.0, 1.4)
+        lt = turn(lc, 5)
+        rt = turn(rc, 2)
+        add_circles([lc, rc])
+        add_turns([lt, rt], ["L", "R"])
+        cut([lt, rt].mult(50))
+        color([lc], red)
+
+        color([rc, ~lc], green)
+    },
+)
+    
