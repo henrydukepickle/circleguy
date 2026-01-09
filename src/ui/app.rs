@@ -1,4 +1,4 @@
-use crate::hps::data_storer::*;
+use crate::hps::data_storer::data_storer::DataStorer;
 use crate::puzzle::puzzle::*;
 use crate::puzzle::render_piece::RenderPiece;
 use crate::ui::render::draw_circle;

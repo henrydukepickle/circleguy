@@ -8,7 +8,7 @@ use crate::hps::custom_values::hpspuzzle::puzzle_builtins;
 use crate::hps::custom_values::point::point_builtins;
 use crate::hps::custom_values::turn::turn_builtins;
 use crate::hps::custom_values::vector::vector_builtins;
-use crate::hps::data_storer::{PuzzleLoadingData, PuzzlesMap};
+use crate::hps::data_storer::data_storer::{PuzzleLoadingData, PuzzlesMap};
 
 pub fn circleguy_builtins(b: &mut Builtins) -> Result<(), FullDiagnostic> {
     color_builtins(b)?;
