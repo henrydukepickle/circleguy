@@ -90,13 +90,15 @@ note: the circle constructors always construct a circle with a positive orientat
 
 ### Puzzle Construction Functions
 
-the main command behind the puzzle definitions is `add_puzzle`, which takes `3` mandatory keyword arguments and `1` optional one. these arguments are:
+the main command behind the puzzle definitions is `add_puzzle`, which takes `3` mandatory keyword arguments and `2` optional ones. these arguments are:
 
 `name: String`: the name of the puzzle. two puzzles cannot have the same name.
 
 `authors: [String]`: the authors of the puzzle.
 
 `scramble: Num` (optional): the scramble depth of the puzzle. if not specified, defaults to `500`.
+
+`experimental: bool` (optional): if the puzzle is experimental. experimental puzzles will not display by default, but can be loaded in via a separate button. used for puzzles that are either very big or incomplete or weird in some way. defaults to `false`.
 
 `build: Fn () -> ()`: the function for building the puzzle. can be specified anonymously like `build = fn () { ... }`.
 
