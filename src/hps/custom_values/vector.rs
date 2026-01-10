@@ -59,6 +59,8 @@ pub fn vector_builtins(b: &mut Builtins) -> Result<(), FullDiagnostic> {
     b.set_fns(hps_fns![
         ("+", |_, a: Vector, b: Vector| -> Vector { a + b }),
         ("-", |_, a: Vector, b: Vector| -> Vector { a - b }),
+        ("+", |_, a: Vector| -> Vector { a }),
+        ("-", |_, a: Vector| -> Vector { -a }),
         ("~", |_, a: Vector| -> Vector { -a }),
         ("*", |_, a: f64, b: Vector| -> Vector { a * b })
     ])?;
