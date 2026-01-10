@@ -26,6 +26,7 @@ pub struct Puzzle {
     pub anim_left: f32, //the amount of animation left
     pub data: PuzzleData,
     pub keybinds: HashMap<egui::Key, (String, isize)>,
+    pub solved_state: Vec<RenderPiece>,
 }
 #[derive(Debug, Clone)]
 pub struct PuzzleData {
@@ -57,6 +58,11 @@ impl Puzzle {
             solved: true,
             anim_left: 0.0,
             keybinds: data.keybinds.clone(),
+            solved_state: data
+                .pieces
+                .iter()
+                .map(|x| x.clone().triangulate(DETAIL))
+                .collect(),
             data,
         }
     }

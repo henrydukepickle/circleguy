@@ -1,8 +1,7 @@
+use crate::DEFAULT_PUZZLE;
 use crate::hps::data_storer::data_storer::DataStorer;
 use crate::puzzle::puzzle::*;
-use crate::puzzle::render_piece::RenderPiece;
 use crate::ui::render::draw_circle;
-use crate::{DEFAULT_PUZZLE, DETAIL};
 use egui::*;
 
 ///default scale factor
@@ -30,7 +29,6 @@ pub struct App {
     offset: Vec2,            //the offset of the puzzle from the center of the screen (pan)
     cut_on_turn: bool,       //whether or not turns should cut the puzzle
     preview: bool,           //whether the solved state is being previewed
-    solved_pieces: Vec<RenderPiece>,
 }
 impl App {
     ///initialize a new app, using some default settings (from the constants)
@@ -57,11 +55,6 @@ impl App {
                 data_storer.keybinds.get_keybinds_for_puzzle(&p_data.name),
             )
             .unwrap();
-        let solved_pieces = p
-            .pieces
-            .iter()
-            .map(|x| x.clone().triangulate(DETAIL))
-            .collect();
         Self {
             //return the default app
             data_storer,
@@ -75,7 +68,6 @@ impl App {
             offset: vec2(0.0, 0.0),
             cut_on_turn: false,
             preview: false,
-            solved_pieces,
             // keybinds: if let Some(kb) = &p_data.keybinds
             //     && let Some(gr) = &p_data.keybind_groups
             //     && let Some(keybinds) = load_keybinds(&kb, &gr)
@@ -105,7 +97,7 @@ impl eframe::App for App {
                 };
                 //if the puzzle is in preview mode, render all of the pieces of the solved state
             } else {
-                for piece in &self.solved_pieces {
+                for piece in &self.puzzle.solved_state {
                     if let Err(x) = piece.render(
                         ui,
                         &rect,
