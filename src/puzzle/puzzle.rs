@@ -54,7 +54,7 @@ impl Puzzle {
             scramble: None,
             animation_offset: None,
             intern: FloatPool::new(POOL_PRECISION),
-            depth: 500,
+            depth: data.depth as u16,
             solved: true,
             anim_left: 0.0,
             keybinds: data.keybinds.clone(),
