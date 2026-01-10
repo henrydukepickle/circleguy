@@ -72,11 +72,11 @@ note: the circle constructors always construct a circle with a positive orientat
 
 `inverse(Turn, Num) -> Turn`: inverts a turn.
 
-`mult([Turn], Num) -> [Turn]`: multiplies a list of turns, corresponding to repeated concatenation. negative integers may be passed, and will first invert the sequence before multiplying.
+`mult(List[Turn], Num) -> List[Turn]`: multiplies a list of turns, corresponding to repeated concatenation. negative integers may be passed, and will first invert the sequence before multiplying.
 
-`inverse([Turn], Num) -> [Turn]`: inverts a list of turns, reversing its order and inverting every turn.
+`inverse(List[Turn], Num) -> List[Turn]`: inverts a list of turns, reversing its order and inverting every turn.
 
-`powers(Turn) -> [Turn]`: gives a list of all the powers of a turn, up to its order, and including 0. for instance, if `t.order = 3`, then `powers(t) = [0, t, t2]`. used for cutting symmetrically.
+`powers(Turn) -> List[Turn]`: gives a list of all the powers of a turn, up to its order, and including 0. for instance, if `t.order = 3`, then `powers(t) = [0, t, t2]`. used for cutting symmetrically.
 
 #### Arithmetic Operations
 
@@ -94,7 +94,7 @@ the main command behind the puzzle definitions is `add_puzzle`, which takes `3` 
 
 `name: String`: the name of the puzzle. two puzzles cannot have the same name.
 
-`authors: [String]`: the authors of the puzzle.
+`authors: List[String]`: the authors of the puzzle.
 
 `scramble: Num` (optional): the scramble depth of the puzzle. if not specified, defaults to `500`.
 
@@ -108,17 +108,17 @@ the `build` function does not take or return any arguments. instead, the puzzle 
 
 `add_circles([Circle])`: adds circles to the base of the puzzle. circles are added sequentially, and each circle added is cut by all previous circles added to ensure that the pieces do not overlap. this is exactly like the `base` command in the old definition format, except that multiple `add_circles` commands can be present.
 
-`add_turns([Turn], [String])`: adds turns to the puzzle, using the names in the second argument. see the `Turn Naming Conventions` section below.
+`add_turns(List[Turn], List[String])`: adds turns to the puzzle, using the names in the second argument. see the `Turn Naming Conventions` section below.
 
 `add_circle(Circle)`: single circle version of the above function.
 
 `add_turn(Turn, String)`: single turn version of the above function.
 
-`cut([Turn])`: executes the turn sequence, cutting as it turns. undoes the turns afterwards.
+`cut(List[Turn])`: executes the turn sequence, cutting as it turns. undoes the turns afterwards.
 
-`cut([Circle], [Turn])`: applies the `cut([Turn])` command, but only to the pieces in the specified region. all pieces not initially in the region will be excluded from the cuts.
+`cut(List[Circle], List[Turn])`: applies the `cut(List[Turn])` command, but only to the pieces in the specified region. all pieces not initially in the region will be excluded from the cuts.
 
-`turn([Turn])`: turns the puzzle by the turn sequence, adding the turns to the stack. does not undo afterwards. still cuts as it executes the sequence.
+`turn(List[Turn])`: turns the puzzle by the turn sequence, adding the turns to the stack. does not undo afterwards. still cuts as it executes the sequence.
 
 `turn(Turn)`: single turn version of the above function.
 
@@ -128,7 +128,7 @@ the `build` function does not take or return any arguments. instead, the puzzle 
 
 `undo_all()`: undoes all the turns from `turn` commands.
 
-`color([Circle], Color)`: colors the region.
+`color(List[Circle], Color)`: colors the region.
 
 ### A Note on Colors
 
