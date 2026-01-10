@@ -1,0 +1,16 @@
+add_puzzle(
+    name = "Eclipse",
+    authors = ["ysinx"],
+    scramble = 5000,
+    build = fn() {
+        lc = circle(-0.6, 0.0, 0.47)
+        rc = circle(0.1, 0.0, 0.9)
+        lt = turn(lc, 3)
+        rt = turn(rc, 5)
+        add_circles([lc, rc])
+        add_turns([lt, rt], ["L", "R"])
+        cut([lt, rt].mult(77))
+        color([lc, ~rc], yellow)
+        color([rc], gray)
+    },
+)
