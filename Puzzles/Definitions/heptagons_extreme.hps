@@ -1,5 +1,5 @@
 add_puzzle(
-    name = "Heptagons Big",
+    name = "Heptagons Extreme",
     authors = ["ysinx", "Henry Pickle"],
     scramble = 5000,
     experimental = true,

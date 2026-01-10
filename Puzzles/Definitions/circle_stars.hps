@@ -1,0 +1,28 @@
+add_puzzle(
+    name = "Circle Stars",
+    authors = ["ysinx"],
+    scramble = 500,
+    build = fn() {
+        p = point(-0.5, 0.0)
+        lc = circle(p, 0.8)
+        rc = circle(0.5, 0.0, 0.65)
+        uc = circle(0.0, tan(pi/5)/2, 0.14)
+        ulc = uc.rotate(p, 2*pi/5)
+        llc = ulc.rotate(p, 2*pi/5)
+        dlc = llc.rotate(p, 2*pi/5)
+        dc = dlc.rotate(p, 2*pi/5)
+        lt = turn(lc, 5)
+        rt = turn(rc, 5)
+        ut = turn(uc, 5)
+        ult = turn(ulc, 5)
+        llt = turn(llc, 5)
+        dlt = turn(dlc, 5)
+        dt = turn(dc, 5)
+        add_circles([lc, rc, uc, ulc, llc, dlc, dc])
+        add_turns([lt, rt, ut, ult, llt, dlt, dt], ["L", "R", "U", "UL", "LL", "DL", "D"])
+        cut([lt, rt, ut].mult(32))
+        color([lc, ~rc], red)
+        color([lc, rc], blue)
+        color([~lc, rc], green)
+    },
+)

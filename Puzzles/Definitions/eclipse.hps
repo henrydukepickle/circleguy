@@ -2,6 +2,7 @@ add_puzzle(
     name = "Eclipse",
     authors = ["ysinx"],
     scramble = 5000,
+    experimental = true,
     build = fn() {
         lc = circle(-0.6, 0.0, 0.47)
         rc = circle(0.1, 0.0, 0.9)

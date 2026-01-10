@@ -1,0 +1,17 @@
+add_puzzle(
+    name = "Decagons",
+    authors = ["Henry Pickle", "ysinx"],
+    scramble = 500,
+    build = fn() {
+        lc = circle(-0.5, 0.0, 0.8)
+        rc = circle(0.5, 0.0, 0.8)
+        lt = turn(lc, 5)
+        rt = turn(rc, 5)
+        add_circles([lc, rc])
+        add_turns([lt, rt], ["L", "R"])
+        cut([lt, rt].mult(32))
+        color([lc, ~rc], red)
+        color([lc, rc], blue)
+        color([~lc, rc], green)
+    },
+)
