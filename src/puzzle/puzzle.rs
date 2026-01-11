@@ -1,5 +1,4 @@
 use crate::DETAIL;
-use crate::POOL_PRECISION;
 use crate::puzzle::piece::*;
 use crate::puzzle::render_piece::RenderPiece;
 use crate::puzzle::turn::*;
@@ -54,7 +53,7 @@ impl Puzzle {
             stack: vec![],
             scramble: None,
             animation_offset: None,
-            intern: FloatPool::new(POOL_PRECISION),
+            intern: data.intern.clone(),
             depth: data.depth as u16,
             solved: true,
             anim_left: 0.0,
