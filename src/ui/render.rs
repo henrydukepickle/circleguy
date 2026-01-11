@@ -1,3 +1,4 @@
+use crate::DEF_PATH;
 use crate::PRECISION;
 use crate::complex::c64::C64;
 use crate::complex::complex_circle::Circle;
@@ -5,6 +6,7 @@ use crate::complex::complex_circle::Contains;
 use crate::complex::point::Point;
 use crate::hps::data_storer::data_storer::DataStorer;
 use crate::hps::data_storer::data_storer::PuzzleLoadingData;
+use crate::hps::data_storer::def_entry::DefEntry;
 use crate::puzzle::color::Color;
 use crate::puzzle::puzzle::*;
 use crate::puzzle::render_piece::RenderPiece;
@@ -285,9 +287,50 @@ impl Puzzle {
 impl DataStorer {
     ///render the data panel on the screen and read input for which button is clicked
     pub fn render_panel(&mut self, ctx: &egui::Context) -> Result<Option<PuzzleLoadingData>, ()> {
+        fn cmp_entries(a: &DefEntry, b: &DefEntry) -> Ordering {
+            match (a, b) {
+                (DefEntry::Def(data_a), DefEntry::Def(data_b)) => {
+                    String::cmp(&data_a.name, &data_b.name)
+                }
+                (DefEntry::Def(_), DefEntry::Folder(_)) => Ordering::Less,
+                (DefEntry::Folder(_), DefEntry::Def(_)) => Ordering::Greater,
+                (DefEntry::Folder((na, _)), DefEntry::Folder((nb, _))) => String::cmp(na, nb),
+            }
+        }
+        fn render_def_entry(entry: &DefEntry, ui: &mut Ui) -> Option<PuzzleLoadingData> {
+            match entry {
+                DefEntry::Def(data) => {
+                    if ui.add(egui::Button::new(data.name.clone())).clicked() {
+                        Some(data.clone())
+                    } else {
+                        None
+                    }
+                }
+                DefEntry::Folder((name, dirs)) => {
+                    if let Some(x) = ui
+                        .collapsing(name, |inner_ui| {
+                            let mut ret = None;
+                            let mut sorted_dirs =
+                                dirs.clone().into_values().collect::<Vec<DefEntry>>();
+                            sorted_dirs.sort_by(|a, b| cmp_entries(a, b));
+                            for v in &sorted_dirs {
+                                if let Some(x) = render_def_entry(v, inner_ui) {
+                                    ret = Some(x);
+                                }
+                            }
+                            ret
+                        })
+                        .body_returned
+                    {
+                        x
+                    } else {
+                        None
+                    }
+                }
+            }
+        }
         let panel = egui::SidePanel::new(egui::panel::Side::Right, "data_panel").resizable(false); //make the new panel
-        let mut puzzle_data = None;
-        panel
+        Ok(panel
             .show(ctx, |ui| {
                 ui.label(RichText::new("Puzzles").font(FontId::proportional(20.0)));
                 //button to reload the puzzles into the data_storer if they were modifed (doing this every frame is too costly)
@@ -295,7 +338,7 @@ impl DataStorer {
                     if let Err(x) = self.reset(false) {
                         return Err(x);
                     }
-                    let _ = self.load_puzzles("Puzzles/Definitions/");
+                    let _ = self.load_puzzles(DEF_PATH);
                     let _ = self.load_keybinds("Configs/keybinds.kdl");
                 }
                 if ui
@@ -305,29 +348,18 @@ impl DataStorer {
                     if let Err(x) = self.reset(true) {
                         return Err(x);
                     }
-                    let _ = self.load_puzzles("Puzzles/Definitions/");
+                    let _ = self.load_puzzles(DEF_PATH);
                     let _ = self.load_keybinds("Configs/keybinds.kdl");
                 }
                 ui.separator();
-                Ok(egui::ScrollArea::vertical().show(ui, |ui| {
-                    let puzzles_real = self.puzzles.lock().unwrap();
-                    let mut names = puzzles_real.keys().collect::<Vec<&String>>();
-                    names.sort();
-                    for name in names {
-                        let puz = if let Some(x) = puzzles_real.get(name) {
-                            x
-                        } else {
-                            return;
-                        };
-                        if ui.add(egui::Button::new(puz.name.clone())).clicked() {
-                            //make the buttons for each puzzle
-                            puzzle_data = Some(puz.clone());
-                        }
-                    }
-                }))
+                Ok(egui::ScrollArea::vertical()
+                    .show(ui, |ui| {
+                        let puzzles_real = self.puzzles.lock().unwrap();
+                        render_def_entry(&puzzles_real, ui)
+                    })
+                    .inner)
             })
             .inner
-            .or(Err(()))?;
-        Ok(puzzle_data)
+            .or(Err(()))?)
     }
 }

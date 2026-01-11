@@ -41,19 +41,21 @@ pub fn loading_builtins(
             #[kwargs(name: String, authors: Vec<String>, scramble: usize = 500, (build, span): Arc<FnValue>, experimental: bool = false)]
             fn add_puzzle(ctx: EvalCtx) -> () {
                 if !experimental || exp {
+                    let path = ctx.runtime.modules.get_path(ctx.caller_span.context).unwrap().to_string();
                     let mut p = puzzles.lock().unwrap();
-                    if p.contains_key(&name) {
+                    if p.get(&path).is_some() {
                         return Err(Error::User("Error: duplicate puzzle names!".into()).at(ctx.caller_span));
                     }
-                    p.insert(
-                        name.clone(),
+                    p.add_puzzle(
                         PuzzleLoadingData {
                             name,
                             authors,
                             scramble: scramble as usize,
                             constructor: (build, span),
+                            path: path.clone(),
                         },
-                    );
+                        &path
+                    ).or(Err(Error::Internal("Internal error when adding puzzle!").at(ctx.caller_span)))?;
                 }
             }
         ])

@@ -65,7 +65,7 @@ impl HPSPuzzleData {
             scramble: 0,
         }
     }
-    pub fn to_puzzle_data(&self) -> PuzzleData {
+    pub fn to_puzzle_data(&self, path: &str) -> PuzzleData {
         PuzzleData {
             name: self.name.clone(),
             authors: self.authors.clone(),
@@ -74,6 +74,7 @@ impl HPSPuzzleData {
             intern: self.intern.clone(),
             depth: self.scramble,
             keybinds: HashMap::new(),
+            path: path.to_string(),
         }
     }
     pub fn add_disk(&mut self, disk: ComplexCircle) -> bool {

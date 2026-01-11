@@ -8,6 +8,8 @@ pub mod ui;
 
 use crate::ui::app::*;
 use approx_collections::Precision;
+///path for definitions
+pub const DEF_PATH: &str = "Puzzles/Definitions";
 ///used for general purpose
 pub const PRECISION: approx_collections::Precision = Precision::new_simple(20);
 ///used for the float pools from approx

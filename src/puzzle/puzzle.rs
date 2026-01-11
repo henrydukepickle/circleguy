@@ -31,6 +31,7 @@ pub struct Puzzle {
 #[derive(Debug, Clone)]
 pub struct PuzzleData {
     pub name: String,
+    pub path: String,
     pub authors: Vec<String>,
     pub pieces: Vec<Piece>,
     pub turns: HashMap<String, OrderedTurn>,

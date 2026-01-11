@@ -1,7 +1,7 @@
-use crate::DEFAULT_PUZZLE;
 use crate::hps::data_storer::data_storer::DataStorer;
 use crate::puzzle::puzzle::*;
 use crate::ui::render::draw_circle;
+use crate::{DEF_PATH, DEFAULT_PUZZLE};
 use egui::*;
 
 ///default scale factor
@@ -36,7 +36,7 @@ impl App {
         let mut data_storer = DataStorer::new(false).unwrap(); //initialize a new data storer
         data_storer
             .load_puzzles(
-                "Puzzles/Definitions/",
+                DEF_PATH,
                 //"Configs/Keybinds/Puzzles/",
                 //"Configs/Keybinds/groups.kdl",
             )

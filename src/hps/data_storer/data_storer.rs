@@ -2,7 +2,9 @@ use crate::{
     hps::{
         builtins::{circleguy_builtins, circleguy_hps_builtins, loading_builtins},
         custom_values::hpspuzzle::HPSPuzzle,
-        data_storer::{io::*, keybind_data::KeybindData, puzzle_io::PuzzleIOData},
+        data_storer::{
+            def_entry::DefEntry, io::*, keybind_data::KeybindData, puzzle_io::PuzzleIOData,
+        },
     },
     puzzle::puzzle::{Puzzle, PuzzleData},
 };
@@ -11,11 +13,10 @@ use hyperpuzzlescript::{
 };
 use std::{
     collections::HashMap,
-    fs::*,
     path::Path,
     sync::{Arc, Mutex},
 };
-pub type PuzzlesMap = Arc<Mutex<HashMap<String, PuzzleLoadingData>>>;
+pub type PuzzlesMap = Arc<Mutex<DefEntry>>;
 
 #[derive(Debug)]
 ///stores the data for loading puzzles (definitions and basic info for preview)
@@ -28,6 +29,7 @@ pub struct DataStorer {
 #[derive(Debug, Clone)]
 pub struct PuzzleLoadingData {
     pub name: String,
+    pub path: String,
     pub authors: Vec<String>,
     pub scramble: usize,
     pub constructor: Spanned<Arc<FnValue>>,
@@ -61,11 +63,12 @@ impl PuzzleLoadingData {
             .0
             .lock()
             .unwrap()
-            .to_puzzle_data();
+            .to_puzzle_data(&self.path);
         puz.authors = self.authors.clone();
         puz.name = self.name.clone();
         puz.depth = self.scramble;
         puz.keybinds = keybinds;
+        puz.path = self.path.clone();
         Ok(puz)
     }
 }
@@ -75,7 +78,7 @@ impl DataStorer {
         let mut rt = Runtime::new();
         rt.with_builtins(circleguy_hps_builtins)?;
         rt.with_builtins(circleguy_builtins)?;
-        let puzzles = HashMap::new();
+        let puzzles = DefEntry::Folder(("Definitions".to_string(), HashMap::new()));
         let puzzles_arc = Arc::new(Mutex::new(puzzles));
         let mut ds = Self {
             puzzles: puzzles_arc.clone(),
@@ -90,13 +93,8 @@ impl DataStorer {
         Ok(())
     }
     pub fn load_puzzles(&mut self, def_path: &str) -> Result<(), ()> {
-        let paths = read_dir(def_path).or(Err(()))?;
-        for path in paths {
-            let filename = path.or(Err(()))?.file_name().into_string().or(Err(()))?;
-            let data = read_file_to_string(&(String::from(def_path) + (&filename))).or(Err(()))?;
-            self.rt.modules.add_file(Path::new(&filename), data);
-            self.rt.exec_all_files();
-        }
+        self.rt.modules.add_from_directory(Path::new(def_path));
+        self.rt.exec_all_files();
         Ok(())
     }
     pub fn load_keybinds(&mut self, kb_path: &str) -> Result<(), ()> {
