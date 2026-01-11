@@ -80,9 +80,9 @@ note: the circle constructors always construct a circle with a positive orientat
 
 #### Arithmetic Operations
 
-`+`: you can add a vector to a point, or a vector to a vector.
+`+`: you can add a vector to a point, or a vector to a vector. When used in front of a single vector, it does nothing (but can be useful when used in contrast to unary `-`).
 
-`-`: you can subtract a point from a point (yielding a vector), or subtract a vector from a vector.
+`-`: you can subtract a point from a point (yielding a vector), or subtract a vector from a vector. You can negate a vector.
 
 `~`: you can negate a vector, or negate a circle, flipping its orientation.
 
