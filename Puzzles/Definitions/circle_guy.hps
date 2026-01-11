@@ -1,0 +1,57 @@
+add_puzzle(
+    name = "Circle Guy",
+    authors = ["ysinx"],
+    scramble = 5000,
+    experimental = true,
+    build = fn() {
+        mc = circle(0.0, 0.0, 0.395)
+        dc = circle(0.0, -0.5, 0.335)
+        uc = circle(0.0, (sqrt(5)-1)/2, 0.335)
+        lc = circle(-sqrt((5-sqrt(5))/2)/4, (3-sqrt(5))/8, 0.22)
+        rc = circle(sqrt((5-sqrt(5))/2)/4, (3-sqrt(5))/8, 0.22)
+        dlc = circle(-sqrt((5-sqrt(5))/2)/4, -(7-sqrt(5))/8, 0.22)
+        drc = circle(sqrt((5-sqrt(5))/2)/4, -(7-sqrt(5))/8, 0.22)
+        mt = turn(mc, 5)
+        dt = turn(dc, 5)
+        ut = turn(uc, 5)
+        lt = turn(lc, 5)
+        rt = turn(rc, 5)
+        dlt = turn(dlc, 5)
+        drt = turn(drc, 5)
+        add_circles([mc, dc, uc, lc, rc, dlc, drc])
+        add_turns([mt, dt, ut, lt, rt, dlt, drt], ["M", "D", "U", "L", "R", "DL", "DR"])
+        for t in ut.powers() {
+            turn(t)
+            cut([mt, dt].mult(32))
+            undo()
+        }
+        for t in lt.powers() {
+            turn(t)
+            cut([mt, dt].mult(32))
+            undo()
+        }
+        for t in rt.powers() {
+            turn(t)
+            cut([mt, dt].mult(32))
+            undo()
+        }
+        for t in dlt.powers() {
+            turn(t)
+            cut([mt, dt].mult(32))
+            undo()
+        }
+        for t in drt.powers() {
+            turn(t)
+            cut([mt, dt].mult(32))
+            undo()
+        }
+        color([mc, ~dc, ~uc, ~lc, ~rc], yellow)
+        color([~mc, dc, ~dlc, ~drc], cyan)
+        color([mc, dc], green)
+        color([uc], red)
+        color([lc], orange)
+        color([rc], orange)
+        color([dlc], blue)
+        color([drc], blue)
+    },
+)
