@@ -1,0 +1,17 @@
+add_puzzle(
+    name = "Square Octagon",
+    authors = ["cryofractal", "Henry Pickle"],
+    scramble = 500,
+    build = fn() {
+        lc = circle(-0.5, 0.0, 0.48)
+        rc = circle(0.5, 0.0, 1.05)
+        lt = turn(lc, 4)
+        rt = turn(rc, 8)
+        add_circles([lc, rc])
+        add_turns([lt, rt], ["L", "R"])
+        cut([lt, rt].mult(70))
+        color([lc, ~rc], red)
+        color([lc, rc], blue)
+        color([~lc, rc], green)
+    },
+)

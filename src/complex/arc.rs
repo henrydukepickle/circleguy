@@ -3,13 +3,14 @@ use approx_collections::ApproxEq;
 use crate::{
     PRECISION,
     complex::{
-        c64::{Point, Scalar},
+        c64::Scalar,
         complex_circle::{Circle, Contains, Orientation},
+        point::Point,
     },
 };
 use std::{cmp::Ordering, f64::consts::PI};
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy)]
 ///arc around a circle. can go clockwise or ccw (along the circle)
 pub struct Arc {
     pub circle: Circle,
@@ -35,10 +36,9 @@ impl Arc {
                 Orientation::CCW => ((end - circ.center).angle() - (start - circ.center).angle())
                     .rem_euclid(2.0 * PI),
                 Orientation::CW => {
-                    (2. * PI
+                    -(2. * PI
                         - (((end - circ.center).angle() - (start - circ.center).angle())
                             .rem_euclid(2.0 * PI)))
-                        * -1.
                 }
             }),
         }
@@ -95,11 +95,11 @@ impl Arc {
         for int in &intersects {
             match self.contains_point(*int) {
                 Contains::Inside => {
-                    inter.push(int.clone());
+                    inter.push(*int);
                 }
                 Contains::Border => {
                     if !proper {
-                        inter.push(int.clone());
+                        inter.push(*int);
                     }
                 }
                 Contains::Outside => {}
@@ -128,9 +128,9 @@ impl Arc {
             //make the new arcs from the points. exclude arcs that would have the same start and endpoint
             if !endpoints[i].approx_eq(&endpoints[i + 1], PRECISION) {
                 arcs.push(Self::from_endpoints(
-                    self.circle.clone(),
-                    endpoints[i].clone(),
-                    endpoints[i + 1].clone(),
+                    self.circle,
+                    endpoints[i],
+                    endpoints[i + 1],
                     self.orientation(),
                 ));
             }
@@ -162,5 +162,13 @@ impl Arc {
         } else {
             None
         }
+    }
+}
+
+impl ApproxEq for Arc {
+    fn approx_eq(&self, other: &Self, prec: approx_collections::Precision) -> bool {
+        self.angle.approx_eq(&other.angle, prec)
+            && self.circle.approx_eq(&other.circle, prec)
+            && self.start.approx_eq(&other.start, prec)
     }
 }

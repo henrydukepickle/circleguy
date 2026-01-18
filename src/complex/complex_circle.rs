@@ -2,7 +2,14 @@ use std::{cmp::Ordering, f64::consts::PI, ops::Neg};
 
 use approx_collections::{ApproxEq, ApproxEqZero};
 
-use crate::{PRECISION, complex::c64::Point, complex::c64::Scalar};
+use crate::{
+    PRECISION,
+    complex::{
+        c64::{C64, Scalar},
+        point::Point,
+        vector::Vector,
+    },
+};
 
 #[derive(PartialEq, Clone, Copy, Debug)]
 ///enum for whether one object (usually a circle) 'contains' another object (i.e., a point)
@@ -14,7 +21,7 @@ pub enum Contains {
 
 pub type Circle = ComplexCircle;
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy)]
 ///circle implemented with complex numbers
 pub struct ComplexCircle {
     pub center: Point,
@@ -29,7 +36,7 @@ pub enum Orientation {
 
 impl ComplexCircle {
     ///radius
-    pub fn rad(&self) -> Scalar {
+    pub fn r(&self) -> Scalar {
         self.r_sq.sqrt()
     }
     ///see if a circle contains a point
@@ -48,23 +55,22 @@ impl ComplexCircle {
         let d = self.center.dist(circ.center);
         if d.approx_eq_zero(PRECISION) {
             vec![] //if the circles have the same center, they dont intersect
-        } else if d.approx_eq(&(self.rad() + circ.rad()), PRECISION) {
-            vec![self.center + (self.rad() * (circ.center - self.center).normalize().unwrap())] //handle the three tangent cases
-        } else if (d + self.rad()).approx_eq(&circ.rad(), PRECISION) {
-            vec![self.center + (self.rad() * (self.center - circ.center).normalize().unwrap())]
-        } else if self.rad().approx_eq(&(circ.rad() + d), PRECISION) {
-            vec![self.center + (self.rad() * (circ.center - self.center).normalize().unwrap())]
-        } else if (d > (self.rad() + circ.rad())) //handle the proper intersection case
-            || (self.rad() > d + circ.rad())
-            || (circ.rad() > d + self.rad())
+        } else if d.approx_eq(&(self.r() + circ.r()), PRECISION) {
+            vec![self.center + (self.r() * (circ.center - self.center).normalize().unwrap())] //handle the three tangent cases
+        } else if (d + self.r()).approx_eq(&circ.r(), PRECISION) {
+            vec![self.center + (self.r() * (self.center - circ.center).normalize().unwrap())]
+        } else if self.r().approx_eq(&(circ.r() + d), PRECISION) {
+            vec![self.center + (self.r() * (circ.center - self.center).normalize().unwrap())]
+        } else if (d > (self.r() + circ.r())) //handle the proper intersection case
+            || (self.r() > d + circ.r())
+            || (circ.r() > d + self.r())
         {
             vec![]
         } else {
             let angle = ((circ.r_sq - (self.r_sq + self.center.dist_sq(circ.center)))
-                / (-2.0 * self.rad() * d)) //find the angle of the intersection points, above the line between the circles' centers
+                / (-2.0 * self.r() * d)) //find the angle of the intersection points, above the line between the circles' centers
                 .acos(); //use the law of cosines
-            let point =
-                self.center + (self.rad() * (circ.center - self.center).normalize().unwrap()); //get a point on the first circle, directly between the two centers
+            let point = self.center + (self.r() * (circ.center - self.center).normalize().unwrap()); //get a point on the first circle, directly between the two centers
             vec![
                 point.rotate_about(self.center, angle), //rotate it both ways by the above angle
                 point.rotate_about(self.center, -angle),
@@ -107,6 +113,13 @@ impl ComplexCircle {
             angle_b.total_cmp(&angle_a)
         }
     }
+    pub fn right_point(&self) -> Point {
+        self.center
+            + Vector(C64 {
+                re: self.r(),
+                im: 0.0,
+            })
+    }
 }
 
 impl ApproxEq for ComplexCircle {
@@ -115,7 +128,7 @@ impl ApproxEq for ComplexCircle {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy)]
 ///circle with an orientation, either Outside or Inside.
 pub struct OrientedCircle {
     pub circ: Circle,
@@ -159,5 +172,11 @@ impl Neg for OrientedCircle {
                 Contains::Outside => Contains::Inside,
             },
         }
+    }
+}
+
+impl ApproxEq for OrientedCircle {
+    fn approx_eq(&self, other: &Self, prec: approx_collections::Precision) -> bool {
+        self.circ.approx_eq(&other.circ, prec) && self.ori == other.ori
     }
 }

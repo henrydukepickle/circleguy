@@ -1,0 +1,16 @@
+add_puzzle(
+    name = "Sirius",
+    authors = ["Henry Pickle"],
+    scramble = 500,
+    build = fn() {
+        lc = circle(-0.41, 0.0, 1)
+        rc = circle(0.41, 0.0, 1)
+        lt = turn(lc, 6)
+        rt = turn(rc, 6)
+        add_circles([lc, rc])
+        add_turns([lt, rt], ["L", "R"])
+        cut([lt, rt].mult(18) ++ [lt.mult(2)] ++ [rt, lt].mult(15) ++ [rt.mult(2)] ++ [lt, rt].mult(16) ++ [lt.mult(2)] ++ [rt, lt].mult(3) ++ [rt.inverse(), lt.mult(2), rt, lt, rt, lt.inverse(), rt])
+        color([lc], red)
+        color([~lc, rc], blue)
+    },
+)

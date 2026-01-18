@@ -1,0 +1,19 @@
+add_puzzle(
+    name = "Split Stars",
+    authors = ["ysinx"],
+    scramble = 500,
+    build = fn() {
+        lc = circle(-0.5, 0.0, 0.8)
+        rc = circle(0.5, 0.0, 0.7)
+        lic = circle(-0.5, 0.0, sec(pi/5)/2)
+        lt = turn(lc, 5)
+        rt = turn(rc, 5)
+        lit = turn(lic, 5)
+        add_circles([lc, rc, lic])
+        add_turns([lt, rt, lit], ["L", "R", "M"])
+        cut([lt, rt, lit, lit.inverse()].mult(33))
+        color([lc, ~rc], red)
+        color([lc, rc], blue)
+        color([~lc, rc], green)
+    },
+)

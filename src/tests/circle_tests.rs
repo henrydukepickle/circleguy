@@ -1,10 +1,12 @@
+use crate::complex::c64::C64;
+
 #[test]
 fn test_circle() {
     use crate::{
         complex::{
             arc::Arc,
-            c64::C64,
             complex_circle::{ComplexCircle, Contains, Orientation, OrientedCircle},
+            point::Point,
         },
         puzzle::piece_shape::PieceShape,
     };
@@ -13,34 +15,34 @@ fn test_circle() {
         border: vec![
             Arc::from_endpoints(
                 ComplexCircle {
-                    center: C64 { re: 0.0, im: 0.0 },
+                    center: Point(C64 { re: 0.0, im: 0.0 }),
                     r_sq: 1.0,
                 },
-                C64 { re: 1.0, im: 0.0 },
-                C64 { re: 0.0, im: 1.0 },
+                Point(C64 { re: 1.0, im: 0.0 }),
+                Point(C64 { re: 0.0, im: 1.0 }),
                 Orientation::CCW,
             ),
             Arc::from_endpoints(
                 ComplexCircle {
-                    center: C64 { re: 1.0, im: 1.0 },
+                    center: Point(C64 { re: 1.0, im: 1.0 }),
                     r_sq: 1.0,
                 },
-                C64 { re: 0.0, im: 1.0 },
-                C64 { re: 1.0, im: 0.0 },
+                Point(C64 { re: 0.0, im: 1.0 }),
+                Point(C64 { re: 1.0, im: 0.0 }),
                 Orientation::CCW,
             ),
         ],
         bounds: vec![
             OrientedCircle {
                 circ: ComplexCircle {
-                    center: C64 { re: 0.0, im: 0.0 },
+                    center: Point(C64 { re: 0.0, im: 0.0 }),
                     r_sq: 1.0,
                 },
                 ori: Contains::Inside,
             },
             OrientedCircle {
                 circ: ComplexCircle {
-                    center: C64 { re: 1.0, im: 1.0 },
+                    center: Point(C64 { re: 1.0, im: 1.0 }),
                     r_sq: 1.0,
                 },
                 ori: Contains::Inside,
@@ -48,8 +50,8 @@ fn test_circle() {
         ],
     };
     let c1 = ComplexCircle {
-        center: C64 { re: -1.0, im: -1.0 },
+        center: Point(C64 { re: -1.0, im: -1.0 }),
         r_sq: 1.0,
     };
-    assert_eq!(piece1.cut_by_circle(c1), None);
+    assert!(piece1.cut_by_circle(c1).is_none())
 }

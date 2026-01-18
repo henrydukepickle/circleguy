@@ -4,310 +4,163 @@ general puzzle simulator for circle puzzles. currently supports custom puzzle de
 
 # Keybinds
 
-keybinds are configured in the Configs/Keybinds/ folder. there are 2 relevant files you need to touch to implement keybinds for a puzzle.
+keybinds are configured in the Configs/keybinds.kdl file.
 
 currently, the `Z` key is reserved for undo. using the `Z` key in your own keybind set is not recommended.
 
-## groups.kdl
+in keybinds.kdl there are 2 relevant kinds of blocks, `binds` and `override`. there is only one `binds` block but there can be any number of `override` blocks.
 
-in this file, you define 'keybind groups'. these are sets of keybinds for turning around the same circle. groups are declared on different lines within a single 'groups' node.
+## Binds
 
-for instance: 
+the `binds` block sets default binds that work across all puzzles. the `binds` block consists of a series of three-argument commands. the first argument is the key you want to bind, the second one is the identity of the turn you want to bind it to, and the final argument is the multiple of the turn you want to bind. for instance,
 
-```
-groups {
-	LEFT F=1 D=-1
-    RIGHT K=1 J=-1
-}
-```
+`j L 2`
 
-generates two groups. the first such group is called `LEFT`, and the `F` key corresponds to a degree `1` turn around `LEFT`, and the `D` key corresponds to a degree `-1` turn around left.
+will do the turn `L2` when you press the `j` key.
 
-these groups don't do anything by themselves but are used in the puzzle-specific keybind controls.
+## Override
 
-two groups can share keys, but using two groups with overlapping keys in the same puzzle will yield undefined results.
+`override` blocks function almost identically to the `binds` block, except that they define puzzle-specific keybinds. as such they take an extra argument at the top of the block, i.e., a block might look like:
 
-## /Puzzles/ keybind files
+```override Stars { ... }```
 
-within the Configs/Keybinds/Puzzles/ folder, you can implement keybinds for specific puzzles using the groups defined in `groups.kdl`.
-
-each distinct 'base' turn in the puzzle (essentially, each circle you can turn around) is corresponded to a group. for instance:
-
-```bind A=LEFT B=RIGHT```
-
-here the `A` turn is corresponded to the `LEFT` group, and the `B` turn to the `RIGHT` group.
-
-in combination with the `groups.kdl` example given above, this will, for instance, mean that a press of the `F` key turns the `A` circle one turn.
-
-the name of the keybind file must be identical to the name of the puzzle file (not the name of the puzzle).
+the body of the block is the same format as the body of the `binds` block.
 
 # Puzzle Definition Format
 
-puzzles are defined using the KDL document format. each definition consists of a sequence of commands in an order.
+puzzle definitions are written in the hyperpuzzlescript (hps) language. for broad documentation about hps, see [the hps docs](https://github.com/HactarCE/Hyperspeedcube/tree/main/crates/hyperpuzzlescript#learn-hyperpuzzlescript-in-y-minutes). note that the sections in those docs regarding euclidian geometry are not relevant and will not parse in circleguy `hps` files. this section will document the types and functions unique to circleguy.
 
-there are 2 types of command. the first type is written in one line with no braces, e.g.:
+## Types
 
-```name "puzzle"```
+`Point`: represents a point in 2d space. has `x` and `y` fields.
 
-the other type is written over multiple lines all enclosed in one brace. these commands are used to define several variables at once, for instance:
+`Vector`: represents a 2d vector. has `x` and `y` fields.
 
-```
-colors {  
-	RED 255 0 0  
-	GREEN 0 255 0  
-}
-```
+`Circle`: represents a (nondegenerate) circle in 2d space. circles are stored with orientation (in or out). has `c` and `r` fields.
 
-in KDL, floats must be typed as `10.0` instead of `10`. the only part of definitions that currently uses floats is the position and radius of the circles in the `circles` command.
+`Turn`: represents a turn, specified by a turn region (a circle) and an angle, which must be a rational multiple of `pi`. has `circ` and `order` fields.
 
-strings can either be quoted (e.g. `"9ABCD 789"`) or unquoted (e.g. `puzzle`). unquoted strings are more limited, most notably not allowing whitespace or leading numbers. refer to kdl.dev for more information.
+`Color`: a color. as of right now there are a number of builtin colors, with no way to construct your own.
 
-below is a list of the supported commands.
+## Functions
 
-## name
+### Constructors
 
-`name:` name the puzzle
+`point(Num, Num) -> Point`: constructs a point from x and y coordinates.
 
-example: 
+`vector(Num, Num) -> Vector`: construcs a vector from x and y coordinates.
 
-```
-name "666 Sphenic Triaxe"
-```
+`circle(Num, Num, Num) -> Circle`: constructs a circle from its center's x and y coordinates, and its radius, respectively.
 
-## author
+`circle(Point, Num) -> Circle`: constructs a circle from its center and radius.
 
-`author`: add to the list of authors.
+note: the circle constructors always construct a circle with a positive orientation, i.e., a circle that contains its center.
 
-example: 
+`turn(Circle, Num) -> Turn`: construcs a turn from a circle and an order. the second argument is not the turn's angle, but its order; the angle of the turn will be `2pi/order`. the second argument should be an integer.
 
-```
-author "Henry Pickle"
-```
+### Utilities
 
-note: when adding multiple authors, the author command can be used more than once.
+`rotate(Point, Point, Num) -> Point`: rotates the first point around the second point, according to the angle.
 
-## circles
+`rotate(Circle, Point, Num) -> Circle`: rotates the circle around the point, according to the angle.
 
-`circles { }` : define the circles for further use in the definition. each circle is given a name, and then defined by the x and y coordinates of its center, and its radius. 
-all three values are floats (don't forget to add a decimal, even if your floats happen to be integers!)
+`mag(Vector) -> Num`: the magnitude of a vector. 
 
-example:
+`normalize(Vector) -> Vector`: normalize a vector. throws an error if passed a zero vector.
 
-```
-circles {  
-	A x=-0.5 y=0.0 r=1.0  
-	B x=0.0 y=0.0 r=1.0  
-	C x=0.5 y=0.0 r=1.0  
-	SYM x=0.0 y=0.0 r=10.0  
-}
-```
+`mult(Turn, Num) -> Turn`: multiplies a turn by an integer. negative integers are accepted.
 
-note: this creates three small circles called `A`, `B`, and `C`, and a large circle called `SYM`.
+`inverse(Turn, Num) -> Turn`: inverts a turn.
 
-a note on floats: currently, there is no way to specify numbers like sqrt(3) precisely. for now, specifying the float to 7-8 decimal points should work for most use cases. 
-a more robust system for specifying these numbers is in development.
+`mult(List[Turn], Num) -> List[Turn]`: multiplies a list of turns, corresponding to repeated concatenation. negative integers may be passed, and will first invert the sequence before multiplying.
 
-a note on scale: a circle of radius `1.0` is a reasonable size using the default rendering settings.
+`inverse(List[Turn], Num) -> List[Turn]`: inverts a list of turns, reversing its order and inverting every turn.
 
-## base
+`powers(Turn) -> List[Turn]`: gives a list of all the powers of a turn, up to its order, and including 0. for instance, if `t.order = 3`, then `powers(t) = [0, t, t2]`. used for cutting symmetrically.
 
-`base` : create the base of the puzzle from some circles.
+#### Arithmetic Operations
 
-note: the order of the circles passed is relevant. each passed circle is cut by the previous passed circles. this means that in particular the first passed circle will always be a full circle piece in the puzzle `base` makes.
+`+`: you can add a vector to a point, or a vector to a vector. When used in front of a single vector, it does nothing (but can be useful when used in contrast to unary `-`).
 
-example:
+`-`: you can subtract a point from a point (yielding a vector), or subtract a vector from a vector. You can negate a vector.
 
-```
-base A B C
-```
+`~`: you can negate a vector, or negate a circle, flipping its orientation.
 
-note: you will often want to define circles not used in the 'base' command for other uses in the definition, for instance, coloring.
+`*`: you can multiply a vector by a scalar (a `Num`).
 
-## twists
+### Puzzle Construction Functions
 
-`twists { }` : define the twists of the puzzle. each twist is given a name, and defined by a circle and a positive integer. the integer determines the angle of the turn, which is always (2PI / n) clockwise.
-often, it is most convenient to give your turns the same names as the circles they use.
+the main command behind the puzzle definitions is `add_puzzle`, which takes `3` mandatory keyword arguments and `2` optional ones. these arguments are:
 
-note: every twist defined will be automatically added to the puzzle (i.e., the user will be able to use the turn when solving the puzzle). 
-if you want to exclude a twist from being usable, add a `!` as an extra argument after the integer.
+`name: String`: the name of the puzzle. two puzzles cannot have the same name.
 
-example: 
+`authors: List[String]`: the authors of the puzzle.
 
-```
-twists {  
-	A A 4  
-	B B 4  
-	C C 4  
-	SYM SYM 2 !  
-}
-```
+`scramble: Num` (optional): the scramble depth of the puzzle. if not specified, defaults to `500`.
 
-note: this makes 4 turns, one around each circle. the first three turn by PI/2 radians clockwise and the last by PI radians clockwise. the first three turns will be usable in the final puzzle, while `SYM` will not.
+`experimental: bool` (optional): if the puzzle is experimental. experimental puzzles will not display by default, but can be loaded in via a separate button. used for puzzles that are either very big or incomplete or weird in some way. defaults to `false`.
 
-note: when using twists, the notation A2 refers to the twist done by performing the turn A twice, and the notation `A'` refers to the inverse twist of `A` (counterclockwise). `A2'` does the inverse of `A` twice. 
-for this reason, avoid using numbers or `'` in your twist names.
+`build: Fn () -> ()`: the function for building the puzzle. can be specified anonymously like `build = fn () { ... }`.
 
-## compounds
+the `build` function does not take or return any arguments. instead, the puzzle is modified using puzzle construction functions inside the `build` function, which are specified below.
 
-`compounds { }` : define compound twists in terms of basic twists (defined using `twists { }`) and also other compound twists.
+#### Functions
 
-note: for a compound twist `COMPOUND`, the notation `COMPOUND2` performs `COMPOUND` twice (it does not simply double the angle of each turn in `COMPOUND`) and similarly `COMPOUND'` performs the inverse of compound. 
-as with `twists { }`, avoid using `'` or numbers in your names.
+`add_circles([Circle])`: adds circles to the base of the puzzle. circles are added sequentially, and each circle added is cut by all previous circles added to ensure that the pieces do not overlap. this is exactly like the `base` command in the old definition format, except that multiple `add_circles` commands can be present.
 
-example:
+`add_turns(List[Turn], List[String])`: adds turns to the puzzle, using the names in the second argument. see the `Turn Naming Conventions` section below.
 
-```
-compounds {  
-	COMM_AB A B A' B'  
-	COMM_BC B C B' C'  
-	SUPER_COMM COMM_AB COMM_BC COMM_AB' COMM_BC'  
-}
-```
+`add_circle(Circle)`: single circle version of the above function.
 
-note: this defines 3 compound twists. the final compound twist is equivalent to `A B A' B' B C B' C' B A B' A'`.
+`add_turn(Turn, String)`: single turn version of the above function.
 
-## cut
+`cut(List[Turn])`: executes the turn sequence, cutting as it turns. undoes the turns afterwards.
 
-`cut` : cuts the puzzle along a series of (compound) twists.*
-essentially, you pass a sequence of (compound, or normal) twists into the cut command in sequence, and it performs these turns on the puzzle, cutting the puzzle wherever necessary to make these turns possible.
+`cut(List[Circle], List[Turn])`: applies the `cut(List[Turn])` command, but only to the pieces in the specified region. all pieces not initially in the region will be excluded from the cuts.
 
-note: after performing the given turns, the cut command undoes the turns it was given. thus writing something like `cut R R'` is redundant, as `cut R` would achieve exactly the same effect.
+`turn(List[Turn])`: turns the puzzle by the turn sequence, adding the turns to the stack. does not undo afterwards. still cuts as it executes the sequence.
 
-example:
+`turn(Turn)`: single turn version of the above function.
 
-```
-cut A B2 C' SUPER_COMM2'
-```
+`undo()`: undoes one turn from the `turn` commands.
 
-### `*` notation
+`undo(Num)`: undoes a number of turns from the `turn` commands.
 
-`*` notation: you may add a `*` immediately after a NORMAL twist in a cutting sequence (compound twists with `*` are not supported and will not parse!) will essentially replace the twist with all possible multiples of itself, creating multiple cut commands.
-* for example, if `R` is a 4-fold turn (PI/2 radians), then the command:
+`undo_all()`: undoes all the turns from `turn` commands.
 
-```
-cut R* L
-```
+`color(List[Circle], Color)`: colors the region.
 
-is equivalent to the series of commands:
+### A Note on Colors
 
-```
-cut L  
-cut R L  
-cut R2 L  
-cut R3 L
-```
+the rgb values the builtin colors correspond to are fixed right now, but will be customizable in the future. the color constants in the program are exactly the constants in `egui::Color32`. their names are exactly the same, except lowercase.
 
-twists with `*` don't have to be initial, and there can be multiple in one cut command (i would, however, advise against using too many, as the complexity of the command, of course, grows multiplicatively).
+the more obscure colors, specifically the `light` and `dark` versions of colors, should not be used except when the normal version is already used, i.e., don't use `light_red` unless `red` is already taken and you need a distinct color.
 
-note: notation such as `R2*` and `R'*` is not supported. the latter would be redundant. 
-in cases where the former would be useful, just define a new turn and use that in the cut (remember to exclude it from the actual end puzzle using `!`, see above)
+### Naming Conventions
 
-note: often, using additional turns to reduce the number of cut commands needed can make the definition more clean. 
-for instance, the turn SYM defined above along with the circles defined above that allows each cut command to be applied with 2-fold rotational symmetry to the puzzle by beginning each cut command with SYM*. 
-the convention for these whole-puzzle turns is to be of radius `10.0`.
+this section is currently incomplete. good conventions are suggested, both to make log files more consistent, and to make keybinds work across as many similar puzzles as possible.
 
-## twist
+some basic, sensible conventions are:
 
-`twist` : turns the puzzle according to a (compound or normal) twist. this twist will not cut, and may be stopped if the puzzle is bandaged along the twist. 
-unlike the twists from the cut command, these twists are not automatically undone. this is often useful as a setup to a series of cuts, or as a setup to a coloring.
+- turn names should be 1-3 capital latin letters. fewer is better.
 
-example:
+- two-circle puzzles should have two turns, `L` and `R`.
 
-```
-twist SUPER_COMM3'
-```
+- when possible, try to build turn names from `U, D, L, R, M` for `up, down, left, right, middle`. for instance, a puzzle with 4 circles in a square would have turns `UL, UR, DL, DR`.
 
-note: `*` notation is not supported in twist commands.
+- when combining the above letters, `M` comes before `U, D`, which come before `L, R`. opposite letters should not be combined (`LR` is invalid).
 
-## undo
+# Final Notes
 
-`undo` : undoes some number of previous twist commands. undo is typically passed a positive integer, which is the number of twists to undo. `undo` alone is equivalent to `undo 1` and `undo *` undoes all twists.
+definitions should have the `hps` extension and should be put in `Puzzles/Definitions/` and log files belong in `Puzzles/Logs/`.
 
-note: each `undo` undoes the most recent twist COMMAND, not just one twist.
+puzzle files (not the names specified in those files) should be lowercase with underscores, and should correspond to the puzzle names as closely as possible.
 
-example: 
-```
-	twist SUPER_COMM3'  
-	twist A B  
-	cut COMM_AB  
-	undo  
-	cut COMM_BC  
-	twist A B  
-	undo 2  
-	twist B A  
-	undo *
-```
-
-## colors
-
-`colors { } `: define your own colors using integer RGB values.
-
-example:
-
-```
-colors {  
-	RED 255 0 0  
-	GREEN 0 255 0  
-	BLUE 0 0 255  
-}
-```
-
-note: there are many default colors that you can use without the colors { } command. the full list is:
-`RED, BLUE, GREEN, YELLOW, PURPLE, MAGENTA, CYAN, ORANGE, LIGHT_RED, LIGHT_BLUE, LIGHT_GREEN, LIGHT_GRAY, LIGHT_YELLOW, DARK_RED, DARK_GRAY, DARK_BLUE, DARK_GREEN, GOLD, WHITE, BLACK, KHAKI, and BROWN`.
-defining colors with these names using colors { } will overwrite their value for this puzzle definition. the value of these colors is exactly the same as the color constants from the egui::Color32 module with the same names.
-
-note: `BLACK` is the same color as the outlines of the pieces and GRAY is the same color as pieces that have not been colored.
-
-## color
-
-color : colors a region a given color.
-
-the color is passed first, followed by a region. the region is specified by passing a series of circles, which can each also be negated using !. 
-essentially, the region starts as all of 2d space, and each circle "A" added to the list intersects the current region with the circle A, while adding the circle "!A" to the list intersects the complement of A with the current region. 
-for instance, "A !B C" refers to the pieces that fall within the circles A and C and outside of the circle B.
-
-note: pieces that cross the border of any of the passed circles will not be colored. 
-every piece is only one color -- multicolored pieces are not supported. as a patchwork solution, you can cut the piece into smaller pieces using a special turn to achieve a similar effect (this can be annoying). 
-for an example, see the "666 Oriented Sphenic Triaxe" puzzle definition. multicolored pieces support are in development.
-
-example:
-
-```
-color RED A !B  
-twist SYM  
-color BLUE A !B  
-undo *
-```
-
-for examples of full puzzle definitions, see the puzzles included in the program on GitHub.
-
-# final notes
-
-a few final notes on current convention:
-
-when naming your puzzle, please start the name with the order of each turn, in descending order. for instance, the puzzle with the twists defined at the start would have a name that started with "444" (SYM is not an actual turn on the puzzle and so is excluded). 
-the puzzle "Fluorine" is called "93 Fluorine".
-
-the actual files for the puzzle definitions should be .kdl files, and the names should be of the format "666oriented_sphenic_triaxe.kdl" or such.
-
-try to make your cuts efficient, in terms of runtime. cuts with 5 or more * twists in their definition will often take upwards of a minute to generate and should be avoided. there is almost always a more efficient solution.
-
-commands should be run in roughly the order: name, author, circles { }, base, twists { }, compounds { }, cut, colors { }, color. twist and undo commands can be used wherever needed, after twists { } is used. 
-if you use a different order, your definition may not parse, as many commands depend on other commands (i.e., twists { } needs circles { } to have already been parsed)
-
-the commands that have { } in their format can be used multiple times, but should only be used once. there is no reason to use them more than once.
-
-not all commands will always be used, but almost all puzzles will use name, author, circles { }, base, twists { }, cut, and color. the other commands may or may not be useful. technically, however, no commands are strictly necessary.
-
-after making and generating your puzzle in the program, if reasonably possible, use the piece counter on the left to ensure that you didn't accidentally create any tiny pieces due to floats not being specified precisely enough.
-
-definitions belong in Puzzles/Definitions/ and log files belong in Puzzles/Logs/
-
-please make sure to use the name and author commands in every puzzle definition for organization reasons.
+puzzles should have sensible names. they can be named, for instance, after shapes or patterns in the puzzle, or some puzzle-theoretic property they have, or something else reasonable. for instance, many puzzles are named after flowers they resemble.
 
 if you make a good puzzle, make a pull request on GitHub and i'll add your puzzle at my earliest convenience if i like it.
 
-if you're having any issues with the puzzle definition format, or you have suggestions on how to improve it, please contact me at:
+if you're having any issues with the puzzle definitions, or you have suggestions on how to improve it, please contact me at:
 
 discord: henryduke
 

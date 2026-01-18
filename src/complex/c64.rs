@@ -3,11 +3,9 @@ use std::{
     ops::{Add, Mul, Neg, Sub},
 };
 
-use approx_collections::{ApproxEq, ApproxEqZero};
+use approx_collections::ApproxEq;
 
-use crate::PRECISION;
 
-pub type Point = C64;
 pub type Scalar = f64;
 
 ///complex number with f64 components. used for points and rotations
@@ -81,17 +79,9 @@ impl C64 {
     pub fn mag_sq(&self) -> Scalar {
         (self.im * self.im) + (self.re * self.re)
     }
-    ///distance to another point, squared
-    pub fn dist_sq(&self, other: Self) -> Scalar {
-        (*self - other).mag_sq()
-    }
     ///magnitude
     pub fn mag(&self) -> Scalar {
         self.mag_sq().sqrt()
-    }
-    ///distance to another point
-    pub fn dist(&self, other: Self) -> Scalar {
-        self.dist_sq(other).sqrt()
     }
     ///complex conjugate
     pub fn conj(&self) -> Self {
@@ -100,28 +90,12 @@ impl C64 {
             im: -self.im,
         }
     }
-    ///normalization. if the number is approx 0, returns None
-    pub fn normalize(&self) -> Option<Self> {
-        let mag = self.mag();
-        if mag.approx_eq_zero(PRECISION) {
-            return None;
-        }
-        Some(Self {
-            re: self.re / mag,
-            im: self.im / mag,
-        })
-    }
     ///constructs a magnitude 1 complex number from an angle. 0 rad is 1 + 0i
     pub fn from_angle(angle: Scalar) -> Self {
         Self {
             re: angle.cos(),
             im: angle.sin(),
         }
-    }
-    ///rotate the number (point) around a center according to a given angle
-    pub fn rotate_about(&self, cent: Self, angle: Scalar) -> Self {
-        let rot = Self::from_angle(angle);
-        cent + (rot * (*self - cent)) //use complex multiplication
     }
     ///get the angle of a complex number
     pub fn angle(&self) -> Scalar {

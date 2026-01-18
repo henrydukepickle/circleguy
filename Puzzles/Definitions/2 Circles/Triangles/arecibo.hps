@@ -1,0 +1,19 @@
+add_puzzle(
+    name = "Arecibo",
+    authors = ["cryofractal", "Henry Pickle"],
+    scramble = 500,
+    build = fn() {
+        lc = circle(-0.41, 0.0, 1)
+        rc = circle(0.41, 0.0, 1)
+        lt = turn(lc, 3)
+        rt = turn(rc, 3)
+        add_circles([lc, rc])
+        add_turns([lt, rt], ["L", "R"])
+        cut([lt, rt].mult(8))
+        cut([rt, lt].mult(8))
+        color([lc, ~rc], red)
+        color([lc, rc], blue)
+        color([~lc, rc], green)
+    },
+)
+    

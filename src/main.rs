@@ -1,5 +1,6 @@
-#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
+//#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 pub mod complex;
+pub mod hps;
 pub mod puzzle;
 #[cfg(test)]
 pub mod tests;
@@ -7,21 +8,23 @@ pub mod ui;
 
 use crate::ui::app::*;
 use approx_collections::Precision;
+///path for definitions
+pub const DEF_PATH: &str = "Puzzles/Definitions";
 ///used for general purpose
 pub const PRECISION: approx_collections::Precision = Precision::new_simple(20);
-///used for purposes that have been tested to need slightly less precision
-pub const LOW_PRECISION: approx_collections::Precision = Precision::new_simple(16);
 ///used for the float pools from approx
 pub const POOL_PRECISION: approx_collections::Precision = Precision::new(20, 20);
 ///default puzzle loaded when the program is opened
-const DEFAULT_PUZZLE: &str = "55stars.kdl";
+const DEFAULT_PUZZLE: &str = "2 Circles\\Pentagons\\Stars";
 ///location of the icon
 const ICON_PNG_DATA: &[u8] = include_bytes!("../resources/icon.png");
+///detail of rendering
+pub const DETAIL: f64 = 25.0;
 
 // When compiling natively:
 #[cfg(not(target_arch = "wasm32"))]
 fn main() -> eframe::Result {
-    //set the icon
+    // set the icon
     let icon_data =
         eframe::icon_data::from_png_bytes(ICON_PNG_DATA).expect("error loading application icon");
     //set the native options

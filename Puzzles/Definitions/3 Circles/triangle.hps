@@ -1,0 +1,34 @@
+add_puzzle(
+    name = "Triangle",
+    authors = ["Henry Pickle", "cryofractal"],
+    scramble = 500,
+    build = fn() {
+        o = point(0, 0)
+
+        lc = circle(-0.5, -0.2886751, 0.7)
+        rc = circle(0.5, -0.2886751, 0.7)
+        uc = circle(0, 0.5773503, 0.7)
+
+        lt = turn(lc, 6)
+        rt = turn(rc, 6)
+        ut = turn(uc, 6)
+
+        add_circles([lc, rc, uc])
+        add_turns([lt, rt, ut], ["L", "R", "U"])
+
+        sym_turn = turn(circle(o, 3), 3)
+        for t in sym_turn.powers() {
+            for k in lt.powers() {
+                cut([t, k, rt])
+            }
+        }
+
+        color([lc, ~rc, ~uc], red)
+        color([~lc, rc, ~uc], green)
+        color([~lc, ~rc, uc], blue)
+        color([lc, rc, uc], white)
+        color([lc, ~rc, uc], magenta)
+        color([~lc, rc, uc], cyan)
+        color([lc, rc, ~uc], yellow)
+    }
+)

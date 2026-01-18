@@ -1,0 +1,40 @@
+add_puzzle(
+    name = "Plus (8)",
+    authors = ["Hollister Ream", "cryofractal"],
+    scramble = 500,
+    build = fn() {
+        o = point(0.0, 0.0)
+
+        lc = circle(-0.65, 0.0, 0.4)
+        rc = circle(0.65, 0.0, 0.4)
+        uc = circle(0.0, 0.65, 0.4)
+        dc = circle(0.0, -0.65, 0.4)
+        mc = circle(0.0, 0.0, 0.5)
+
+        lt = turn(lc, 2)
+        rt = turn(rc, 2)
+        ut = turn(uc, 2)
+        dt = turn(dc, 2)
+        mt = turn(mc, 8)
+
+        add_circles([lc, rc, uc, dc, mc])
+        add_turns([lt, rt, ut, dt, mt], ["L", "R", "U", "D", "M"])
+        sym_turn = turn(circle(o, 10), 4)
+        for t in sym_turn.powers() {
+            for p in lt.powers() {
+                for q in mt.powers() {
+                    cut([t, p, q, lt])
+                }
+            }
+        }
+        color([mc], white)
+        color([lc], dark_red)
+        color([lc, mc], red)
+        color([rc], dark_green)
+        color([rc, mc], green)
+        color([dc], dark_gray)
+        color([dc, mc], gray)
+        color([uc], dark_blue)
+        color([uc, mc], blue)
+    },
+)

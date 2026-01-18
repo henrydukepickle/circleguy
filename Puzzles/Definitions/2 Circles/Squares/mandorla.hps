@@ -1,0 +1,18 @@
+add_puzzle(
+    name = "Mandorla",
+    authors = ["Henry Pickle"],
+    scramble = 500,
+    build = fn() {
+        r = 1
+        lc = circle(-0.5, 0.0, r)
+        rc = circle(0.5, 0.0, r)
+        lt = turn(lc, 3)
+        rt = turn(rc, 3)
+        add_circles([lc, rc])
+        add_turns([lt, rt], ["L", "R"])
+        cut([lt, rt].mult(32))
+        color([lc, ~rc], red)
+        color([lc, rc], blue)
+        color([~lc, rc], green)
+    },
+)

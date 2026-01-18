@@ -1,0 +1,6 @@
+binds {
+    d L -1
+    f L 1
+    j R -1
+    k R 1
+}

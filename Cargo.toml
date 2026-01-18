@@ -4,15 +4,18 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+hyperpuzzlescript = {git = "https://github.com/HactarCE/hyperspeedcube.git", rev = "e03c5343e32bb078974e9c67d78dd4ef66e0bf0d" }
 approx_collections = "3.2.0"
 auto_ops = "0.3.0"
 eframe = "0.32.1"
 egui = "0.32.1"
+hcegui = {git = "https://github.com/HactarCE/hcegui", rev = "e84e306e64300582af93c1e04adbea3817df2f7f", features = ["ansi"]}
 kdl = "6.3.4"
 log = "0.4.27"
 meval = "0.2.0"
 rand = "0.9.2"
 web-time = "1.1.0"
+num = "0.4.3"
 
 # web:
 [target.'cfg(target_arch = "wasm32")'.dependencies]

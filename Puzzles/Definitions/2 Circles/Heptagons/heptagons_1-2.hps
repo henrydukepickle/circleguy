@@ -1,0 +1,17 @@
+add_puzzle(
+    name = "Heptagons 1-2",
+    authors = ["cryofractal"],
+    scramble = 500,
+    build = fn() {
+        lc = circle(-0.5, 0.0, 0.83)
+        rc = circle(0.5, 0.0, 0.55)
+        lt = turn(lc, 7)
+        rt = turn(rc, 7)
+        add_circles([lc, rc])
+        add_turns([lt, rt], ["L", "R"])
+        cut([lt, rt].mult(85))
+        color([lc, ~rc], red)
+        color([lc, rc], blue)
+        color([~lc, rc], green)
+    },
+)

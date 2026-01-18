@@ -1,0 +1,23 @@
+add_puzzle(
+    name = "Triacronic Biaxe",
+    authors = ["Henry Pickle"],
+    scramble = 100,
+    build = fn() {
+        r = 0.75
+        lc = circle(-0.5, 0.0, 0.75)
+        rc = circle(0.5, 0.0, 0.75)
+        lt = turn(lc, 6)
+        rt = turn(rc, 6)
+        add_circles([lc, rc])
+        add_turns([lt, rt], ["L", "R"])
+        sym = turn(circle(0, 0, 10), 2)
+        for t in sym.powers() {
+            for a in lt.powers() {
+                cut([t, a, rt])
+            }
+        }
+        color([lc, ~rc], red)
+        color([lc, rc], blue)
+        color([~lc, rc], green)
+    },
+)

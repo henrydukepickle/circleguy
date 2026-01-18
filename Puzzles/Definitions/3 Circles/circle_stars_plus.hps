@@ -1,0 +1,23 @@
+add_puzzle(
+    name = "Circle Stars Plus",
+    authors = ["ysinx"],
+    scramble = 500,
+    build = fn() {
+        p = point(-0.5, 0.0)
+        lc = circle(p, 0.79)
+        rc = circle(0.5, 0.0, 0.67)
+        uc = circle(0.0, tan(pi/5)/2, 0.3)
+        lt = turn(lc, 5)
+        rt = turn(rc, 5)
+        ut = turn(uc, 5)
+        add_circles([lc, rc, uc])
+        add_turns([lt, rt, ut], ["L", "R", "U"])
+        cut([lt, rt, ut].mult(72))
+        cut([lt, rt, ut.mult(3)].mult(72))
+        cut([ut.mult(2), lt])
+        color([lc, ~rc], red)
+        color([lc, rc], blue)
+        color([~lc, rc], green)
+        color([~lc, ~rc, uc], red)
+    },
+)

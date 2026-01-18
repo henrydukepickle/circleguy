@@ -1,0 +1,41 @@
+add_puzzle(
+    name = "Lens",
+    authors = ["Evgeniy Grigoriev", "Henry Pickle"],
+    scramble = 200,
+    build = fn() {
+        r=0.7
+        y=0.62
+        p = point(0, 0)
+        c1 = circle(0.6, y, r)
+        a = pi/2
+        c2 = circle(-0.4, y, r)
+        c3 = circle(-0.5, -y, r)
+        c4 = circle(0.5, -y, r)
+        t1 = turn(c1, 4)
+        t2 = turn(c2, 4)
+        t3 = turn(c3, 4)
+        t4 = turn(c4, 4)
+        sym = turn(circle(0.05, 0.0, 10.0), 2)
+        add_circles([c1, c2, c3, c4])
+        add_turns([t1, t2, t3, t4], ["UR", "UL", "DL", "DR"])
+        for s in sym.powers() {
+            for t in t1.powers() {
+                turn([s, t])
+                cut([t2, t3])
+                cut([t4])
+                undo_all()
+            }
+            for t in t2.powers() {
+                turn([s, t])
+                cut([t1.inverse(), t4])
+                cut([t3])
+                undo_all()
+            }
+        }
+        color([c1, ~c2], green)
+        color([c2, ~c3], blue)
+        color([c3, ~c4], red)
+        color([c4, ~c1], yellow)
+    },
+)
+    
