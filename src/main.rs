@@ -15,7 +15,7 @@ pub const PRECISION: approx_collections::Precision = Precision::new_simple(20);
 ///used for the float pools from approx
 pub const POOL_PRECISION: approx_collections::Precision = Precision::new(20, 20);
 ///default puzzle loaded when the program is opened
-const DEFAULT_PUZZLE: &str = "Stars";
+const DEFAULT_PUZZLE: &str = "2 Circles\\Stars";
 ///location of the icon
 const ICON_PNG_DATA: &[u8] = include_bytes!("../resources/icon.png");
 ///detail of rendering

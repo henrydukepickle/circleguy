@@ -3,7 +3,7 @@ use kdl::KdlDocument;
 use crate::{hps::data_storer::data_storer::DataStorer, puzzle::puzzle::Puzzle};
 
 pub struct PuzzleIOData {
-    pub name: String,
+    pub path: String,
     pub scramble: Option<Vec<String>>,
     pub stack: Vec<(String, isize)>,
 }
@@ -11,7 +11,7 @@ pub struct PuzzleIOData {
 impl Puzzle {
     pub fn to_io_data(&self) -> PuzzleIOData {
         PuzzleIOData {
-            name: self.name.clone(),
+            path: self.name.clone(),
             scramble: self.scramble.clone(),
             stack: self.stack.clone(),
         }
@@ -21,8 +21,8 @@ impl Puzzle {
             ds.puzzles
                 .lock()
                 .unwrap()
-                .get(&data.name)?
-                .load(&mut ds.rt, ds.keybinds.get_keybinds_for_puzzle(&data.name))
+                .get(&data.path)?
+                .load(&mut ds.rt, ds.keybinds.get_keybinds_for_puzzle(&data.path))
                 .ok()?,
         );
         if let Some(scramb) = &data.scramble {
@@ -44,7 +44,7 @@ impl Puzzle {
 impl PuzzleIOData {
     pub fn to_string(&self) -> String {
         let mut string = String::new();
-        string += &format!("name \"{}\"\n", self.name);
+        string += &format!("name \"{}\"\n", self.path);
         if let Some(s) = &self.scramble {
             string += "scramble {\n";
             for t in s {
@@ -62,7 +62,7 @@ impl PuzzleIOData {
     pub fn from_string(string: String) -> Option<Self> {
         let kdl = string.parse::<KdlDocument>().ok()?;
         Some(Self {
-            name: kdl
+            path: kdl
                 .get("name")?
                 .entries()
                 .get(0)?

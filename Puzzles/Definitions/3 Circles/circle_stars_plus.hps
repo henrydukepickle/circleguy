@@ -18,6 +18,6 @@ add_puzzle(
         color([lc, ~rc], red)
         color([lc, rc], blue)
         color([~lc, rc], green)
-        color([~lc, ~rc, uc], yellow)
+        color([~lc, ~rc, uc], red)
     },
 )
