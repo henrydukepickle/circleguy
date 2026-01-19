@@ -18,47 +18,47 @@ cryofractal";
 #[derive(Debug)]
 ///used for running the app. contains all puzzle and view data at runtime
 pub struct App {
-    data_storer: DataStorer, //stores the data for the puzzles (on the right panel)
-    puzzle: Puzzle,          //stores the puzzle
-    log_path: String,        //stores the path log files are loaded from/saved to
-    curr_msg: String,        //current message (usually for errors)
-    animation_speed: f64,    //speed at which animations happen
+    data_storer: Option<DataStorer>, //stores the data for the puzzles (on the right panel)
+    puzzle: Option<Puzzle>,          //stores the puzzle
+    log_path: String,                //stores the path log files are loaded from/saved to
+    curr_msg: String,                //current message (usually for errors)
+    animation_speed: f64,            //speed at which animations happen
     last_frame_time: web_time::Instant, //the absolute time at which the last frame happened
-    outline_width: f32,      //the width of the outlines
-    scale_factor: f32,       //the scale factor (zoom)
-    offset: Vec2,            //the offset of the puzzle from the center of the screen (pan)
-    cut_on_turn: bool,       //whether or not turns should cut the puzzle
-    preview: bool,           //whether the solved state is being previewed
+    outline_width: f32,              //the width of the outlines
+    scale_factor: f32,               //the scale factor (zoom)
+    offset: Vec2,                    //the offset of the puzzle from the center of the screen (pan)
+    cut_on_turn: bool,               //whether or not turns should cut the puzzle
+    preview: bool,                   //whether the solved state is being previewed
 }
 impl App {
     ///initialize a new app, using some default settings (from the constants)
     pub fn new(_cc: &eframe::CreationContext<'_>) -> Self {
-        let mut data_storer = DataStorer::new(false).unwrap(); //initialize a new data storer
-        data_storer
-            .load_puzzles(
+        let mut data_storer = DataStorer::new(false).ok(); //initialize a new data storer
+        let p = if let Some(ref mut ds) = data_storer {
+            let _ = ds.load_puzzles(
                 DEF_PATH,
                 //"Configs/Keybinds/Puzzles/",
                 //"Configs/Keybinds/groups.kdl",
-            )
-            .unwrap();
-        let _ = data_storer.load_keybinds("Configs/keybinds.kdl");
-        let p_data = &data_storer
-            .puzzles
-            .lock()
-            .unwrap()
-            .get(DEFAULT_PUZZLE)
-            .unwrap()
-            .clone();
-        let p = p_data
-            .load(
-                &mut data_storer.rt,
-                data_storer.keybinds.get_keybinds_for_puzzle(&p_data.name),
-            )
-            .unwrap();
+            );
+            let _ = ds.load_keybinds("Configs/keybinds.kdl");
+            let p_data = &ds.puzzles.lock().unwrap().get(DEFAULT_PUZZLE);
+            if let Some(in_data) = p_data.clone() {
+                in_data
+                    .load(
+                        &mut ds.rt,
+                        ds.keybinds.get_keybinds_for_puzzle(&in_data.name),
+                    )
+                    .ok()
+            } else {
+                None
+            }
+        } else {
+            None
+        };
         Self {
             //return the default app
             data_storer,
-            puzzle: Puzzle::new(p),
+            puzzle: p.map(Puzzle::new),
             log_path: String::from("logfile"),
             curr_msg: String::new(),
             animation_speed: ANIMATION_SPEED,
@@ -84,73 +84,80 @@ impl eframe::App for App {
         //run the ui of the program on a central panel
         egui::CentralPanel::default().show(ctx, |ui| {
             let rect = ui.available_rect_before_wrap(); //the space the program has to work with
-            if !self.preview {
-                //if the puzzle isnt being previewed, render it
-                if let Err(x) = self.puzzle.render(
-                    ui,
-                    &rect,
-                    self.outline_width,
-                    self.scale_factor,
-                    self.offset,
-                ) {
-                    self.curr_msg = x;
-                };
-                //if the puzzle is in preview mode, render all of the pieces of the solved state
-            } else {
-                for piece in &self.puzzle.solved_state {
-                    if let Err(x) = piece.render(
+            if let Some(ref mut p) = self.puzzle {
+                if !self.preview {
+                    //if the puzzle isnt being previewed, render it
+                    if let Err(x) = p.render(
                         ui,
                         &rect,
-                        None,
                         self.outline_width,
                         self.scale_factor,
                         self.offset,
                     ) {
                         self.curr_msg = x;
+                    };
+                    //if the puzzle is in preview mode, render all of the pieces of the solved state
+                } else {
+                    for piece in &p.solved_state {
+                        if let Err(x) = piece.render(
+                            ui,
+                            &rect,
+                            None,
+                            self.outline_width,
+                            self.scale_factor,
+                            self.offset,
+                        ) {
+                            self.curr_msg = x;
+                        }
                     }
                 }
             }
             //render the data storer panel -- this stores all of the puzzles that you can load
-            match self.data_storer.render_panel(ctx) {
-                Err(()) => {
-                    self.curr_msg =
-                        String::from("Failed to render side panel or failed to create puzzle!")
-                }
-                Ok(Some(puzzle_data)) => {
-                    //if a puzzle is returned (a button is clicked), load it
-                    match puzzle_data.load(
-                        &mut self.data_storer.rt,
-                        self.data_storer
-                            .keybinds
-                            .get_keybinds_for_puzzle(&puzzle_data.name),
-                    ) {
-                        Ok(puz_data) => self.puzzle = Puzzle::new(puz_data),
-                        Err(diag) => self.curr_msg = diag.msg.to_string(),
+            if let Some(ref mut ds) = self.data_storer {
+                match ds.render_panel(ctx) {
+                    Err(()) => {
+                        self.curr_msg =
+                            String::from("Failed to render side panel or failed to create puzzle!")
                     }
-                    // if let Some(kb) = puzzle_data.keybinds
-                    //     && let Some(gr) = puzzle_data.keybind_groups
-                    //     && let Some(keybinds) = load_keybinds(&kb, &gr)
-                    // {
-                    //     self.keybinds = Some(keybinds);
-                    // } else {
-                    //     self.keybinds = None;
-                    // }
+                    Ok(Some(puzzle_data)) => {
+                        //if a puzzle is returned (a button is clicked), load it
+                        match puzzle_data.load(
+                            &mut ds.rt,
+                            ds.keybinds.get_keybinds_for_puzzle(&puzzle_data.name),
+                        ) {
+                            Ok(puz_data) => self.puzzle = Some(Puzzle::new(puz_data)),
+                            Err(diag) => self.curr_msg = diag.msg.to_string(),
+                        }
+                        // if let Some(kb) = puzzle_data.keybinds
+                        //     && let Some(gr) = puzzle_data.keybind_groups
+                        //     && let Some(keybinds) = load_keybinds(&kb, &gr)
+                        // {
+                        //     self.keybinds = Some(keybinds);
+                        // } else {
+                        //     self.keybinds = None;
+                        // }
+                    }
+                    _ => {}
                 }
-                _ => {}
+            } else {
+                self.curr_msg = String::from("Error loading data storer!");
             }
             let delta_time = self.last_frame_time.elapsed(); //the time since the last frame
             self.last_frame_time = web_time::Instant::now(); //reset the time tracker
-            if self.puzzle.anim_left >= 0.0 {
+            if let Some(ref mut p) = self.puzzle
+                && p.anim_left >= 0.0
+            {
                 //if the animation is still running, advance it according to delta_time and the animation speed
-                self.puzzle.anim_left = f32::max(
-                    self.puzzle.anim_left
-                        - (delta_time.as_secs_f32() * self.animation_speed as f32),
+                p.anim_left = f32::max(
+                    p.anim_left - (delta_time.as_secs_f32() * self.animation_speed as f32),
                     0.0,
                 );
             }
-            if 24.9 < self.animation_speed {
+            if 24.9 < self.animation_speed
+                && let Some(ref mut p) = self.puzzle
+            {
                 //if the animation speed is fast enough, remove animations entirely
-                self.puzzle.animation_offset = None;
+                p.animation_offset = None;
             }
             //UI Section: menu bar
             egui::MenuBar::new().ui(ui, |ui| {
@@ -163,18 +170,26 @@ impl eframe::App for App {
                     //saving, does not work on web
                     #[cfg(not(target_arch = "wasm32"))]
                     if ui.add(egui::Button::new("SAVE")).clicked() {
-                        self.curr_msg = match self.data_storer.save(&self.log_path, &self.puzzle) {
-                            Ok(()) => String::from("Saved successfully!"),
-                            Err(err) => err.to_string(),
+                        self.curr_msg = if let Some(ref mut ds) = self.data_storer
+                            && let Some(ref mut p) = self.puzzle
+                        {
+                            match ds.save(&self.log_path, p) {
+                                Ok(()) => String::from("Saved successfully!"),
+                                Err(err) => err.to_string(),
+                            }
+                        } else {
+                            String::from("Cannot save due to missing puzzle or data storer!")
                         }
                     }
                     // //loading, does not work on web
                     #[cfg(not(target_arch = "wasm32"))]
                     if ui.add(egui::Button::new("LOAD LOG")).clicked() {
-                        self.puzzle = self
-                            .data_storer
-                            .load_save(&self.log_path)
-                            .unwrap_or(self.puzzle.clone());
+                        if let Some(ref mut ds) = self.data_storer {
+                            self.puzzle = ds.load_save(&self.log_path);
+                        } else {
+                            self.curr_msg =
+                                String::from("Cannot load log due to missing data storer!")
+                        }
                     }
                 });
                 //view menu controls view graphics
@@ -210,13 +225,17 @@ impl eframe::App for App {
                 let scramble_button = default_menu_button("Scramble");
                 scramble_button.ui(ui, |ui| {
                     //scramble button
-                    if ui.add(egui::Button::new("Scramble")).clicked() && !self.preview {
-                        let _ = self.puzzle.scramble(self.cut_on_turn);
+                    if ui.add(egui::Button::new("Scramble")).clicked()
+                        && !self.preview
+                        && let Some(ref mut p) = self.puzzle
+                    {
+                        let _ = p.scramble(self.cut_on_turn);
                     }
                     //reset button
                     if ui.add(egui::Button::new("Reset")).clicked()
                         && !self.preview
-                        && self.puzzle.reset().is_err()
+                        && let Some(ref mut p) = self.puzzle
+                        && p.reset().is_err()
                     {
                         self.curr_msg = String::from("Reset failed!")
                     };
@@ -225,12 +244,17 @@ impl eframe::App for App {
                 let puzzle_button = default_menu_button("Puzzle");
                 puzzle_button.ui(ui, |ui| {
                     //undo button, also performed using the z key
-                    if (ui.add(egui::Button::new("Undo Move")).clicked()) && !self.preview {
-                        let _ = self.puzzle.undo();
+                    if (ui.add(egui::Button::new("Undo Move")).clicked())
+                        && !self.preview
+                        && let Some(ref mut p) = self.puzzle
+                    {
+                        let _ = p.undo();
                     }
                     ui.checkbox(&mut self.cut_on_turn, "Cut on turn?");
-                    if ui.add(egui::Button::new("Check Solved")).clicked() {
-                        self.puzzle.check();
+                    if ui.add(egui::Button::new("Check Solved")).clicked()
+                        && let Some(ref mut p) = self.puzzle
+                    {
+                        p.check();
                     }
                 });
                 //credits menu displays credits (bugged?)
@@ -256,14 +280,16 @@ impl eframe::App for App {
                 });
             });
             //UI Section: display puzzle info
-            Window::new("Puzzle Info")
-                .default_pos((10.0, 40.0))
-                .auto_sized()
-                .show(ctx, |ui| {
-                    ui.label(String::from("Name: ") + &self.puzzle.name);
-                    ui.label(String::from("Authors: ") + &self.puzzle.authors.join(", "));
-                    ui.label(self.puzzle.pieces.len().to_string() + " pieces");
-                });
+            if let Some(ref mut p) = self.puzzle {
+                Window::new("Puzzle Info")
+                    .default_pos((10.0, 40.0))
+                    .auto_sized()
+                    .show(ctx, |ui| {
+                        ui.label(String::from("Name: ") + &p.name);
+                        ui.label(String::from("Authors: ") + &p.authors.join(", "));
+                        ui.label(p.pieces.len().to_string() + " pieces");
+                    });
+            }
             //UI Section: Bottom left area
             ui.with_layout(egui::Layout::bottom_up(egui::Align::LEFT), |ui| {
                 egui::Frame::popup(ui.style())
@@ -272,11 +298,13 @@ impl eframe::App for App {
                     .show(ui, |ui| {
                         ui.set_max_width(200.0);
                         ui.separator();
-                        //displays move count
-                        ui.label(self.puzzle.stack.len().to_string() + " ETM");
-                        //if the puzzle is solved, display as much (this is currently not working)
-                        if self.puzzle.solved {
-                            ui.label("Solved!");
+                        if let Some(ref p) = self.puzzle {
+                            //displays move count
+                            ui.label(p.stack.len().to_string() + " ETM");
+                            //if the puzzle is solved, display as much (this is currently not working)
+                            if p.solved {
+                                ui.label("Solved!");
+                            }
                         }
                         //display the current message if it isn't empty
                         if !self.curr_msg.is_empty() {
@@ -290,7 +318,9 @@ impl eframe::App for App {
                 max: pos2(rect.width() - 180.0, rect.height()),
             };
             //if the puzzle is currently turning, request a repaint so the animation runs
-            if self.puzzle.anim_left != 0.0 {
+            if let Some(ref mut p) = self.puzzle
+                && p.anim_left != 0.0
+            {
                 ui.ctx().request_repaint();
             }
             //get the interactor
@@ -315,16 +345,17 @@ impl eframe::App for App {
             if r.clicked()
                 && !self.preview
                 && let Some(pointer) = r.interact_pointer_pos()
-            {
-                //process the input
-                if let Err(x) = self.puzzle.process_click(
+                && let Some(ref mut p) = self.puzzle
+                && let Err(x) = p.process_click(
                     &rect,
                     pointer,
                     true,
                     self.scale_factor,
                     self.offset,
                     self.cut_on_turn,
-                ) {
+                )
+            {
+                {
                     self.curr_msg = x;
                 }
             }
@@ -332,7 +363,8 @@ impl eframe::App for App {
             if r.clicked_by(egui::PointerButton::Secondary)
                 && !self.preview
                 && let Some(pointer) = r.interact_pointer_pos()
-                && let Err(x) = self.puzzle.process_click(
+                && let Some(ref mut p) = self.puzzle
+                && let Err(x) = p.process_click(
                     &rect,
                     pointer,
                     false,
@@ -343,11 +375,15 @@ impl eframe::App for App {
             {
                 self.curr_msg = x;
             }
-            if ui.input(|i: &InputState| i.key_pressed(egui::Key::Z)) {
-                let _ = self.puzzle.undo();
+            if ui.input(|i: &InputState| i.key_pressed(egui::Key::Z))
+                && let Some(ref mut p) = self.puzzle
+            {
+                let _ = p.undo();
             }
             //keybinds
-            if ui.ctx().memory(|x| x.focused().is_none()) {
+            if let Some(ref mut p) = self.puzzle
+                && ui.ctx().memory(|x| x.focused().is_none())
+            {
                 let ev = ctx.input(|i| i.events.clone());
                 for event in ev {
                     if let Event::Key {
@@ -360,10 +396,10 @@ impl eframe::App for App {
                     {
                         let b = if let Some(p) = physical_key { p } else { key };
                         if pressed
-                            && let Some((t, m)) = self.puzzle.keybinds.get(&b).cloned()
-                            && self.puzzle.turns.contains_key(&t)
+                            && let Some((t, m)) = p.keybinds.get(&b).cloned()
+                            && p.turns.contains_key(&t)
                         {
-                            if let Err(x) = self.puzzle.turn_id(&t, self.cut_on_turn, m) {
+                            if let Err(x) = p.turn_id(&t, self.cut_on_turn, m) {
                                 self.curr_msg = x;
                             }
                         }
@@ -371,13 +407,12 @@ impl eframe::App for App {
                 }
             }
             //parse hovering. theres some casework here
-            if r.hover_pos().is_some()
+            if let Some(ref mut p) = self.puzzle
+                && r.hover_pos().is_some()
                 && !self.preview
                 && let Some(pointer) = r.hover_pos()
             {
-                let hovered_circle =
-                    self.puzzle
-                        .get_hovered(&rect, pointer, self.scale_factor, self.offset);
+                let hovered_circle = p.get_hovered(&rect, pointer, self.scale_factor, self.offset);
                 //get the hovered circle (turn circle)
                 if let Err(x) = &hovered_circle {
                     self.curr_msg = x.clone();
@@ -392,7 +427,7 @@ impl eframe::App for App {
                     && !ui.input(|i| i.modifiers.command_only())
                     && !self.preview
                     && let Some(pointer) = r.hover_pos()
-                    && let Err(x) = self.puzzle.process_click(
+                    && let Err(x) = p.process_click(
                         &rect,
                         pointer,
                         scroll > 0,
