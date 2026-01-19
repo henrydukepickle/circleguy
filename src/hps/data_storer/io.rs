@@ -1,5 +1,5 @@
 #[cfg(not(target_arch = "wasm32"))]
-const DEV: bool = true;
+const DEV: bool = false;
 
 #[cfg(not(target_arch = "wasm32"))]
 pub fn write_string_to_file(path: &str, data: &str) -> Result<(), std::io::Error> {
