@@ -1,0 +1,48 @@
+add_puzzle(
+    name = "Chain Straight Flush", // named because of the poker hand 'straight flush'
+    authors = ["Hollister Ream"],
+    scramble = 500,
+    build = fn() {
+    // creute circles
+        llc = circle(1.0, 0.0, 0.3)
+        lc = circle(0.5, 0.0, 0.3)
+        mc = circle(0.0, 0.0, 0.3)
+        rc = circle(-0.5, 0.0, 0.3)
+        rrc = circle(-1.0, 0.0, 0.3)
+
+    // define player-clickable points of rotation
+        llt = turn(llc, 5)
+        lt = turn(lc, 3)
+        mt = turn(mc, 4)
+        rt = turn(rc, 6)
+        rrt = turn(rrc, 2)
+
+    // pass circles and turns to app
+        add_circles([llc, lc, mc, rc, rrc])
+        add_turns([llt, lt, mt, rt, rrt], ["LL", "L", "M", "R", "RR"])
+
+    // ensure all shapes are cut
+        for a in llt.powers() {
+            for b in lt.powers() {
+                for c in mt.powers() {
+                    for d in rt.powers() {
+                        for e in rrt.powers() {
+                            turn([llt, lt, mt, rt, rrt])
+                        }
+                    }
+                }
+            }
+        }
+
+    // color circles
+        color([llc, ~lc], red)
+        color([llc, lc], orange)
+        color([~llc, lc, ~mc], yellow)
+        color([lc, mc], green)
+        color([~lc, mc, ~rc], blue)
+        color([mc, rc], magenta)
+        color([~mc, rc, ~rrc], purple)
+        color([rc, rrc], dark_gray)
+        color([~rc, rrc], gray)
+    },
+)

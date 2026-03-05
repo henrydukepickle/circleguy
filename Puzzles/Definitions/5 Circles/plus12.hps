@@ -5,11 +5,11 @@ add_puzzle(
     build = fn() {
         o = point(0.0, 0.0)
 
-        lc = circle(-1.1, 0.0, 0.4)
-        rc = circle(1.1, 0.0, 0.4)
-        uc = circle(0.0, 1.1, 0.4)
-        dc = circle(0.0, -1.1, 0.4)
-        mc = circle(0.0, 0.0, 0.95)
+        lc = circle(-0.77, 0.0, 0.28)
+        rc = circle(0.77, 0.0, 0.28)
+        uc = circle(0.0, 0.77, 0.28)
+        dc = circle(0.0, -0.77, 0.28)
+        mc = circle(0.0, 0.0, 0.665)
 
         lt = turn(lc, 2)
         rt = turn(rc, 2)

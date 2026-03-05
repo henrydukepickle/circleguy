@@ -1,0 +1,37 @@
+add_puzzle(
+    name = "Pair",
+    authors = ["Hollister Ream"],
+    scramble = 500,
+    build = fn() {
+    // creute circles
+        mc = circle(0.0, 0.0, 0.75)
+        uc = circle(0.6, 0.6, 0.4)
+        dc = circle(-0.6, -0.6, 0.4)
+
+    // define player-clickable points of rotation
+        mt = turn(mc, 4)
+        ut = turn(uc, 4)
+        dt = turn(dc, 4)
+
+    // pass circles and turns to app
+        add_circles([mc, uc, dc])
+        add_turns([mt, ut, dt], ["M", "U", "D"])
+
+    // ensure all shapes are cut
+    // code segment from cryofractal
+        o = point(0.0, 0.0)
+        sym_turn = turn(circle(o, 10), 4)
+        for a in sym_turn.powers() {
+            for b in ut.powers () {
+                cut([a, b, mt])
+            }
+        }
+
+    // color circles
+        color([mc], white)
+        color([uc, ~mc], red)
+        color([dc, ~mc], blue)
+        color([uc, mc], light_red)
+        color([dc, mc], light_blue)
+    },
+)
